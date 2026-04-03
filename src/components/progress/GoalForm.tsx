@@ -1,14 +1,20 @@
-'use client'
-
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { createGoal, updateGoalStatus } from '@/app/actions/goals'
+import { createGoal } from '@/lib/api/goals'
 
-export function GoalForm({ studentId, teacherId }: { studentId: string; teacherId: string }) {
+export function GoalForm({
+  studentId,
+  teacherId,
+  onSaved,
+}: {
+  studentId: string
+  teacherId: string
+  onSaved?: () => void
+}) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [title, setTitle] = useState('')
@@ -34,6 +40,7 @@ export function GoalForm({ studentId, teacherId }: { studentId: string; teacherI
       setDescription('')
       setTargetDate('')
       setOpen(false)
+      onSaved?.()
     }
   }
 

@@ -1,15 +1,19 @@
-'use client'
-
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { approveBookingRequest, declineBookingRequest } from '@/app/actions/bookings'
+import { approveBookingRequest, declineBookingRequest } from '@/lib/api/bookings'
 import { formatInTimeZone } from 'date-fns-tz'
 import type { BookingRequestWithProfiles } from '@/lib/types/database'
 
-export function BookingRequestCard({ request }: { request: BookingRequestWithProfiles }) {
+export function BookingRequestCard({
+  request,
+  onHandled,
+}: {
+  request: BookingRequestWithProfiles
+  onHandled?: () => void
+}) {
   const [declining, setDeclining] = useState(false)
   const [declineNote, setDeclineNote] = useState('')
   const [loading, setLoading] = useState(false)
@@ -18,6 +22,7 @@ export function BookingRequestCard({ request }: { request: BookingRequestWithPro
     setLoading(true)
     await approveBookingRequest(request.id)
     setLoading(false)
+    onHandled?.()
   }
 
   async function handleDecline() {
@@ -28,6 +33,7 @@ export function BookingRequestCard({ request }: { request: BookingRequestWithPro
     setLoading(true)
     await declineBookingRequest(request.id, declineNote)
     setLoading(false)
+    onHandled?.()
   }
 
   return (
@@ -45,9 +51,7 @@ export function BookingRequestCard({ request }: { request: BookingRequestWithPro
               {' JST'}
             </p>
           </div>
-          <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200">
-            Pending
-          </Badge>
+          <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200">Pending</Badge>
         </div>
 
         {request.student_note && (
@@ -67,30 +71,14 @@ export function BookingRequestCard({ request }: { request: BookingRequestWithPro
         )}
 
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={handleApprove}
-            disabled={loading || declining}
-            className="bg-green-600 hover:bg-green-700"
-          >
+          <Button size="sm" onClick={handleApprove} disabled={loading || declining} className="bg-green-600 hover:bg-green-700">
             Approve
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleDecline}
-            disabled={loading}
-            className="text-red-600 border-red-200 hover:bg-red-50"
-          >
+          <Button size="sm" variant="outline" onClick={handleDecline} disabled={loading} className="text-red-600 border-red-200 hover:bg-red-50">
             {declining ? 'Confirm Decline' : 'Decline'}
           </Button>
           {declining && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => { setDeclining(false); setDeclineNote('') }}
-              disabled={loading}
-            >
+            <Button size="sm" variant="ghost" onClick={() => { setDeclining(false); setDeclineNote('') }} disabled={loading}>
               Cancel
             </Button>
           )}

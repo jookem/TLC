@@ -5,7 +5,11 @@
       "Bash(npx shadcn@latest init --defaults)",
       "Bash(npx shadcn@latest add sonner separator popover)",
       "Bash(mkdir:*)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(git add:*)"
     ]
   }
 }

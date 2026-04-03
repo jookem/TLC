@@ -1,16 +1,14 @@
-'use client'
-
 import { useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { createLesson } from '@/app/actions/lessons'
+import { createLesson } from '@/lib/api/lessons'
 
-type Props = { studentId: string; studentName: string }
+type Props = { studentId: string; studentName: string; onSaved?: () => void }
 
-export function ScheduleLessonModal({ studentId, studentName }: Props) {
+export function ScheduleLessonModal({ studentId, studentName, onSaved }: Props) {
   const [open, setOpen] = useState(false)
   const [date, setDate] = useState('')
   const [startTime, setStartTime] = useState('')
@@ -23,7 +21,6 @@ export function ScheduleLessonModal({ studentId, studentName }: Props) {
     e.preventDefault()
     if (!date || !startTime || !endTime) { setError('Date and times are required.'); return }
 
-    // Combine date + time and treat as JST
     const start = new Date(`${date}T${startTime}:00+09:00`)
     const end = new Date(`${date}T${endTime}:00+09:00`)
     if (end <= start) { setError('End time must be after start time.'); return }
@@ -44,6 +41,7 @@ export function ScheduleLessonModal({ studentId, studentName }: Props) {
       setDate('')
       setStartTime('')
       setEndTime('')
+      onSaved?.()
     }
   }
 

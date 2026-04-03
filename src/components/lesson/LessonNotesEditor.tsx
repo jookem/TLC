@@ -1,12 +1,10 @@
-'use client'
-
 import { useState, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { saveLessonNotes, addVocabularyToBank } from '@/app/actions/lessons'
+import { saveLessonNotes, addVocabularyToBank } from '@/lib/api/lessons'
 import type { LessonNotes, VocabularyItem, GrammarPoint, StudentGoal } from '@/lib/types/database'
 
 interface LessonNotesEditorProps {
@@ -14,6 +12,7 @@ interface LessonNotesEditorProps {
   studentId: string
   initialNotes?: Partial<LessonNotes>
   goals?: StudentGoal[]
+  onSaved?: () => void
 }
 
 export function LessonNotesEditor({
@@ -21,6 +20,7 @@ export function LessonNotesEditor({
   studentId,
   initialNotes,
   goals = [],
+  onSaved,
 }: LessonNotesEditorProps) {
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
@@ -34,19 +34,13 @@ export function LessonNotesEditor({
   const [isVisible, setIsVisible] = useState(initialNotes?.is_visible_to_student ?? true)
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>(initialNotes?.goal_ids ?? [])
 
-  const [vocabulary, setVocabulary] = useState<VocabularyItem[]>(
-    initialNotes?.vocabulary ?? []
-  )
-  const [grammarPoints, setGrammarPoints] = useState<GrammarPoint[]>(
-    initialNotes?.grammar_points ?? []
-  )
+  const [vocabulary, setVocabulary] = useState<VocabularyItem[]>(initialNotes?.vocabulary ?? [])
+  const [grammarPoints, setGrammarPoints] = useState<GrammarPoint[]>(initialNotes?.grammar_points ?? [])
 
-  // New vocab form
   const [newWord, setNewWord] = useState('')
   const [newDefinition, setNewDefinition] = useState('')
   const [newExample, setNewExample] = useState('')
 
-  // New grammar form
   const [newGrammarPoint, setNewGrammarPoint] = useState('')
   const [newGrammarExplanation, setNewGrammarExplanation] = useState('')
 
@@ -143,11 +137,11 @@ export function LessonNotesEditor({
     })
     setSaving(false)
     setSavedAt(new Date())
+    onSaved?.()
   }
 
   return (
     <div className="space-y-6">
-      {/* Save status */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Lesson Notes</h2>
         <div className="flex items-center gap-3">
@@ -160,7 +154,6 @@ export function LessonNotesEditor({
         </div>
       </div>
 
-      {/* Visibility toggle */}
       <div className="flex items-center gap-2">
         <input
           type="checkbox"
@@ -174,7 +167,6 @@ export function LessonNotesEditor({
         </Label>
       </div>
 
-      {/* Summary */}
       <div className="space-y-2">
         <Label>Session Summary</Label>
         <Textarea
@@ -185,7 +177,6 @@ export function LessonNotesEditor({
         />
       </div>
 
-      {/* Vocabulary */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <Label>Vocabulary ({vocabulary.length} words)</Label>
@@ -206,38 +197,22 @@ export function LessonNotesEditor({
                 <p className="text-sm text-gray-500 italic mt-0.5">&ldquo;{item.example}&rdquo;</p>
               )}
             </div>
-            <button
-              onClick={() => removeVocabItem(i)}
-              className="text-gray-400 hover:text-red-500 text-xs"
-            >
+            <button onClick={() => removeVocabItem(i)} className="text-gray-400 hover:text-red-500 text-xs">
               Remove
             </button>
           </div>
         ))}
 
         <div className="grid grid-cols-3 gap-2">
-          <Input
-            value={newWord}
-            onChange={e => setNewWord(e.target.value)}
-            placeholder="Word"
-          />
-          <Input
-            value={newDefinition}
-            onChange={e => setNewDefinition(e.target.value)}
-            placeholder="Definition"
-          />
-          <Input
-            value={newExample}
-            onChange={e => setNewExample(e.target.value)}
-            placeholder="Example (optional)"
-          />
+          <Input value={newWord} onChange={e => setNewWord(e.target.value)} placeholder="Word" />
+          <Input value={newDefinition} onChange={e => setNewDefinition(e.target.value)} placeholder="Definition" />
+          <Input value={newExample} onChange={e => setNewExample(e.target.value)} placeholder="Example (optional)" />
         </div>
         <Button size="sm" variant="outline" onClick={addVocabItem} disabled={!newWord || !newDefinition}>
           + Add Word
         </Button>
       </div>
 
-      {/* Grammar Points */}
       <div className="space-y-3">
         <Label>Grammar Points ({grammarPoints.length})</Label>
 
@@ -247,33 +222,21 @@ export function LessonNotesEditor({
               <p className="font-medium text-green-900">{gp.point}</p>
               <p className="text-sm text-gray-700">{gp.explanation}</p>
             </div>
-            <button
-              onClick={() => removeGrammarPoint(i)}
-              className="text-gray-400 hover:text-red-500 text-xs"
-            >
+            <button onClick={() => removeGrammarPoint(i)} className="text-gray-400 hover:text-red-500 text-xs">
               Remove
             </button>
           </div>
         ))}
 
         <div className="grid grid-cols-2 gap-2">
-          <Input
-            value={newGrammarPoint}
-            onChange={e => setNewGrammarPoint(e.target.value)}
-            placeholder="Grammar point (e.g. Past perfect)"
-          />
-          <Input
-            value={newGrammarExplanation}
-            onChange={e => setNewGrammarExplanation(e.target.value)}
-            placeholder="Explanation"
-          />
+          <Input value={newGrammarPoint} onChange={e => setNewGrammarPoint(e.target.value)} placeholder="Grammar point (e.g. Past perfect)" />
+          <Input value={newGrammarExplanation} onChange={e => setNewGrammarExplanation(e.target.value)} placeholder="Explanation" />
         </div>
         <Button size="sm" variant="outline" onClick={addGrammarPoint} disabled={!newGrammarPoint || !newGrammarExplanation}>
           + Add Grammar Point
         </Button>
       </div>
 
-      {/* Homework */}
       <div className="space-y-2">
         <Label>Homework / 宿題</Label>
         <Textarea
@@ -285,7 +248,6 @@ export function LessonNotesEditor({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Strengths */}
         <div className="space-y-2">
           <Label className="text-green-700">Strengths</Label>
           <Textarea
@@ -296,7 +258,6 @@ export function LessonNotesEditor({
           />
         </div>
 
-        {/* Areas to Focus */}
         <div className="space-y-2">
           <Label className="text-orange-700">Areas to Focus</Label>
           <Textarea
@@ -308,7 +269,6 @@ export function LessonNotesEditor({
         </div>
       </div>
 
-      {/* Goals */}
       {goals.length > 0 && (
         <div className="space-y-2">
           <Label>Goals Addressed in This Lesson</Label>
@@ -330,7 +290,6 @@ export function LessonNotesEditor({
         </div>
       )}
 
-      {/* Private teacher notes */}
       <div className="space-y-2 border-t pt-4">
         <Label className="flex items-center gap-2">
           <span>Private Teacher Notes</span>

@@ -1,9 +1,7 @@
-'use client'
-
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { formatInTimeZone } from 'date-fns-tz'
 import { QuickNotesForm } from './QuickNotesForm'
-import Link from 'next/link'
 
 const TZ = 'Asia/Tokyo'
 
@@ -39,7 +37,6 @@ export function LessonCard({ lesson, notes }: Props) {
 
   return (
     <div className={`bg-white border rounded-lg px-4 py-3 space-y-2 ${open ? 'border-brand/30 shadow-sm' : 'border-gray-200'}`}>
-      {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -53,7 +50,6 @@ export function LessonCard({ lesson, notes }: Props) {
             </span>
           </div>
 
-          {/* Notes preview when collapsed */}
           {!open && (
             <div className="mt-1.5 space-y-0.5">
               {notes?.summary ? (
@@ -82,7 +78,7 @@ export function LessonCard({ lesson, notes }: Props) {
             {open ? 'Close' : hasNotes ? 'Edit Notes' : 'Add Notes'}
           </button>
           <Link
-            href={`/lessons/${lesson.id}`}
+            to={`/lessons/${lesson.id}`}
             className="text-xs text-gray-400 hover:text-brand"
             title="Full lesson editor"
           >
@@ -91,7 +87,6 @@ export function LessonCard({ lesson, notes }: Props) {
         </div>
       </div>
 
-      {/* Expanded notes form */}
       {open && (
         <QuickNotesForm
           lessonId={lesson.id}

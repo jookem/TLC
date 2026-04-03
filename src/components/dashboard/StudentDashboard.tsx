@@ -1,51 +1,71 @@
-import { createClient } from '@/lib/supabase/server'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import { formatInTimeZone } from 'date-fns-tz'
 import { format } from 'date-fns'
 
-export async function StudentDashboard() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+export function StudentDashboard() {
+  const { user } = useAuth()
+  const [upcomingLessons, setUpcomingLessons] = useState<any[]>([])
+  const [goals, setGoals] = useState<any[]>([])
+  const [recentNotes, setRecentNotes] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [lessonsResult, goalsResult, recentNotesResult] = await Promise.all([
-    supabase
-      .from('lessons')
-      .select(`
-        *,
-        teacher:profiles!lessons_teacher_id_fkey(id, full_name, display_name)
-      `)
-      .eq('student_id', user.id)
-      .eq('status', 'scheduled')
-      .gte('scheduled_start', new Date().toISOString())
-      .order('scheduled_start', { ascending: true })
-      .limit(3),
+  useEffect(() => {
+    if (!user) return
 
-    supabase
-      .from('student_goals')
-      .select('*')
-      .eq('student_id', user.id)
-      .eq('status', 'active')
-      .order('target_date', { ascending: true }),
+    async function load() {
+      const [lessonsResult, goalsResult, recentNotesResult] = await Promise.all([
+        supabase
+          .from('lessons')
+          .select('*, teacher:profiles!lessons_teacher_id_fkey(id, full_name, display_name)')
+          .eq('student_id', user!.id)
+          .eq('status', 'scheduled')
+          .gte('scheduled_start', new Date().toISOString())
+          .order('scheduled_start', { ascending: true })
+          .limit(3),
 
-    supabase
-      .from('lesson_notes')
-      .select(`
-        *,
-        lesson:lessons(scheduled_start, teacher:profiles!lessons_teacher_id_fkey(full_name))
-      `)
-      .eq('is_visible_to_student', true)
-      .order('created_at', { ascending: false })
-      .limit(3),
-  ])
+        supabase
+          .from('student_goals')
+          .select('*')
+          .eq('student_id', user!.id)
+          .eq('status', 'active')
+          .order('target_date', { ascending: true }),
 
-  const upcomingLessons = lessonsResult.data ?? []
-  const goals = goalsResult.data ?? []
-  const recentNotes = recentNotesResult.data ?? []
+        supabase
+          .from('lesson_notes')
+          .select('*, lesson:lessons(scheduled_start, teacher:profiles!lessons_teacher_id_fkey(full_name))')
+          .eq('is_visible_to_student', true)
+          .order('created_at', { ascending: false })
+          .limit(3),
+      ])
+
+      setUpcomingLessons(lessonsResult.data ?? [])
+      setGoals(goalsResult.data ?? [])
+      setRecentNotes(recentNotesResult.data ?? [])
+      setLoading(false)
+    }
+
+    load()
+  }, [user])
 
   const nextLesson = upcomingLessons[0]
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="h-8 bg-gray-200 rounded w-48 animate-pulse" />
+        <div className="h-24 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />
+          <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -58,7 +78,6 @@ export async function StudentDashboard() {
         </p>
       </div>
 
-      {/* Next Lesson Banner */}
       {nextLesson && (
         <Card className="bg-brand-light border-brand/30">
           <CardContent className="pt-6">
@@ -68,20 +87,14 @@ export async function StudentDashboard() {
                   Next Lesson / 次のレッスン
                 </p>
                 <p className="text-lg font-semibold text-gray-900 mt-1">
-                  {formatInTimeZone(
-                    new Date((nextLesson as any).scheduled_start),
-                    'Asia/Tokyo',
-                    'M月d日 (EEE) HH:mm'
-                  )}
+                  {formatInTimeZone(new Date(nextLesson.scheduled_start), 'Asia/Tokyo', 'M月d日 (EEE) HH:mm')}
                 </p>
-                <p className="text-sm text-gray-600">
-                  with {(nextLesson as any).teacher?.full_name}
-                </p>
+                <p className="text-sm text-gray-600">with {nextLesson.teacher?.full_name}</p>
               </div>
               <div className="flex flex-col gap-2">
-                {(nextLesson as any).meeting_url && (
+                {nextLesson.meeting_url && (
                   <a
-                    href={(nextLesson as any).meeting_url}
+                    href={nextLesson.meeting_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm bg-brand text-white px-4 py-2 rounded hover:bg-brand-dark transition-colors"
@@ -89,10 +102,7 @@ export async function StudentDashboard() {
                     Join / 参加する
                   </a>
                 )}
-                <Link
-                  href={`/lessons/${(nextLesson as any).id}`}
-                  className="text-sm text-center text-brand hover:underline"
-                >
+                <Link to={`/lessons/${nextLesson.id}`} className="text-sm text-center text-brand hover:underline">
                   Details
                 </Link>
               </div>
@@ -102,13 +112,10 @@ export async function StudentDashboard() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Goals */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">目標 Goals</CardTitle>
-            <Link href="/goals" className="text-sm text-brand hover:underline">
-              すべて見る
-            </Link>
+            <Link to="/goals" className="text-sm text-brand hover:underline">すべて見る</Link>
           </CardHeader>
           <CardContent>
             {goals.length === 0 ? (
@@ -135,13 +142,10 @@ export async function StudentDashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Lesson Notes */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">最近のノート Lesson Notes</CardTitle>
-            <Link href="/lessons" className="text-sm text-brand hover:underline">
-              すべて見る
-            </Link>
+            <Link to="/lessons" className="text-sm text-brand hover:underline">すべて見る</Link>
           </CardHeader>
           <CardContent>
             {recentNotes.length === 0 ? (
@@ -152,24 +156,15 @@ export async function StudentDashboard() {
                   <div key={note.id} className="border rounded-lg p-3">
                     <p className="text-xs text-gray-500">
                       {note.lesson?.scheduled_start &&
-                        formatInTimeZone(
-                          new Date(note.lesson.scheduled_start),
-                          'Asia/Tokyo',
-                          'M月d日'
-                        )}
+                        formatInTimeZone(new Date(note.lesson.scheduled_start), 'Asia/Tokyo', 'M月d日')}
                     </p>
                     {note.summary && (
                       <p className="text-sm text-gray-700 mt-1 line-clamp-2">{note.summary}</p>
                     )}
                     {note.homework && (
-                      <p className="text-xs text-orange-700 mt-1">
-                        宿題: {note.homework}
-                      </p>
+                      <p className="text-xs text-orange-700 mt-1">宿題: {note.homework}</p>
                     )}
-                    <Link
-                      href={`/lessons/${note.lesson_id}`}
-                      className="text-xs text-brand hover:underline mt-1 block"
-                    >
+                    <Link to={`/lessons/${note.lesson_id}`} className="text-xs text-brand hover:underline mt-1 block">
                       詳細を見る →
                     </Link>
                   </div>
@@ -180,7 +175,6 @@ export async function StudentDashboard() {
         </Card>
       </div>
 
-      {/* Book a Lesson CTA */}
       <Card className="bg-gray-900 text-white border-0">
         <CardContent className="pt-6 flex items-center justify-between">
           <div>
@@ -188,7 +182,7 @@ export async function StudentDashboard() {
             <p className="text-gray-400 text-sm">次のレッスンを予約しましょう</p>
           </div>
           <Link
-            href="/book"
+            to="/book"
             className="bg-white text-gray-900 px-4 py-2 rounded font-medium text-sm hover:bg-gray-100 transition-colors"
           >
             予約する / Book

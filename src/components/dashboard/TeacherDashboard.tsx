@@ -1,52 +1,68 @@
-import { createClient } from '@/lib/supabase/server'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import { formatInTimeZone } from 'date-fns-tz'
 import { format } from 'date-fns'
 
-export async function TeacherDashboard() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+export function TeacherDashboard() {
+  const { user } = useAuth()
+  const [upcomingLessons, setUpcomingLessons] = useState<any[]>([])
+  const [pendingBookings, setPendingBookings] = useState<any[]>([])
+  const [studentCount, setStudentCount] = useState(0)
+  const [loading, setLoading] = useState(true)
 
-  const today = new Date()
-  const todayStart = new Date(today.setHours(0, 0, 0, 0)).toISOString()
-  const todayEnd = new Date(today.setHours(23, 59, 59, 999)).toISOString()
+  useEffect(() => {
+    if (!user) return
 
-  const [lessonsResult, pendingBookingsResult, studentsResult] = await Promise.all([
-    supabase
-      .from('lessons')
-      .select(`
-        *,
-        student:profiles!lessons_student_id_fkey(id, full_name, display_name, avatar_url)
-      `)
-      .eq('teacher_id', user.id)
-      .eq('status', 'scheduled')
-      .gte('scheduled_start', new Date().toISOString())
-      .order('scheduled_start', { ascending: true })
-      .limit(5),
+    async function load() {
+      const [lessonsResult, pendingBookingsResult, studentsResult] = await Promise.all([
+        supabase
+          .from('lessons')
+          .select('*, student:profiles!lessons_student_id_fkey(id, full_name, display_name, avatar_url)')
+          .eq('teacher_id', user!.id)
+          .eq('status', 'scheduled')
+          .gte('scheduled_start', new Date().toISOString())
+          .order('scheduled_start', { ascending: true })
+          .limit(5),
 
-    supabase
-      .from('booking_requests')
-      .select(`
-        *,
-        student:profiles!booking_requests_student_id_fkey(id, full_name, display_name)
-      `)
-      .eq('teacher_id', user.id)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false }),
+        supabase
+          .from('booking_requests')
+          .select('*, student:profiles!booking_requests_student_id_fkey(id, full_name, display_name)')
+          .eq('teacher_id', user!.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false }),
 
-    supabase
-      .from('teacher_student_relationships')
-      .select('id')
-      .eq('teacher_id', user.id)
-      .eq('status', 'active'),
-  ])
+        supabase
+          .from('teacher_student_relationships')
+          .select('id')
+          .eq('teacher_id', user!.id)
+          .eq('status', 'active'),
+      ])
 
-  const upcomingLessons = lessonsResult.data ?? []
-  const pendingBookings = pendingBookingsResult.data ?? []
-  const studentCount = studentsResult.data?.length ?? 0
+      setUpcomingLessons(lessonsResult.data ?? [])
+      setPendingBookings(pendingBookingsResult.data ?? [])
+      setStudentCount(studentsResult.data?.length ?? 0)
+      setLoading(false)
+    }
+
+    load()
+  }, [user])
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="h-8 bg-gray-200 rounded w-48 animate-pulse" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-24 bg-gray-200 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -57,7 +73,6 @@ export async function TeacherDashboard() {
         </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -80,13 +95,10 @@ export async function TeacherDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming Lessons */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">Upcoming Lessons</CardTitle>
-            <Link href="/lessons" className="text-sm text-brand hover:underline">
-              View all
-            </Link>
+            <Link to="/lessons" className="text-sm text-brand hover:underline">View all</Link>
           </CardHeader>
           <CardContent>
             {upcomingLessons.length === 0 ? (
@@ -96,27 +108,14 @@ export async function TeacherDashboard() {
                 {upcomingLessons.map((lesson: any) => (
                   <div key={lesson.id} className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {lesson.student?.full_name}
-                      </p>
+                      <p className="text-sm font-medium text-gray-900">{lesson.student?.full_name}</p>
                       <p className="text-xs text-gray-500">
-                        {formatInTimeZone(
-                          new Date(lesson.scheduled_start),
-                          'Asia/Tokyo',
-                          'MMM d, h:mm a'
-                        )}
+                        {formatInTimeZone(new Date(lesson.scheduled_start), 'Asia/Tokyo', 'MMM d, h:mm a')}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs capitalize">
-                        {lesson.lesson_type}
-                      </Badge>
-                      <Link
-                        href={`/lessons/${lesson.id}`}
-                        className="text-xs text-brand hover:underline"
-                      >
-                        View
-                      </Link>
+                      <Badge variant="outline" className="text-xs capitalize">{lesson.lesson_type}</Badge>
+                      <Link to={`/lessons/${lesson.id}`} className="text-xs text-brand hover:underline">View</Link>
                     </div>
                   </div>
                 ))}
@@ -125,13 +124,10 @@ export async function TeacherDashboard() {
           </CardContent>
         </Card>
 
-        {/* Pending Booking Requests */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">Booking Requests</CardTitle>
-            <Link href="/calendar" className="text-sm text-brand hover:underline">
-              Calendar
-            </Link>
+            <Link to="/calendar" className="text-sm text-brand hover:underline">Calendar</Link>
           </CardHeader>
           <CardContent>
             {pendingBookings.length === 0 ? (
@@ -142,29 +138,22 @@ export async function TeacherDashboard() {
                   <div key={req.id} className="border rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium">{req.student?.full_name}</p>
-                      <Badge className="text-xs bg-yellow-100 text-yellow-700 border-yellow-200">
-                        Pending
-                      </Badge>
+                      <Badge className="text-xs bg-yellow-100 text-yellow-700 border-yellow-200">Pending</Badge>
                     </div>
                     <p className="text-xs text-gray-500">
-                      {formatInTimeZone(
-                        new Date(req.requested_start),
-                        'Asia/Tokyo',
-                        'MMM d, h:mm a'
-                      )}{' '}
-                      -{' '}
-                      {formatInTimeZone(
-                        new Date(req.requested_end),
-                        'Asia/Tokyo',
-                        'h:mm a'
-                      )}
+                      {formatInTimeZone(new Date(req.requested_start), 'Asia/Tokyo', 'MMM d, h:mm a')}
+                      {' - '}
+                      {formatInTimeZone(new Date(req.requested_end), 'Asia/Tokyo', 'h:mm a')}
                     </p>
                     {req.student_note && (
                       <p className="text-xs text-gray-600 italic">&ldquo;{req.student_note}&rdquo;</p>
                     )}
-                    <div className="flex gap-2">
-                      <ApproveBookingButton requestId={req.id} lessonStart={req.requested_start} lessonEnd={req.requested_end} studentId={req.student_id} teacherId={req.teacher_id} />
-                    </div>
+                    <Link
+                      to={`/calendar?request=${req.id}`}
+                      className="text-xs bg-brand text-white px-3 py-1 rounded hover:bg-brand-dark transition-colors inline-block"
+                    >
+                      Review
+                    </Link>
                   </div>
                 ))}
               </div>
@@ -173,28 +162,5 @@ export async function TeacherDashboard() {
         </Card>
       </div>
     </div>
-  )
-}
-
-function ApproveBookingButton({
-  requestId,
-  lessonStart,
-  lessonEnd,
-  studentId,
-  teacherId,
-}: {
-  requestId: string
-  lessonStart: string
-  lessonEnd: string
-  studentId: string
-  teacherId: string
-}) {
-  return (
-    <Link
-      href={`/calendar?request=${requestId}`}
-      className="text-xs bg-brand text-white px-3 py-1 rounded hover:bg-brand-dark transition-colors"
-    >
-      Review
-    </Link>
   )
 }

@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
@@ -8,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { addStudentByEmail } from '@/app/actions/students'
+import { addStudentByEmail } from '@/lib/api/students'
 
 const GRADE_OPTIONS = [
   { value: '', label: '— Select —' },
@@ -66,7 +64,7 @@ const EMPTY: Field = {
   hobbies: '', likes: '', dislikes: '', learning_goals: '', notes: '',
 }
 
-export function AddStudentModal() {
+export function AddStudentModal({ onAdded }: { onAdded?: () => void }) {
   const [open, setOpen] = useState(false)
   const [f, setF] = useState<Field>(EMPTY)
   const [loading, setLoading] = useState(false)
@@ -107,27 +105,21 @@ export function AddStudentModal() {
     } else {
       setF(EMPTY)
       setOpen(false)
+      onAdded?.()
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button size="sm">+ Add Student</Button>
-        }
-      />
+      <DialogTrigger render={<Button size="sm">+ Add Student</Button>} />
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Student</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 pt-2">
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{error}</p>}
 
-          {/* Account */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Account</h3>
             <div>
@@ -144,21 +136,12 @@ export function AddStudentModal() {
             </div>
           </section>
 
-          {/* Background */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Background</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Age</Label>
-                <Input
-                  type="number"
-                  min={3}
-                  max={100}
-                  placeholder="e.g. 12"
-                  value={f.age}
-                  onChange={e => set('age', e.target.value)}
-                  className="mt-1"
-                />
+                <Input type="number" min={3} max={100} placeholder="e.g. 12" value={f.age} onChange={e => set('age', e.target.value)} className="mt-1" />
               </div>
               <div>
                 <Label className="text-xs">Grade / Level</Label>
@@ -167,9 +150,7 @@ export function AddStudentModal() {
                   onChange={e => set('grade', e.target.value)}
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
-                  {GRADE_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
+                  {GRADE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
             </div>
@@ -177,29 +158,18 @@ export function AddStudentModal() {
             {!isAdult && (
               <div>
                 <Label className="text-xs">School Name</Label>
-                <Input
-                  placeholder="e.g. Toyooka Elementary School"
-                  value={f.school_name}
-                  onChange={e => set('school_name', e.target.value)}
-                  className="mt-1"
-                />
+                <Input placeholder="e.g. Toyooka Elementary School" value={f.school_name} onChange={e => set('school_name', e.target.value)} className="mt-1" />
               </div>
             )}
 
             {isAdult && (
               <div>
                 <Label className="text-xs">Occupation</Label>
-                <Input
-                  placeholder="e.g. Office worker, Nurse, Engineer..."
-                  value={f.occupation}
-                  onChange={e => set('occupation', e.target.value)}
-                  className="mt-1"
-                />
+                <Input placeholder="e.g. Office worker, Nurse, Engineer..." value={f.occupation} onChange={e => set('occupation', e.target.value)} className="mt-1" />
               </div>
             )}
           </section>
 
-          {/* English Proficiency */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">English Proficiency</h3>
             <div className="grid grid-cols-2 gap-3">
@@ -210,9 +180,7 @@ export function AddStudentModal() {
                   onChange={e => set('eiken_grade', e.target.value)}
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
-                  {EIKEN_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
+                  {EIKEN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
@@ -222,111 +190,51 @@ export function AddStudentModal() {
                   onChange={e => set('self_cefr', e.target.value)}
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
-                  {CEFR_OPTIONS.map(o => (
-                    <option key={o} value={o}>{o || '— Unknown —'}</option>
-                  ))}
+                  {CEFR_OPTIONS.map(o => <option key={o} value={o}>{o || '— Unknown —'}</option>)}
                 </select>
               </div>
               <div>
                 <Label className="text-xs">TOEIC Score <span className="text-gray-400 font-normal">(10–990)</span></Label>
-                <Input
-                  type="number"
-                  min={10}
-                  max={990}
-                  step={5}
-                  placeholder="e.g. 650"
-                  value={f.toeic_score}
-                  onChange={e => set('toeic_score', e.target.value)}
-                  className="mt-1"
-                />
+                <Input type="number" min={10} max={990} step={5} placeholder="e.g. 650" value={f.toeic_score} onChange={e => set('toeic_score', e.target.value)} className="mt-1" />
               </div>
               <div>
                 <Label className="text-xs">IELTS Band <span className="text-gray-400 font-normal">(0–9)</span></Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={9}
-                  step={0.5}
-                  placeholder="e.g. 6.5"
-                  value={f.ielts_score}
-                  onChange={e => set('ielts_score', e.target.value)}
-                  className="mt-1"
-                />
+                <Input type="number" min={0} max={9} step={0.5} placeholder="e.g. 6.5" value={f.ielts_score} onChange={e => set('ielts_score', e.target.value)} className="mt-1" />
               </div>
               <div>
                 <Label className="text-xs">TOEFL iBT <span className="text-gray-400 font-normal">(0–120)</span></Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={120}
-                  placeholder="e.g. 80"
-                  value={f.toefl_score}
-                  onChange={e => set('toefl_score', e.target.value)}
-                  className="mt-1"
-                />
+                <Input type="number" min={0} max={120} placeholder="e.g. 80" value={f.toefl_score} onChange={e => set('toefl_score', e.target.value)} className="mt-1" />
               </div>
             </div>
           </section>
 
-          {/* Personal */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Personal</h3>
             <div>
               <Label className="text-xs">Hobbies &amp; Interests</Label>
-              <Textarea
-                placeholder="e.g. Soccer, anime, cooking..."
-                value={f.hobbies}
-                onChange={e => set('hobbies', e.target.value)}
-                rows={2}
-                className="mt-1"
-              />
+              <Textarea placeholder="e.g. Soccer, anime, cooking..." value={f.hobbies} onChange={e => set('hobbies', e.target.value)} rows={2} className="mt-1" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Likes</Label>
-                <Textarea
-                  placeholder="Topics they enjoy talking about..."
-                  value={f.likes}
-                  onChange={e => set('likes', e.target.value)}
-                  rows={2}
-                  className="mt-1"
-                />
+                <Textarea placeholder="Topics they enjoy talking about..." value={f.likes} onChange={e => set('likes', e.target.value)} rows={2} className="mt-1" />
               </div>
               <div>
                 <Label className="text-xs">Dislikes</Label>
-                <Textarea
-                  placeholder="Topics or activities to avoid..."
-                  value={f.dislikes}
-                  onChange={e => set('dislikes', e.target.value)}
-                  rows={2}
-                  className="mt-1"
-                />
+                <Textarea placeholder="Topics or activities to avoid..." value={f.dislikes} onChange={e => set('dislikes', e.target.value)} rows={2} className="mt-1" />
               </div>
             </div>
           </section>
 
-          {/* Goals & Notes */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Goals &amp; Notes</h3>
             <div>
               <Label className="text-xs">Learning Goals</Label>
-              <Textarea
-                placeholder="What does this student want to achieve? e.g. Pass EIKEN 2, travel abroad, improve business English..."
-                value={f.learning_goals}
-                onChange={e => set('learning_goals', e.target.value)}
-                rows={3}
-                className="mt-1"
-              />
+              <Textarea placeholder="What does this student want to achieve?" value={f.learning_goals} onChange={e => set('learning_goals', e.target.value)} rows={3} className="mt-1" />
             </div>
             <div>
               <Label className="text-xs">Additional Notes</Label>
-              <Textarea
-                placeholder="Anything else worth noting — learning style, family situation, special considerations..."
-                value={f.notes}
-                onChange={e => set('notes', e.target.value)}
-                rows={2}
-                className="mt-1"
-              />
+              <Textarea placeholder="Anything else worth noting..." value={f.notes} onChange={e => set('notes', e.target.value)} rows={2} className="mt-1" />
             </div>
           </section>
 
@@ -334,12 +242,7 @@ export function AddStudentModal() {
             <Button type="submit" disabled={loading || !f.email.trim()}>
               {loading ? 'Adding...' : 'Add Student'}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => { setOpen(false); setF(EMPTY); setError('') }}
-              disabled={loading}
-            >
+            <Button type="button" variant="outline" onClick={() => { setOpen(false); setF(EMPTY); setError('') }} disabled={loading}>
               Cancel
             </Button>
           </div>

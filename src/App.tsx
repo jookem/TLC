@@ -1,0 +1,66 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from '@/components/ui/sonner'
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'
+import { AppLayout } from '@/layouts/AppLayout'
+import { LoginPage } from '@/pages/LoginPage'
+import { SignupPage } from '@/pages/SignupPage'
+import { DashboardPage } from '@/pages/DashboardPage'
+import { StudentsPage } from '@/pages/StudentsPage'
+import { StudentDetailPage } from '@/pages/StudentDetailPage'
+import { LessonsPage } from '@/pages/LessonsPage'
+import { LessonDetailPage } from '@/pages/LessonDetailPage'
+import { CalendarPage } from '@/pages/CalendarPage'
+import { AvailabilityPage } from '@/pages/AvailabilityPage'
+import { BookPage } from '@/pages/BookPage'
+import { GoalsPage } from '@/pages/GoalsPage'
+import { VocabularyPage } from '@/pages/VocabularyPage'
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>
+  if (!user) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
+function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading…</div>
+  if (user) return <Navigate to="/dashboard" replace />
+  return <>{children}</>
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<RedirectIfAuthed><LoginPage /></RedirectIfAuthed>} />
+      <Route path="/signup" element={<RedirectIfAuthed><SignupPage /></RedirectIfAuthed>} />
+
+      <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/students" element={<StudentsPage />} />
+        <Route path="/students/:studentId" element={<StudentDetailPage />} />
+        <Route path="/lessons" element={<LessonsPage />} />
+        <Route path="/lessons/:lessonId" element={<LessonDetailPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/availability" element={<AvailabilityPage />} />
+        <Route path="/book" element={<BookPage />} />
+        <Route path="/goals" element={<GoalsPage />} />
+        <Route path="/vocabulary" element={<VocabularyPage />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  )
+}
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+        <Toaster />
+      </AuthProvider>
+    </BrowserRouter>
+  )
+}

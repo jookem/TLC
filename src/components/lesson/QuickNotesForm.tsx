@@ -1,10 +1,8 @@
-'use client'
-
 import { useState, useCallback, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { saveLessonNotes } from '@/app/actions/lessons'
-import Link from 'next/link'
+import { saveLessonNotes } from '@/lib/api/lessons'
 
 type Props = {
   lessonId: string
@@ -81,10 +79,7 @@ export function QuickNotesForm({ lessonId, initialSummary, initialAreasToFocus, 
           >
             {saving ? 'Saving...' : 'Save'}
           </Button>
-          <Link
-            href={`/lessons/${lessonId}`}
-            className="text-xs text-brand hover:underline flex items-center"
-          >
+          <Link to={`/lessons/${lessonId}`} className="text-xs text-brand hover:underline flex items-center">
             Full notes editor →
           </Link>
         </div>

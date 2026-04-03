@@ -1,15 +1,21 @@
-'use client'
-
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { createProgressSnapshot } from '@/app/actions/goals'
+import { createProgressSnapshot } from '@/lib/api/goals'
 
 const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const
 
-export function ProgressSnapshotForm({ studentId, teacherId }: { studentId: string; teacherId: string }) {
+export function ProgressSnapshotForm({
+  studentId,
+  teacherId,
+  onSaved,
+}: {
+  studentId: string
+  teacherId: string
+  onSaved?: () => void
+}) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [cefrLevel, setCefrLevel] = useState<string>('')
@@ -35,6 +41,7 @@ export function ProgressSnapshotForm({ studentId, teacherId }: { studentId: stri
     } else {
       setOpen(false)
       setNotes('')
+      onSaved?.()
     }
   }
 

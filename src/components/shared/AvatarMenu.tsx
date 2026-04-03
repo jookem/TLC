@@ -1,6 +1,4 @@
-'use client'
-
-import { signOut } from '@/app/actions/auth'
+import { useNavigate } from 'react-router-dom'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -10,10 +8,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { Profile } from '@/lib/types/database'
-import { useRouter } from 'next/navigation'
+import { signOut } from '@/lib/api/auth'
 
 export function AvatarMenu({ profile }: { profile: Profile }) {
-  const router = useRouter()
+  const navigate = useNavigate()
 
   const initials = profile.full_name
     .split(' ')
@@ -44,7 +42,7 @@ export function AvatarMenu({ profile }: { profile: Profile }) {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem onClick={() => router.push('/settings')}>
+        <DropdownMenuItem onClick={() => navigate('/settings')}>
           Settings
         </DropdownMenuItem>
 
@@ -54,6 +52,7 @@ export function AvatarMenu({ profile }: { profile: Profile }) {
           variant="destructive"
           onClick={async () => {
             await signOut()
+            navigate('/login')
           }}
         >
           Sign Out

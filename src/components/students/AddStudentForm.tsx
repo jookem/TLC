@@ -1,11 +1,9 @@
-'use client'
-
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { addStudentByEmail } from '@/app/actions/students'
+import { addStudentByEmail } from '@/lib/api/students'
 
-export function AddStudentForm() {
+export function AddStudentForm({ onAdded }: { onAdded?: () => void }) {
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -28,16 +26,13 @@ export function AddStudentForm() {
       setTimeout(() => {
         setOpen(false)
         setSuccess('')
+        onAdded?.()
       }, 1500)
     }
   }
 
   if (!open) {
-    return (
-      <Button size="sm" onClick={() => setOpen(true)}>
-        + Add Student
-      </Button>
-    )
+    return <Button size="sm" onClick={() => setOpen(true)}>+ Add Student</Button>
   }
 
   return (
@@ -54,13 +49,7 @@ export function AddStudentForm() {
       <Button type="submit" size="sm" disabled={loading || !email.trim()}>
         {loading ? 'Adding...' : 'Add'}
       </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={() => { setOpen(false); setEmail(''); setError(''); setSuccess('') }}
-        disabled={loading}
-      >
+      <Button type="button" size="sm" variant="outline" onClick={() => { setOpen(false); setEmail(''); setError(''); setSuccess('') }} disabled={loading}>
         Cancel
       </Button>
       {error && <p className="text-sm text-red-600">{error}</p>}

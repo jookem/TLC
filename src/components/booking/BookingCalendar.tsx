@@ -1,15 +1,13 @@
-'use client'
-
 import { useState } from 'react'
-import { addDays, startOfWeek, format, isSameDay, parseISO, isWithinInterval, setHours, setMinutes } from 'date-fns'
-import { formatInTimeZone, toZonedTime } from 'date-fns-tz'
+import { addDays, startOfWeek, format, isSameDay, parseISO, setHours, setMinutes } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { createBookingRequest } from '@/app/actions/bookings'
+import { createBookingRequest } from '@/lib/api/bookings'
 import type { AvailabilitySlot } from '@/lib/types/database'
 
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 7) // 7am to 8pm
+const HOURS = Array.from({ length: 14 }, (_, i) => i + 7)
 
 interface BookingCalendarProps {
   teacherId: string
@@ -17,22 +15,15 @@ interface BookingCalendarProps {
   availabilitySlots: AvailabilitySlot[]
   existingLessons: { scheduled_start: string; scheduled_end: string; status: string; student_id: string }[]
   studentId: string
-}
-
-interface TimeSlot {
-  start: Date
-  end: Date
-  isAvailable: boolean
-  isBooked: boolean
-  isMyBooking: boolean
+  onBooked?: () => void
 }
 
 export function BookingCalendar({
   teacherId,
-  teacherName,
   availabilitySlots,
   existingLessons,
   studentId,
+  onBooked,
 }: BookingCalendarProps) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null)
@@ -93,6 +84,7 @@ export function BookingCalendar({
       setSubmitted(true)
       setSelectedSlot(null)
       setNote('')
+      onBooked?.()
     }
   }
 
@@ -136,32 +128,20 @@ export function BookingCalendar({
         </div>
       )}
 
-      {/* Week navigation */}
       <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setWeekOffset(w => w - 1)}
-          disabled={weekOffset <= 0}
-        >
+        <Button variant="outline" size="sm" onClick={() => setWeekOffset(w => w - 1)} disabled={weekOffset <= 0}>
           ← 前の週
         </Button>
         <span className="text-sm font-medium">
           {format(weekStart, 'M月d日')} – {format(addDays(weekStart, 6), 'M月d日, yyyy')}
         </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setWeekOffset(w => w + 1)}
-        >
+        <Button variant="outline" size="sm" onClick={() => setWeekOffset(w => w + 1)}>
           次の週 →
         </Button>
       </div>
 
-      {/* Calendar grid */}
       <div className="overflow-x-auto">
         <div className="min-w-[600px]">
-          {/* Day headers */}
           <div className="grid grid-cols-8 border-b">
             <div className="p-2 text-xs text-gray-400" />
             {days.map(day => (
@@ -175,7 +155,6 @@ export function BookingCalendar({
             ))}
           </div>
 
-          {/* Hour rows */}
           {HOURS.map(hour => (
             <div key={hour} className="grid grid-cols-8 border-b border-gray-100">
               <div className="p-1 text-xs text-gray-400 text-right pr-3 py-2">
@@ -185,7 +164,6 @@ export function BookingCalendar({
                 const available = isSlotAvailable(day, hour)
                 const booked = isSlotBooked(day, hour)
                 const isPast = setMinutes(setHours(day, hour), 0) < new Date()
-
                 const isSelected =
                   selectedSlot &&
                   isSameDay(selectedSlot.start, day) &&
@@ -212,9 +190,7 @@ export function BookingCalendar({
                     title={
                       available && !booked && !isPast
                         ? `Click to book ${String(hour).padStart(2, '0')}:00 JST`
-                        : booked
-                        ? 'Already booked'
-                        : ''
+                        : booked ? 'Already booked' : ''
                     }
                   />
                 )

@@ -1,8 +1,6 @@
-'use client'
-
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { updateVocabMastery } from '@/app/actions/lessons'
+import { updateVocabMastery } from '@/lib/api/lessons'
 import type { VocabularyBankEntry, MasteryLevel } from '@/lib/types/database'
 
 const MASTERY = [
@@ -12,7 +10,13 @@ const MASTERY = [
   { label: 'マスター', labelEn: 'Mastered', color: 'bg-green-100 text-green-700' },
 ]
 
-export function VocabularyFlashcard({ entry }: { entry: VocabularyBankEntry }) {
+export function VocabularyFlashcard({
+  entry,
+  onMasteryChanged,
+}: {
+  entry: VocabularyBankEntry
+  onMasteryChanged?: () => void
+}) {
   const [flipped, setFlipped] = useState(false)
   const [mastery, setMastery] = useState(entry.mastery_level)
   const [updating, setUpdating] = useState(false)
@@ -22,6 +26,7 @@ export function VocabularyFlashcard({ entry }: { entry: VocabularyBankEntry }) {
     setUpdating(true)
     await updateVocabMastery(entry.id, level)
     setUpdating(false)
+    onMasteryChanged?.()
   }
 
   return (
@@ -31,26 +36,19 @@ export function VocabularyFlashcard({ entry }: { entry: VocabularyBankEntry }) {
           {!flipped ? (
             <div>
               <p className="text-lg font-semibold text-gray-900">{entry.word}</p>
-              {entry.reading && (
-                <p className="text-sm text-gray-500">{entry.reading}</p>
-              )}
+              {entry.reading && <p className="text-sm text-gray-500">{entry.reading}</p>}
               <p className="text-xs text-gray-400 mt-2">タップして意味を見る / Tap to reveal</p>
             </div>
           ) : (
             <div>
-              {entry.definition_en && (
-                <p className="text-sm text-gray-800">{entry.definition_en}</p>
-              )}
-              {entry.definition_ja && (
-                <p className="text-sm text-gray-600">{entry.definition_ja}</p>
-              )}
+              {entry.definition_en && <p className="text-sm text-gray-800">{entry.definition_en}</p>}
+              {entry.definition_ja && <p className="text-sm text-gray-600">{entry.definition_ja}</p>}
               {entry.example && (
                 <p className="text-xs text-gray-500 italic mt-2">&ldquo;{entry.example}&rdquo;</p>
               )}
             </div>
           )}
 
-          {/* Mastery selector */}
           <div className="flex gap-1 mt-2" onClick={e => e.stopPropagation()}>
             {MASTERY.map((m, i) => (
               <button
