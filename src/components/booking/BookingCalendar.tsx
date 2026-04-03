@@ -1,0 +1,243 @@
+'use client'
+
+import { useState } from 'react'
+import { addDays, startOfWeek, format, isSameDay, parseISO, isWithinInterval, setHours, setMinutes } from 'date-fns'
+import { formatInTimeZone, toZonedTime } from 'date-fns-tz'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { createBookingRequest } from '@/app/actions/bookings'
+import type { AvailabilitySlot } from '@/lib/types/database'
+
+const HOURS = Array.from({ length: 14 }, (_, i) => i + 7) // 7am to 8pm
+
+interface BookingCalendarProps {
+  teacherId: string
+  teacherName: string
+  availabilitySlots: AvailabilitySlot[]
+  existingLessons: { scheduled_start: string; scheduled_end: string; status: string; student_id: string }[]
+  studentId: string
+}
+
+interface TimeSlot {
+  start: Date
+  end: Date
+  isAvailable: boolean
+  isBooked: boolean
+  isMyBooking: boolean
+}
+
+export function BookingCalendar({
+  teacherId,
+  teacherName,
+  availabilitySlots,
+  existingLessons,
+  studentId,
+}: BookingCalendarProps) {
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null)
+  const [note, setNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
+  const weekStart = startOfWeek(addDays(new Date(), weekOffset * 7), { weekStartsOn: 1 })
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
+  function isSlotAvailable(date: Date, hour: number): boolean {
+    const dayOfWeek = date.getDay()
+    const timeStr = `${String(hour).padStart(2, '0')}:00:00`
+
+    const hasRecurring = availabilitySlots.some(slot => {
+      if (slot.slot_type !== 'recurring' || slot.day_of_week !== dayOfWeek) return false
+      return slot.start_time <= timeStr && slot.end_time > timeStr
+    })
+
+    const dateStr = format(date, 'yyyy-MM-dd')
+    const hasOneOff = availabilitySlots.some(slot => {
+      if (slot.slot_type !== 'one_off' || slot.specific_date !== dateStr) return false
+      return slot.start_time <= timeStr && slot.end_time > timeStr
+    })
+
+    return hasRecurring || hasOneOff
+  }
+
+  function isSlotBooked(date: Date, hour: number): boolean {
+    const slotStart = setMinutes(setHours(date, hour), 0)
+    const slotEnd = setMinutes(setHours(date, hour + 1), 0)
+    return existingLessons.some(lesson => {
+      const lessonStart = parseISO(lesson.scheduled_start)
+      const lessonEnd = parseISO(lesson.scheduled_end)
+      return slotStart < lessonEnd && slotEnd > lessonStart
+    })
+  }
+
+  function handleSlotClick(date: Date, hour: number) {
+    if (!isSlotAvailable(date, hour) || isSlotBooked(date, hour)) return
+    const start = setMinutes(setHours(date, hour), 0)
+    const end = setMinutes(setHours(date, hour + 1), 0)
+    setSelectedSlot({ start, end })
+    setSubmitted(false)
+  }
+
+  async function handleSubmitBooking() {
+    if (!selectedSlot) return
+    setSubmitting(true)
+    const result = await createBookingRequest({
+      teacher_id: teacherId,
+      requested_start: selectedSlot.start.toISOString(),
+      requested_end: selectedSlot.end.toISOString(),
+      student_note: note || undefined,
+    })
+    setSubmitting(false)
+    if (!result.error) {
+      setSubmitted(true)
+      setSelectedSlot(null)
+      setNote('')
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {submitted && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <p className="text-sm text-green-800 font-medium">リクエストを送りました！</p>
+          <p className="text-xs text-green-600">Booking request sent! Your teacher will confirm shortly.</p>
+        </div>
+      )}
+
+      {selectedSlot && (
+        <div className="border border-blue-200 bg-blue-50 rounded-lg p-4 space-y-3">
+          <div>
+            <p className="font-medium text-blue-900">予約リクエスト / Booking Request</p>
+            <p className="text-sm text-blue-700">
+              {formatInTimeZone(selectedSlot.start, 'Asia/Tokyo', 'M月d日 (EEE) HH:mm')}
+              {' - '}
+              {formatInTimeZone(selectedSlot.end, 'Asia/Tokyo', 'HH:mm')} JST
+            </p>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-sm">メッセージ (任意) / Message (optional)</Label>
+            <Textarea
+              value={note}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNote(e.target.value)}
+              placeholder="Any notes for your teacher..."
+              rows={2}
+              className="text-sm"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleSubmitBooking} disabled={submitting}>
+              {submitting ? '送信中...' : 'リクエスト送信 / Send Request'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setSelectedSlot(null)}>
+              キャンセル
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Week navigation */}
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setWeekOffset(w => w - 1)}
+          disabled={weekOffset <= 0}
+        >
+          ← 前の週
+        </Button>
+        <span className="text-sm font-medium">
+          {format(weekStart, 'M月d日')} – {format(addDays(weekStart, 6), 'M月d日, yyyy')}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setWeekOffset(w => w + 1)}
+        >
+          次の週 →
+        </Button>
+      </div>
+
+      {/* Calendar grid */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[600px]">
+          {/* Day headers */}
+          <div className="grid grid-cols-8 border-b">
+            <div className="p-2 text-xs text-gray-400" />
+            {days.map(day => (
+              <div
+                key={day.toISOString()}
+                className={`p-2 text-center text-xs ${isSameDay(day, new Date()) ? 'bg-blue-50 font-semibold text-blue-700' : 'text-gray-600'}`}
+              >
+                <div>{format(day, 'EEE')}</div>
+                <div className="text-base font-medium">{format(day, 'd')}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Hour rows */}
+          {HOURS.map(hour => (
+            <div key={hour} className="grid grid-cols-8 border-b border-gray-100">
+              <div className="p-1 text-xs text-gray-400 text-right pr-3 py-2">
+                {String(hour).padStart(2, '0')}:00
+              </div>
+              {days.map(day => {
+                const available = isSlotAvailable(day, hour)
+                const booked = isSlotBooked(day, hour)
+                const isPast = setMinutes(setHours(day, hour), 0) < new Date()
+
+                const isSelected =
+                  selectedSlot &&
+                  isSameDay(selectedSlot.start, day) &&
+                  selectedSlot.start.getHours() === hour
+
+                let cellClass = 'h-8 mx-0.5 my-0.5 rounded cursor-default transition-colors'
+                if (isPast) {
+                  cellClass += ' bg-gray-50'
+                } else if (isSelected) {
+                  cellClass += ' bg-blue-600 cursor-pointer'
+                } else if (booked) {
+                  cellClass += ' bg-blue-200 cursor-not-allowed'
+                } else if (available) {
+                  cellClass += ' bg-green-100 hover:bg-green-200 cursor-pointer border border-green-200'
+                } else {
+                  cellClass += ' bg-white'
+                }
+
+                return (
+                  <div
+                    key={day.toISOString()}
+                    className={cellClass}
+                    onClick={() => !isPast && handleSlotClick(day, hour)}
+                    title={
+                      available && !booked && !isPast
+                        ? `Click to book ${String(hour).padStart(2, '0')}:00 JST`
+                        : booked
+                        ? 'Already booked'
+                        : ''
+                    }
+                  />
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4 text-xs text-gray-500">
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 bg-green-100 border border-green-200 rounded inline-block" />
+          Available
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 bg-blue-200 rounded inline-block" />
+          Booked
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 bg-blue-600 rounded inline-block" />
+          Selected
+        </span>
+      </div>
+    </div>
+  )
+}
