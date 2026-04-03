@@ -16,8 +16,8 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: "TLC English",
-  description: "Teaching & Learning Center - ESL for Japanese Students",
+  title: "Toyooka Language Center",
+  description: "Toyooka Language Center - ESL for Japanese Students",
 };
 
 export default function RootLayout({

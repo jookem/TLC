@@ -47,7 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link href="/dashboard" className="flex items-center">
                 <Image
                   src="/tlc_logo.svg"
-                  alt="TLC"
+                  alt="Toyooka Language Center"
                   width={100}
                   height={42}
                   priority
