@@ -5,20 +5,46 @@ import { Badge } from '@/components/ui/badge'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatInTimeZone } from 'date-fns-tz'
-import { format } from 'date-fns'
+import { format, subWeeks, startOfWeek, endOfWeek } from 'date-fns'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+
+function buildWeeklyData(lessons: { scheduled_start: string }[]) {
+  const weeks = Array.from({ length: 8 }, (_, i) => {
+    const ref = subWeeks(new Date(), 7 - i)
+    return {
+      label: format(startOfWeek(ref, { weekStartsOn: 1 }), 'M/d'),
+      start: startOfWeek(ref, { weekStartsOn: 1 }),
+      end: endOfWeek(ref, { weekStartsOn: 1 }),
+      count: 0,
+    }
+  })
+
+  for (const lesson of lessons) {
+    const date = new Date(lesson.scheduled_start)
+    for (const week of weeks) {
+      if (date >= week.start && date <= week.end) {
+        week.count++
+        break
+      }
+    }
+  }
+
+  return weeks.map(w => ({ label: w.label, count: w.count }))
+}
 
 export function TeacherDashboard() {
   const { user } = useAuth()
   const [upcomingLessons, setUpcomingLessons] = useState<any[]>([])
   const [pendingBookings, setPendingBookings] = useState<any[]>([])
   const [studentCount, setStudentCount] = useState(0)
+  const [weeklyData, setWeeklyData] = useState<{ label: string; count: number }[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!user) return
 
     async function load() {
-      const [lessonsResult, pendingBookingsResult, studentsResult] = await Promise.all([
+      const [lessonsResult, pendingBookingsResult, studentsResult, completedResult] = await Promise.all([
         supabase
           .from('lessons')
           .select('*, student:profiles!lessons_student_id_fkey(id, full_name, display_name, avatar_url)')
@@ -40,11 +66,19 @@ export function TeacherDashboard() {
           .select('id')
           .eq('teacher_id', user!.id)
           .eq('status', 'active'),
+
+        supabase
+          .from('lessons')
+          .select('scheduled_start')
+          .eq('teacher_id', user!.id)
+          .eq('status', 'completed')
+          .gte('scheduled_start', subWeeks(new Date(), 8).toISOString()),
       ])
 
       setUpcomingLessons(lessonsResult.data ?? [])
       setPendingBookings(pendingBookingsResult.data ?? [])
       setStudentCount(studentsResult.data?.length ?? 0)
+      setWeeklyData(buildWeeklyData(completedResult.data ?? []))
       setLoading(false)
     }
 
@@ -93,6 +127,34 @@ export function TeacherDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Weekly lessons chart */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Lessons Completed — Last 8 Weeks</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {weeklyData.every(w => w.count === 0) ? (
+            <p className="text-sm text-gray-500">No completed lessons in the last 8 weeks.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={weeklyData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                <Tooltip
+                  formatter={(value) => [value, 'Lessons']}
+                  contentStyle={{ fontSize: 12 }}
+                />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {weeklyData.map((_, i) => (
+                    <Cell key={i} fill={i === weeklyData.length - 1 ? '#02508E' : '#93bcd6'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>

@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
+import { NotificationsProvider } from '@/contexts/NotificationsContext'
 import { AppLayout } from '@/layouts/AppLayout'
+import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { SignupPage } from '@/pages/SignupPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -14,6 +16,7 @@ import { AvailabilityPage } from '@/pages/AvailabilityPage'
 import { BookPage } from '@/pages/BookPage'
 import { GoalsPage } from '@/pages/GoalsPage'
 import { VocabularyPage } from '@/pages/VocabularyPage'
+import { SettingsPage } from '@/pages/SettingsPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -32,11 +35,11 @@ function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/" element={<RedirectIfAuthed><LandingPage /></RedirectIfAuthed>} />
       <Route path="/login" element={<RedirectIfAuthed><LoginPage /></RedirectIfAuthed>} />
       <Route path="/signup" element={<RedirectIfAuthed><SignupPage /></RedirectIfAuthed>} />
 
       <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/students" element={<StudentsPage />} />
         <Route path="/students/:studentId" element={<StudentDetailPage />} />
@@ -47,9 +50,10 @@ function AppRoutes() {
         <Route path="/book" element={<BookPage />} />
         <Route path="/goals" element={<GoalsPage />} />
         <Route path="/vocabulary" element={<VocabularyPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
@@ -58,8 +62,10 @@ export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
-        <Toaster />
+        <NotificationsProvider>
+          <AppRoutes />
+          <Toaster />
+        </NotificationsProvider>
       </AuthProvider>
     </BrowserRouter>
   )

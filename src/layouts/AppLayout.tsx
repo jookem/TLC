@@ -1,21 +1,26 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
+import {
+  LayoutDashboard, Users, Calendar, Clock, BookOpen,
+  Home, CalendarPlus, Target, Languages,
+} from 'lucide-react'
 import { AvatarMenu } from '@/components/shared/AvatarMenu'
 import { useAuth } from '@/contexts/AuthContext'
+import { NotificationBell } from '@/components/shared/NotificationBell'
 
 const teacherNav = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/students', label: 'Students' },
-  { href: '/calendar', label: 'Calendar' },
-  { href: '/availability', label: 'Availability' },
-  { href: '/lessons', label: 'Lessons' },
+  { href: '/dashboard', label: 'Dashboard', shortLabel: 'Home', icon: LayoutDashboard },
+  { href: '/students', label: 'Students', shortLabel: 'Students', icon: Users },
+  { href: '/calendar', label: 'Calendar', shortLabel: 'Calendar', icon: Calendar },
+  { href: '/availability', label: 'Availability', shortLabel: 'Hours', icon: Clock },
+  { href: '/lessons', label: 'Lessons', shortLabel: 'Lessons', icon: BookOpen },
 ]
 
 const studentNav = [
-  { href: '/dashboard', label: 'ホーム', sub: 'Home' },
-  { href: '/lessons', label: 'レッスン', sub: 'Lessons' },
-  { href: '/book', label: '予約', sub: 'Book' },
-  { href: '/goals', label: '目標', sub: 'Goals' },
-  { href: '/vocabulary', label: '単語', sub: 'Vocab' },
+  { href: '/dashboard', label: 'ホーム', sub: 'Home', icon: Home },
+  { href: '/lessons', label: 'レッスン', sub: 'Lessons', icon: BookOpen },
+  { href: '/book', label: '予約', sub: 'Book', icon: CalendarPlus },
+  { href: '/goals', label: '目標', sub: 'Goals', icon: Target },
+  { href: '/vocabulary', label: '単語', sub: 'Vocab', icon: Languages },
 ]
 
 export function AppLayout() {
@@ -60,35 +65,40 @@ export function AppLayout() {
                 ))}
               </nav>
             </div>
-            <AvatarMenu profile={profile} />
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <AvatarMenu profile={profile} />
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-6">
         <Outlet />
       </main>
 
-      {!isTeacher && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
-          <div className="grid grid-cols-5 h-16">
-            {studentNav.map(item => (
-              <NavLink
-                key={item.href}
-                to={item.href}
-                className={({ isActive }: { isActive: boolean }) =>
-                  `flex flex-col items-center justify-center transition-colors ${
-                    isActive ? 'text-brand' : 'text-gray-600 hover:text-brand'
-                  }`
-                }
-              >
-                <span className="text-base">{item.label}</span>
-                <span className="text-xs">{item.sub}</span>
-              </NavLink>
-            ))}
-          </div>
-        </nav>
-      )}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
+        <div className="grid grid-cols-5 h-16">
+          {nav.map(item => (
+            <NavLink
+              key={item.href}
+              to={item.href}
+              className={({ isActive }: { isActive: boolean }) =>
+                `flex flex-col items-center justify-center gap-0.5 transition-colors ${
+                  isActive ? 'text-brand' : 'text-gray-500 hover:text-brand'
+                }`
+              }
+            >
+              <item.icon size={20} />
+              <span className="text-[10px]">
+                {isTeacher
+                  ? ('shortLabel' in item ? item.shortLabel : item.label)
+                  : ('sub' in item ? item.sub : item.label)}
+              </span>
+            </NavLink>
+          ))}
+        </div>
+      </nav>
     </div>
   )
 }

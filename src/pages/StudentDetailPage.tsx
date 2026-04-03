@@ -8,6 +8,9 @@ import { format, differenceInDays } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { GoalForm } from '@/components/progress/GoalForm'
 import { ProgressSnapshotForm } from '@/components/progress/ProgressSnapshotForm'
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts'
 
 export function StudentDetailPage() {
   const { studentId } = useParams<{ studentId: string }>()
@@ -174,6 +177,36 @@ export function StudentDetailPage() {
                     <span className="text-sm font-medium w-8 text-right">{score ?? '—'}</span>
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+          )}
+          {snapshots.length > 1 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Skill Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart
+                    data={[...snapshots].reverse().map(s => ({
+                      date: format(new Date(s.snapshot_date), 'M/d'),
+                      Speaking: s.speaking_score,
+                      Listening: s.listening_score,
+                      Reading: s.reading_score,
+                      Writing: s.writing_score,
+                    }))}
+                    margin={{ top: 4, right: 4, left: -24, bottom: 0 }}
+                  >
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis domain={[0, 10]} allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Line type="monotone" dataKey="Speaking" stroke="#02508E" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="Listening" stroke="#9b51e0" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="Reading" stroke="#10b981" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="Writing" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           )}
