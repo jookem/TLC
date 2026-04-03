@@ -117,6 +117,33 @@ export async function markLessonComplete(lessonId: string) {
   return { success: true }
 }
 
+export async function createLesson(data: {
+  student_id: string
+  scheduled_start: string
+  scheduled_end: string
+  lesson_type: 'trial' | 'regular' | 'intensive'
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated.' }
+
+  const { error } = await supabase
+    .from('lessons')
+    .insert({
+      teacher_id: user.id,
+      student_id: data.student_id,
+      scheduled_start: data.scheduled_start,
+      scheduled_end: data.scheduled_end,
+      lesson_type: data.lesson_type,
+      status: 'completed',
+    })
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/lessons')
+  return { success: true }
+}
+
 export async function addVocabularyToBank(entries: {
   student_id: string
   word: string
