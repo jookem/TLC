@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { AvatarMenu } from '@/components/shared/AvatarMenu'
 import type { Profile } from '@/lib/types/database'
 import Link from 'next/link'
+import Image from 'next/image'
 
 const teacherNav = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -43,8 +44,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-8">
-              <Link href="/dashboard" className="font-semibold text-gray-900">
-                TLC English
+              <Link href="/dashboard" className="flex items-center">
+                <Image
+                  src="/tlc_logo.svg"
+                  alt="TLC"
+                  width={100}
+                  height={42}
+                  priority
+                />
               </Link>
               <nav className="hidden md:flex items-center gap-1">
                 {nav.map(item => (
