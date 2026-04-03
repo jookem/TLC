@@ -73,7 +73,7 @@ export async function TeacherDashboard() {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-3xl font-bold text-blue-600">{pendingBookings.length}</div>
+            <div className="text-3xl font-bold text-brand">{pendingBookings.length}</div>
             <div className="text-sm text-gray-500 mt-1">Pending Requests</div>
           </CardContent>
         </Card>
@@ -84,7 +84,7 @@ export async function TeacherDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">Upcoming Lessons</CardTitle>
-            <Link href="/lessons" className="text-sm text-blue-600 hover:underline">
+            <Link href="/lessons" className="text-sm text-brand hover:underline">
               View all
             </Link>
           </CardHeader>
@@ -113,7 +113,7 @@ export async function TeacherDashboard() {
                       </Badge>
                       <Link
                         href={`/lessons/${lesson.id}`}
-                        className="text-xs text-blue-600 hover:underline"
+                        className="text-xs text-brand hover:underline"
                       >
                         View
                       </Link>
@@ -129,7 +129,7 @@ export async function TeacherDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">Booking Requests</CardTitle>
-            <Link href="/calendar" className="text-sm text-blue-600 hover:underline">
+            <Link href="/calendar" className="text-sm text-brand hover:underline">
               Calendar
             </Link>
           </CardHeader>
@@ -192,7 +192,7 @@ function ApproveBookingButton({
   return (
     <Link
       href={`/calendar?request=${requestId}`}
-      className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
+      className="text-xs bg-brand text-white px-3 py-1 rounded hover:bg-brand-dark transition-colors"
     >
       Review
     </Link>

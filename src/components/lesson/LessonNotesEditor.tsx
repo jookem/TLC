@@ -197,9 +197,9 @@ export function LessonNotesEditor({
         </div>
 
         {vocabulary.map((item, i) => (
-          <div key={i} className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+          <div key={i} className="flex items-start gap-2 p-3 bg-brand-light rounded-lg">
             <div className="flex-1">
-              <span className="font-medium text-blue-900">{item.word}</span>
+              <span className="font-medium text-brand-dark">{item.word}</span>
               <span className="text-gray-600 mx-2">—</span>
               <span className="text-gray-700">{item.definition}</span>
               {item.example && (
@@ -319,8 +319,8 @@ export function LessonNotesEditor({
                 onClick={() => toggleGoal(goal.id)}
                 className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                   selectedGoalIds.includes(goal.id)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300'
+                    ? 'bg-brand text-white border-brand'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-brand/50'
                 }`}
               >
                 {goal.title}

@@ -74,7 +74,7 @@ export default async function LessonDetailPage({
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="capitalize">{lesson.lesson_type}</Badge>
           <span className={`text-sm px-2 py-0.5 rounded-full font-medium capitalize ${
-            lesson.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+            lesson.status === 'scheduled' ? 'bg-brand-light text-brand-dark' :
             lesson.status === 'completed' ? 'bg-green-100 text-green-700' :
             'bg-gray-100 text-gray-700'
           }`}>
@@ -98,14 +98,14 @@ export default async function LessonDetailPage({
 
       {/* Meeting URL */}
       {lesson.meeting_url && (
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-brand-light border-brand/30">
           <CardContent className="py-3 flex items-center justify-between">
-            <span className="text-sm text-blue-800">Meeting link</span>
+            <span className="text-sm text-brand-dark">Meeting link</span>
             <a
               href={lesson.meeting_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:underline font-medium"
+              className="text-sm text-brand hover:underline font-medium"
             >
               Join Meeting
             </a>

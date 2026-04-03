@@ -74,7 +74,7 @@ export default async function StudentDetailPage({
           <p className="text-gray-500 text-sm">{student.email}</p>
         </div>
         {latestSnapshot?.cefr_level && (
-          <Badge className="text-sm px-3 py-1 bg-blue-100 text-blue-700 border-blue-200">
+          <Badge className="text-sm px-3 py-1 bg-brand-light text-brand-dark border-brand/30">
             {latestSnapshot.cefr_level}
           </Badge>
         )}
@@ -137,7 +137,7 @@ export default async function StudentDetailPage({
                       )}
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
-                      goal.status === 'active' ? 'bg-blue-100 text-blue-700' :
+                      goal.status === 'active' ? 'bg-brand-light text-brand-dark' :
                       goal.status === 'achieved' ? 'bg-green-100 text-green-700' :
                       'bg-gray-100 text-gray-500'
                     }`}>
@@ -176,7 +176,7 @@ export default async function StudentDetailPage({
                     <span className="text-sm text-gray-600 w-20">{label}</span>
                     <div className="flex-1 bg-gray-100 rounded-full h-2">
                       <div
-                        className="bg-blue-500 h-2 rounded-full"
+                        className="bg-brand h-2 rounded-full"
                         style={{ width: `${((score ?? 0) / 10) * 100}%` }}
                       />
                     </div>
@@ -221,12 +221,12 @@ export default async function StudentDetailPage({
                     )}
                     <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
                       lesson.status === 'completed' ? 'bg-green-100 text-green-700' :
-                      lesson.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                      lesson.status === 'scheduled' ? 'bg-brand-light text-brand-dark' :
                       'bg-gray-100 text-gray-500'
                     }`}>
                       {lesson.status}
                     </span>
-                    <Link href={`/lessons/${lesson.id}`} className="text-xs text-blue-600 hover:underline">
+                    <Link href={`/lessons/${lesson.id}`} className="text-xs text-brand hover:underline">
                       View
                     </Link>
                   </div>

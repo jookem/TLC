@@ -78,7 +78,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex flex-col items-center justify-center text-gray-600 hover:text-blue-600 transition-colors"
+                className="flex flex-col items-center justify-center text-gray-600 hover:text-brand transition-colors"
               >
                 <span className="text-base">{item.label}</span>
                 <span className="text-xs">{item.sub}</span>

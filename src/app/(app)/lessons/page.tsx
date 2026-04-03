@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { formatInTimeZone } from 'date-fns-tz'
 
 const statusColors: Record<string, string> = {
-  scheduled: 'bg-blue-100 text-blue-700',
+  scheduled: 'bg-brand-light text-brand-dark',
   completed: 'bg-green-100 text-green-700',
   cancelled: 'bg-red-100 text-red-700',
   no_show: 'bg-gray-100 text-gray-700',
@@ -87,7 +87,7 @@ function LessonRow({ lesson }: { lesson: any }) {
             </Badge>
             <Link
               href={`/lessons/${lesson.id}`}
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-brand hover:underline"
             >
               View
             </Link>

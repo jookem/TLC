@@ -59,7 +59,7 @@ export default async function SignupPage({
             <div className="space-y-2">
               <Label>I am a...</Label>
               <div className="grid grid-cols-2 gap-3">
-                <label className="flex items-center justify-center border-2 border-gray-200 rounded-lg p-3 cursor-pointer has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 transition-colors">
+                <label className="flex items-center justify-center border-2 border-gray-200 rounded-lg p-3 cursor-pointer has-[:checked]:border-brand has-[:checked]:bg-brand-light transition-colors">
                   <input
                     type="radio"
                     name="role"
@@ -72,7 +72,7 @@ export default async function SignupPage({
                     <div className="text-sm font-medium">Student</div>
                   </div>
                 </label>
-                <label className="flex items-center justify-center border-2 border-gray-200 rounded-lg p-3 cursor-pointer has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 transition-colors">
+                <label className="flex items-center justify-center border-2 border-gray-200 rounded-lg p-3 cursor-pointer has-[:checked]:border-brand has-[:checked]:bg-brand-light transition-colors">
                   <input
                     type="radio"
                     name="role"
@@ -92,7 +92,7 @@ export default async function SignupPage({
           </form>
           <p className="mt-4 text-center text-sm text-gray-600">
             Already have an account?{' '}
-            <Link href="/login" className="text-blue-600 hover:underline">
+            <Link href="/login" className="text-brand hover:underline">
               Sign in
             </Link>
           </p>

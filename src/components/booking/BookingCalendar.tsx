@@ -106,10 +106,10 @@ export function BookingCalendar({
       )}
 
       {selectedSlot && (
-        <div className="border border-blue-200 bg-blue-50 rounded-lg p-4 space-y-3">
+        <div className="border border-brand/30 bg-brand-light rounded-lg p-4 space-y-3">
           <div>
-            <p className="font-medium text-blue-900">予約リクエスト / Booking Request</p>
-            <p className="text-sm text-blue-700">
+            <p className="font-medium text-brand-dark">予約リクエスト / Booking Request</p>
+            <p className="text-sm text-brand-dark">
               {formatInTimeZone(selectedSlot.start, 'Asia/Tokyo', 'M月d日 (EEE) HH:mm')}
               {' - '}
               {formatInTimeZone(selectedSlot.end, 'Asia/Tokyo', 'HH:mm')} JST
@@ -167,7 +167,7 @@ export function BookingCalendar({
             {days.map(day => (
               <div
                 key={day.toISOString()}
-                className={`p-2 text-center text-xs ${isSameDay(day, new Date()) ? 'bg-blue-50 font-semibold text-blue-700' : 'text-gray-600'}`}
+                className={`p-2 text-center text-xs ${isSameDay(day, new Date()) ? 'bg-brand-light font-semibold text-brand-dark' : 'text-gray-600'}`}
               >
                 <div>{format(day, 'EEE')}</div>
                 <div className="text-base font-medium">{format(day, 'd')}</div>
@@ -195,9 +195,9 @@ export function BookingCalendar({
                 if (isPast) {
                   cellClass += ' bg-gray-50'
                 } else if (isSelected) {
-                  cellClass += ' bg-blue-600 cursor-pointer'
+                  cellClass += ' bg-brand cursor-pointer'
                 } else if (booked) {
-                  cellClass += ' bg-blue-200 cursor-not-allowed'
+                  cellClass += ' bg-brand-light cursor-not-allowed'
                 } else if (available) {
                   cellClass += ' bg-green-100 hover:bg-green-200 cursor-pointer border border-green-200'
                 } else {
@@ -230,11 +230,11 @@ export function BookingCalendar({
           Available
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 bg-blue-200 rounded inline-block" />
+          <span className="w-3 h-3 bg-brand-light rounded inline-block" />
           Booked
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 bg-blue-600 rounded inline-block" />
+          <span className="w-3 h-3 bg-brand rounded inline-block" />
           Selected
         </span>
       </div>

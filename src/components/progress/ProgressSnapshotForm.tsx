@@ -63,8 +63,8 @@ export function ProgressSnapshotForm({ studentId, teacherId }: { studentId: stri
                 onClick={() => setCefrLevel(cefrLevel === level ? '' : level)}
                 className={`px-3 py-1 rounded text-sm border transition-colors ${
                   cefrLevel === level
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300'
+                    ? 'bg-brand text-white border-brand'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-brand/50'
                 }`}
               >
                 {level}

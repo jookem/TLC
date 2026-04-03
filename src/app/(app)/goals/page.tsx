@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { format, differenceInDays } from 'date-fns'
 
 const statusColors: Record<string, string> = {
-  active: 'bg-blue-100 text-blue-700',
+  active: 'bg-brand-light text-brand-dark',
   achieved: 'bg-green-100 text-green-700',
   paused: 'bg-yellow-100 text-yellow-700',
   dropped: 'bg-gray-100 text-gray-500',

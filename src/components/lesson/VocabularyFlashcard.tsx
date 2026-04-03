@@ -8,7 +8,7 @@ import type { VocabularyBankEntry, MasteryLevel } from '@/lib/types/database'
 const MASTERY = [
   { label: '新しい', labelEn: 'New', color: 'bg-gray-100 text-gray-600' },
   { label: '見た', labelEn: 'Seen', color: 'bg-yellow-100 text-yellow-700' },
-  { label: '覚えてる', labelEn: 'Familiar', color: 'bg-blue-100 text-blue-700' },
+  { label: '覚えてる', labelEn: 'Familiar', color: 'bg-brand-light text-brand-dark' },
   { label: 'マスター', labelEn: 'Mastered', color: 'bg-green-100 text-green-700' },
 ]
 
@@ -26,7 +26,7 @@ export function VocabularyFlashcard({ entry }: { entry: VocabularyBankEntry }) {
 
   return (
     <div className="cursor-pointer" onClick={() => setFlipped(f => !f)}>
-      <Card className={`transition-all min-h-[120px] ${flipped ? 'bg-blue-50' : 'bg-white'}`}>
+      <Card className={`transition-all min-h-[120px] ${flipped ? 'bg-brand-light' : 'bg-white'}`}>
         <CardContent className="pt-4 pb-3 space-y-2">
           {!flipped ? (
             <div>

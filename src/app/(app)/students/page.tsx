@@ -51,12 +51,12 @@ function StudentCard({ relationship }: { relationship: any }) {
 
   return (
     <Link href={`/students/${student.id}`}>
-      <Card className="hover:border-blue-300 transition-colors cursor-pointer">
+      <Card className="hover:border-brand/50 transition-colors cursor-pointer">
         <CardContent className="pt-4">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src={student.avatar_url} />
-              <AvatarFallback className="bg-blue-100 text-blue-700 font-semibold text-sm">
+              <AvatarFallback className="bg-brand-light text-brand-dark font-semibold text-sm">
                 {initials}
               </AvatarFallback>
             </Avatar>

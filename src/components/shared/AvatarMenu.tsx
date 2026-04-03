@@ -25,12 +25,12 @@ export function AvatarMenu({ profile }: { profile: Profile }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="rounded-full focus:outline-none focus:ring-2 focus:ring-brand"
         aria-label="User menu"
       >
         <Avatar className="h-8 w-8 cursor-pointer">
           <AvatarImage src={profile.avatar_url ?? undefined} alt={profile.full_name} />
-          <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-semibold">
+          <AvatarFallback className="bg-brand-light text-brand-dark text-xs font-semibold">
             {initials}
           </AvatarFallback>
         </Avatar>

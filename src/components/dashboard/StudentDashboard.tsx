@@ -60,11 +60,11 @@ export async function StudentDashboard() {
 
       {/* Next Lesson Banner */}
       {nextLesson && (
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-brand-light border-brand/30">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">
+                <p className="text-xs text-brand font-medium uppercase tracking-wide">
                   Next Lesson / 次のレッスン
                 </p>
                 <p className="text-lg font-semibold text-gray-900 mt-1">
@@ -84,14 +84,14 @@ export async function StudentDashboard() {
                     href={(nextLesson as any).meeting_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                    className="text-sm bg-brand text-white px-4 py-2 rounded hover:bg-brand-dark transition-colors"
                   >
                     Join / 参加する
                   </a>
                 )}
                 <Link
                   href={`/lessons/${(nextLesson as any).id}`}
-                  className="text-sm text-center text-blue-600 hover:underline"
+                  className="text-sm text-center text-brand hover:underline"
                 >
                   Details
                 </Link>
@@ -106,7 +106,7 @@ export async function StudentDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">目標 Goals</CardTitle>
-            <Link href="/goals" className="text-sm text-blue-600 hover:underline">
+            <Link href="/goals" className="text-sm text-brand hover:underline">
               すべて見る
             </Link>
           </CardHeader>
@@ -139,7 +139,7 @@ export async function StudentDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">最近のノート Lesson Notes</CardTitle>
-            <Link href="/lessons" className="text-sm text-blue-600 hover:underline">
+            <Link href="/lessons" className="text-sm text-brand hover:underline">
               すべて見る
             </Link>
           </CardHeader>
@@ -168,7 +168,7 @@ export async function StudentDashboard() {
                     )}
                     <Link
                       href={`/lessons/${note.lesson_id}`}
-                      className="text-xs text-blue-600 hover:underline mt-1 block"
+                      className="text-xs text-brand hover:underline mt-1 block"
                     >
                       詳細を見る →
                     </Link>
