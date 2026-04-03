@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -26,7 +26,6 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  // Public routes that don't need auth
   const publicPaths = ['/login', '/signup', '/auth/callback']
   const isPublicPath = publicPaths.some(p => pathname.startsWith(p))
 
@@ -37,19 +36,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && isPublicPath) {
-    // Get profile to determine role for redirect
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
     const url = request.nextUrl.clone()
-    url.pathname = profile?.role === 'teacher' ? '/dashboard' : '/dashboard'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
-  // Role-based route protection
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -58,11 +49,6 @@ export async function middleware(request: NextRequest) {
       .single()
 
     const role = profile?.role
-
-    // Teacher-only routes - these are in the (teacher) route group
-    // Student-only routes - these are in the (student) route group
-    // The route groups share the same URL namespace, so we protect by
-    // checking which routes each role CAN'T access
     const teacherOnlyPaths = ['/students', '/availability']
     const studentOnlyPaths = ['/book', '/goals']
 
@@ -82,7 +68,7 @@ export async function middleware(request: NextRequest) {
   return supabaseResponse
 }
 
-export const config = {
+export const routing = {
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
