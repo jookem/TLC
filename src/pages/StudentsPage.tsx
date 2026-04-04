@@ -5,7 +5,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { AddStudentModal } from '@/components/students/AddStudentModal'
 import { RemoveStudentButton } from '@/components/students/RemoveStudentButton'
 
 export function StudentsPage() {
@@ -56,7 +55,6 @@ export function StudentsPage() {
           <h1 className="text-2xl font-semibold">Students</h1>
           <p className="text-sm text-gray-500 mt-0.5">{students.length} active</p>
         </div>
-        <AddStudentModal onAdded={loadStudents} />
       </div>
 
       {profile?.invite_code && (
@@ -82,7 +80,7 @@ export function StudentsPage() {
         <Card>
           <CardContent className="py-12 text-center text-gray-500">
             <p>No students yet.</p>
-            <p className="text-sm mt-1">Add a student by entering their email address above.</p>
+            <p className="text-sm mt-1">Share your invite code with students so they can join from their Settings page.</p>
           </CardContent>
         </Card>
       ) : (
