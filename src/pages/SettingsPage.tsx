@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { Copy, Check } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/contexts/AuthContext'
 import { updateProfileName, updatePassword } from '@/lib/api/settings'
+import { joinTeacherByCode } from '@/lib/api/students'
 import { toast } from 'sonner'
 
 export function SettingsPage() {
@@ -12,6 +14,11 @@ export function SettingsPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)
+
+  const [inviteInput, setInviteInput] = useState('')
+  const [joiningCode, setJoiningCode] = useState(false)
+
+  const [copied, setCopied] = useState(false)
 
   async function handleSaveName(e: React.FormEvent) {
     e.preventDefault()
@@ -49,6 +56,27 @@ export function SettingsPage() {
     setSavingPassword(false)
   }
 
+  async function handleJoinTeacher(e: React.FormEvent) {
+    e.preventDefault()
+    if (!inviteInput.trim()) return
+    setJoiningCode(true)
+    const { error, teacherName } = await joinTeacherByCode(inviteInput)
+    if (error) {
+      toast.error(error)
+    } else {
+      setInviteInput('')
+      toast.success(`Joined ${teacherName}'s class!`)
+    }
+    setJoiningCode(false)
+  }
+
+  function copyCode() {
+    if (!profile?.invite_code) return
+    navigator.clipboard.writeText(profile.invite_code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   return (
     <div className="max-w-lg space-y-6">
       <div>
@@ -56,6 +84,67 @@ export function SettingsPage() {
         <p className="text-gray-500 text-sm mt-1">Manage your account</p>
       </div>
 
+      {/* Teacher: invite code */}
+      {profile?.role === 'teacher' && profile.invite_code && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Your Invite Code</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-gray-500">
+              Share this code with students so they can join your class from their Settings page.
+            </p>
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-3xl font-bold tracking-widest text-brand">
+                {profile.invite_code}
+              </span>
+              <button
+                onClick={copyCode}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Student: join a teacher */}
+      {profile?.role === 'student' && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Join a Teacher</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleJoinTeacher} className="space-y-4">
+              <p className="text-sm text-gray-500">
+                Enter the 6-character code your teacher gave you.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={inviteInput}
+                  onChange={e => setInviteInput(e.target.value.toUpperCase())}
+                  placeholder="e.g. AB3K9X"
+                  maxLength={6}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={joiningCode || inviteInput.length < 6}
+                  className="px-4 py-2 bg-brand text-white text-sm rounded-md hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  {joiningCode ? 'Joining…' : 'Join Class'}
+                </button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Profile */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Profile</CardTitle>
@@ -92,6 +181,7 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Password */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Change Password</CardTitle>

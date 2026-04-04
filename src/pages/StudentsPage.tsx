@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Copy, Check } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { supabase } from '@/lib/supabase'
@@ -8,9 +9,17 @@ import { AddStudentModal } from '@/components/students/AddStudentModal'
 import { RemoveStudentButton } from '@/components/students/RemoveStudentButton'
 
 export function StudentsPage() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [students, setStudents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
+
+  function copyCode() {
+    if (!profile?.invite_code) return
+    navigator.clipboard.writeText(profile.invite_code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   async function loadStudents() {
     if (!user) return
@@ -49,6 +58,25 @@ export function StudentsPage() {
         </div>
         <AddStudentModal onAdded={loadStudents} />
       </div>
+
+      {profile?.invite_code && (
+        <div className="flex items-center gap-4 bg-brand-light border border-brand/20 rounded-xl px-5 py-4">
+          <div className="flex-1">
+            <p className="text-xs font-medium text-brand uppercase tracking-wide">Your Invite Code</p>
+            <p className="text-xs text-gray-500 mt-0.5">Students enter this in Settings → Join a Teacher</p>
+          </div>
+          <span className="font-mono text-2xl font-bold tracking-widest text-brand">
+            {profile.invite_code}
+          </span>
+          <button
+            onClick={copyCode}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-brand/20 rounded-md hover:bg-gray-50 transition-colors"
+          >
+            {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+      )}
 
       {students.length === 0 ? (
         <Card>

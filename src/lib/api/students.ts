@@ -97,6 +97,45 @@ export async function updateStudentDetails(
   return {}
 }
 
+export async function joinTeacherByCode(
+  code: string,
+): Promise<{ error?: string; teacherName?: string }> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: teacher } = await supabase
+    .from('profiles')
+    .select('id, full_name, role')
+    .eq('invite_code', code.trim().toUpperCase())
+    .eq('role', 'teacher')
+    .single()
+
+  if (!teacher) return { error: 'Invalid code. Please check with your teacher.' }
+
+  const { data: existing } = await supabase
+    .from('teacher_student_relationships')
+    .select('id, status')
+    .eq('teacher_id', teacher.id)
+    .eq('student_id', user.id)
+    .single()
+
+  if (existing) {
+    if (existing.status === 'active') return { error: "You're already linked to this teacher." }
+    const { error } = await supabase
+      .from('teacher_student_relationships')
+      .update({ status: 'active', ended_at: null })
+      .eq('id', existing.id)
+    if (error) return { error: 'Failed to join.' }
+    return { teacherName: teacher.full_name }
+  }
+
+  const { error } = await supabase
+    .from('teacher_student_relationships')
+    .insert({ teacher_id: teacher.id, student_id: user.id })
+  if (error) return { error: 'Failed to join.' }
+  return { teacherName: teacher.full_name }
+}
+
 export async function removeStudent(studentId: string): Promise<{ error?: string }> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }

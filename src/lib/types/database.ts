@@ -18,6 +18,7 @@ export interface Profile {
   avatar_url: string | null
   timezone: string
   locale: Locale
+  invite_code: string | null
   created_at: string
   updated_at: string
 }
