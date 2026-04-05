@@ -1,28 +1,13 @@
 import { supabase } from '@/lib/supabase'
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-
 export async function createPlaceholderStudent(
   name: string,
   initial_password: string,
 ): Promise<{ error?: string }> {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'Not authenticated.' }
-
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/create-placeholder`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ name, initial_password }),
+  const { data, error } = await supabase.functions.invoke('create-placeholder', {
+    body: { name, initial_password },
   })
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    return { error: body.error ?? 'Failed to create student.' }
-  }
-
+  if (error) return { error: (error as any).context?.error ?? error.message ?? 'Failed to create student.' }
   return {}
 }
 
@@ -30,20 +15,10 @@ export async function setStudentPassword(
   studentId: string,
   password: string,
 ): Promise<{ error?: string }> {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'Not authenticated.' }
-
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/set-student-password`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ student_id: studentId, password }),
+  const { data, error } = await supabase.functions.invoke('set-student-password', {
+    body: { student_id: studentId, password },
   })
-
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok) return { error: body.error ?? 'Failed to set password.' }
+  if (error) return { error: (error as any).context?.error ?? error.message ?? 'Failed to set password.' }
   return {}
 }
 
@@ -51,21 +26,11 @@ export async function linkPlaceholderToStudent(
   placeholderId: string,
   realStudentEmail: string,
 ): Promise<{ error?: string; realStudentName?: string }> {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'Not authenticated.' }
-
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/link-placeholder`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ placeholder_id: placeholderId, real_student_email: realStudentEmail }),
+  const { data, error } = await supabase.functions.invoke('link-placeholder', {
+    body: { placeholder_id: placeholderId, real_student_email: realStudentEmail },
   })
-
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok) return { error: body.error ?? 'Failed to link account.' }
-  return { realStudentName: body.real_student_name }
+  if (error) return { error: (error as any).context?.error ?? error.message ?? 'Failed to link account.' }
+  return { realStudentName: data?.real_student_name }
 }
 
 export type StudentDetailsInput = {

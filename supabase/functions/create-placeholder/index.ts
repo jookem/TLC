@@ -68,16 +68,35 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Mark profile as placeholder
-    await adminClient
+    // Explicitly upsert profile (auth trigger may not have fired yet)
+    const { error: profileError } = await adminClient
       .from('profiles')
-      .update({ is_placeholder: true })
-      .eq('id', newUser.user.id)
+      .upsert({
+        id: newUser.user.id,
+        email: placeholderEmail,
+        full_name: name.trim(),
+        role: 'student',
+        is_placeholder: true,
+      })
+
+    if (profileError) {
+      return new Response(JSON.stringify({ error: `Profile error: ${profileError.message}` }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     // Create teacher-student relationship
-    await adminClient
+    const { error: relError } = await adminClient
       .from('teacher_student_relationships')
       .insert({ teacher_id: user.id, student_id: newUser.user.id })
+
+    if (relError) {
+      return new Response(JSON.stringify({ error: `Relationship error: ${relError.message}` }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     return new Response(
       JSON.stringify({ id: newUser.user.id, name: name.trim() }),
