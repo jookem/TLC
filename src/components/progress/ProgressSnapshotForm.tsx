@@ -19,7 +19,7 @@ export function ProgressSnapshotForm({
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [cefrLevel, setCefrLevel] = useState<string>('')
-  const [scores, setScores] = useState({ speaking: 5, listening: 5, reading: 5, writing: 5 })
+  const [scores, setScores] = useState({ speaking: 0, listening: 0, reading: 0, writing: 0 })
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
 
@@ -88,7 +88,7 @@ export function ProgressSnapshotForm({
             </div>
             <input
               type="range"
-              min={1}
+              min={0}
               max={10}
               value={scores[skill]}
               onChange={e => setScores(prev => ({ ...prev, [skill]: Number(e.target.value) }))}
