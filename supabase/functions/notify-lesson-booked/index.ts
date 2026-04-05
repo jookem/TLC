@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const FROM_EMAIL = 'TLC English <onboarding@resend.dev>'
+const FROM_EMAIL = 'The Language Centre <onboarding@resend.dev>'
 
 interface LessonRecord {
   id: string
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
             <strong>Type:</strong> ${lesson.lesson_type}
           </p>
           <p>See you then!</p>
-          <p style="color:#888;font-size:12px;">TLC English</p>
+          <p style="color:#888;font-size:12px;">The Language Centre</p>
         `,
       )
     }
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
             <strong>Type:</strong> ${lesson.lesson_type}
           </p>
           <p>See you then!</p>
-          <p style="color:#888;font-size:12px;">TLC English</p>
+          <p style="color:#888;font-size:12px;">The Language Centre</p>
         `,
       )
     }

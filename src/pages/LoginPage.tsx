@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { login } from '@/lib/api/auth'
 import { supabase } from '@/lib/supabase'
 
@@ -73,8 +73,8 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center pb-4">
-          <CardTitle className="text-2xl">TLC English</CardTitle>
-          <p className="text-sm text-gray-500 mt-1">Teaching &amp; Learning Center</p>
+          <img src="/tlc_logo.svg" alt="The Language Centre" className="mx-auto mb-3 h-12 w-auto" />
+          <p className="text-sm font-medium text-gray-700">The Language Centre</p>
         </CardHeader>
         <CardContent>
           {/* Mode tabs */}

@@ -193,7 +193,7 @@ const doc = new Document({
         }),
 
         new Paragraph({
-          children: [new TextRun({ text: 'TLC English App', bold: true, color: BRAND, size: 64 })],
+          children: [new TextRun({ text: 'The Language Centre App', bold: true, color: BRAND, size: 64 })],
           alignment: AlignmentType.CENTER,
           spacing: { after: 160 },
         }),
@@ -238,7 +238,7 @@ const doc = new Document({
             new Paragraph({
               children: [
                 new ImageRun({ data: logoPng, transformation: { width: 80, height: 33 } }),
-                new TextRun({ text: '  |  TLC English App — Feature Guide', color: GRAY, size: 18 }),
+                new TextRun({ text: '  |  The Language Centre App — Feature Guide', color: GRAY, size: 18 }),
               ],
               border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'E5E7EB' } },
             }),
@@ -250,7 +250,7 @@ const doc = new Document({
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: 'TLC English · Confidential  ', color: GRAY, size: 16 }),
+                new TextRun({ text: 'The Language Centre · Confidential  ', color: GRAY, size: 16 }),
                 new TextRun({ children: [PageNumber.CURRENT], color: GRAY, size: 16 }),
                 new TextRun({ text: ' / ', color: GRAY, size: 16 }),
                 new TextRun({ children: [PageNumber.TOTAL_PAGES], color: GRAY, size: 16 }),
@@ -265,7 +265,7 @@ const doc = new Document({
 
         // OVERVIEW
         heading1('Overview'),
-        para([body('TLC English is a web application built for English teachers working with Japanese students. It replaces scattered spreadsheets, messaging apps, and paper notes with a single centralised platform for lesson management, student tracking, vocabulary learning, and scheduling.\n')]),
+        para([body('The Language Centre is a web application built for English teachers working with Japanese students. It replaces scattered spreadsheets, messaging apps, and paper notes with a single centralised platform for lesson management, student tracking, vocabulary learning, and scheduling.\n')]),
         para([body('The app has two roles — '), bold('Teacher'), body(' and '), bold('Student'), body(' — each with a tailored set of features.')]),
         divider(),
 
@@ -275,10 +275,18 @@ const doc = new Document({
         heading2('Creating an Account'),
         para([body('Both teachers and students sign up at the app\'s homepage. During signup you select your role, enter your full name and email address, and set a password.')]),
 
-        heading2('Connecting a Teacher and Student'),
-        para([body('After signing up, a teacher and student must be linked before most features become available.')]),
+        heading2('Student Login — Two Options'),
+        para([body('Students can log in in two ways, depending on whether they have an email address:')]),
 
-        callout('Teacher', 'A unique 6-character invite code is automatically generated (e.g. AB3K9X). Find it on the Students page or in Settings, then share it with your student by text or email.'),
+        callout('Option A — Class Code (young students)', 'The student enters the teacher\'s 6-character class code on the login screen, selects their name from a dropdown, and enters their password. No email required. The teacher creates the account and sets the initial password from the Students page.'),
+        new Paragraph({ children: [], spacing: { after: 120 } }),
+        callout('Option B — Email signup (adult students)', 'Students sign up with their own email address, then go to Settings → Join a Teacher and enter the class code to link their account.'),
+        new Paragraph({ children: [], spacing: { after: 120 } }),
+
+        heading2('Connecting a Teacher and Student (adult/email flow)'),
+        para([body('After signing up with an email, a student must be linked to their teacher before most features become available.')]),
+
+        callout('Teacher', 'A unique 6-character invite code is automatically generated (e.g. AB3K9X). Find it on the Students page or in Settings, then share it with your student.'),
         new Paragraph({ children: [], spacing: { after: 120 } }),
         callout('Student', 'Go to Settings → Join a Teacher, enter the 6-character code, and click "Join Class". The connection is instant — no teacher approval needed.'),
         new Paragraph({ children: [], spacing: { after: 120 } }),
@@ -304,15 +312,14 @@ const doc = new Document({
         heading2('Students'),
         para([body('Shows all active students as cards with name and email. At the top, your invite code is always visible with a one-click copy button for sharing with new students. Each student card links to their full profile, and students can be removed from here.')]),
 
-        heading3('Placeholder Students'),
-        para([body('You can add students to your roster before they create an account — useful for building your schedule on day one.')]),
-        bullet('Click "+ Add Student" and enter the student\'s name'),
-        bullet('A placeholder card is created immediately with a dashed border and amber "Placeholder" badge'),
-        bullet('Schedule lessons against the placeholder just like a real student'),
-        bullet('When the student signs up, click "Link to real account" on their card, enter their email address, and all lessons and data transfer instantly to their real account'),
-        bullet('The placeholder is removed automatically after linking'),
+        heading3('Adding Students (Teacher-Created Accounts)'),
+        para([body('Teachers can add students directly — ideal for young learners who don\'t have an email address.')]),
+        bullet('Click "+ Add Student", enter the student\'s name and an initial password'),
+        bullet('The student can now log in immediately using the class code + name + password method'),
+        bullet('From the student\'s card, click "Set Password" at any time to reset their login password'),
+        bullet('If the student later creates their own email account, click "Link Email →" on their card, enter their email, and all lessons and data transfer to their real account'),
         new Paragraph({ children: [], spacing: { after: 80 } }),
-        callout('Note', 'Placeholder students cannot log in to the app. They are a scheduling tool only. Once linked to a real account, the student gains full access to all their lesson history, vocabulary, and goals.'),
+        callout('Class Code', 'The class code displayed at the top of the Students page is what students enter on the login screen. Students with teacher-created accounts use: Class Code → select name → enter password.'),
         new Paragraph({ children: [], spacing: { after: 120 } }),
 
         // Student Profile
@@ -455,6 +462,9 @@ const doc = new Document({
           ['マスター / Mastered', 'Fully learned'],
         ]),
 
+        heading3('Text-to-Speech (TTS)'),
+        para([body('Every vocabulary word has a 🔊 speaker button. Tap it to hear the word read aloud in English. In Study Session mode, the word is automatically spoken when each new card appears (can be turned off in Settings).')]),
+
         heading3('Flashcard Review'),
         para([body('Each word is displayed as a flip card — tap to reveal the definition, Japanese translation, and example sentence. Update the mastery level directly on the card.')]),
 
@@ -501,11 +511,16 @@ const doc = new Document({
         bullet('Update display name'),
         bullet('Change account password'),
         bullet('View and copy invite code to share with new students'),
+        bullet('Toggle email notifications on/off'),
+        bullet('Set default lesson duration (30 min / 45 min / 1 hour / 90 min / 2 hours) — auto-fills end time when scheduling'),
 
         heading2('Student Settings'),
         bullet('Update display name'),
         bullet('Change account password'),
         bullet('Join a teacher using their 6-character invite code'),
+        bullet('Toggle email notifications on/off'),
+        bullet('Toggle vocabulary TTS (text-to-speech) auto-play on/off'),
+        bullet('Set study session size (10 / 20 / 30 / all words per session)'),
 
         divider(),
 

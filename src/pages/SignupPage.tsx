@@ -37,7 +37,7 @@ export function SignupPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create Account</CardTitle>
-          <CardDescription>TLC English Teaching &amp; Learning Center</CardDescription>
+          <CardDescription>The Language Centre</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (

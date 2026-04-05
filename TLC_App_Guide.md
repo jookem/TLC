@@ -1,10 +1,10 @@
-# TLC English App — Feature Guide
+# The Language Centre App — Feature Guide
 
 ---
 
 ## Overview
 
-TLC English is a web application designed for English teachers working with Japanese students. It centralises lesson management, student tracking, vocabulary learning, and scheduling into one place — replacing scattered spreadsheets, messaging apps, and paper notes.
+The Language Centre is a web application designed for English teachers working with Japanese students. It centralises lesson management, student tracking, vocabulary learning, and scheduling into one place — replacing scattered spreadsheets, messaging apps, and paper notes.
 
 The app has two roles: **Teacher** and **Student**. Each role sees a different set of features tailored to their needs.
 
@@ -263,4 +263,4 @@ Teachers can:
 
 ---
 
-*TLC English App — Internal Documentation*
+*The Language Centre App — Internal Documentation*
