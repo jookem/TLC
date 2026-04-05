@@ -18,10 +18,12 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${checked ? 'bg-brand' : 'bg-gray-300'}`}
+      className={`inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${checked ? 'bg-brand' : 'bg-gray-300'}`}
     >
-      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-4' : 'translate-x-1'}`} />
+      <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
     </button>
   )
 }
@@ -211,7 +213,7 @@ export function SettingsPage() {
         <CardContent className="space-y-5">
 
           {/* Email notifications */}
-          <div className="flex items-center justify-between gap-4 pr-6">
+          <div className="flex items-center justify-between gap-4 pr-2">
             <div>
               <p className="text-sm font-medium text-gray-800">Email notifications</p>
               <p className="text-xs text-gray-400 mt-0.5">
@@ -222,7 +224,7 @@ export function SettingsPage() {
           </div>
 
           {/* TTS auto-play */}
-          <div className="flex items-center justify-between gap-4 border-t pt-4 pr-6">
+          <div className="flex items-center justify-between gap-4 border-t pt-4 pr-2">
             <div>
               <p className="text-sm font-medium text-gray-800">Auto-play pronunciation</p>
               <p className="text-xs text-gray-400 mt-0.5">
