@@ -211,7 +211,7 @@ export function SettingsPage() {
         <CardContent className="space-y-5">
 
           {/* Email notifications */}
-          <div className="flex items-center justify-between gap-4 pr-2">
+          <div className="flex items-center justify-between gap-4 pr-6">
             <div>
               <p className="text-sm font-medium text-gray-800">Email notifications</p>
               <p className="text-xs text-gray-400 mt-0.5">
@@ -222,7 +222,7 @@ export function SettingsPage() {
           </div>
 
           {/* TTS auto-play */}
-          <div className="flex items-center justify-between gap-4 border-t pt-4 pr-2">
+          <div className="flex items-center justify-between gap-4 border-t pt-4 pr-6">
             <div>
               <p className="text-sm font-medium text-gray-800">Auto-play pronunciation</p>
               <p className="text-xs text-gray-400 mt-0.5">
