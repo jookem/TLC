@@ -10,6 +10,7 @@ import { GoalForm } from '@/components/progress/GoalForm'
 import { ProgressSnapshotForm } from '@/components/progress/ProgressSnapshotForm'
 import { StudentVocabManager } from '@/components/students/StudentVocabManager'
 import { StudentProfileCard } from '@/components/students/StudentProfileCard'
+import { ScheduleLessonModal } from '@/components/lesson/ScheduleLessonModal'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
@@ -225,7 +226,14 @@ export function StudentDetailPage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Recent Lessons</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Recent Lessons</CardTitle>
+            <ScheduleLessonModal
+              studentId={studentId!}
+              studentName={student.full_name}
+              onSaved={loadData}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {lessons.length === 0 ? (
