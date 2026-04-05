@@ -1,5 +1,31 @@
 import { supabase } from '@/lib/supabase'
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+
+export async function uploadAvatar(file: File): Promise<{ url?: string; error?: string }> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return { error: 'Not authenticated' }
+
+  const ext = file.name.split('.').pop()
+  const path = `${session.user.id}/avatar.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true, contentType: file.type })
+
+  if (uploadError) return { error: uploadError.message }
+
+  const url = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}`
+
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update({ avatar_url: url })
+    .eq('id', session.user.id)
+
+  if (updateError) return { error: updateError.message }
+  return { url }
+}
+
 export async function updateProfileName(fullName: string): Promise<{ error?: string }> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }

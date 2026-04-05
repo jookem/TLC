@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
-import { Copy, Check } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Copy, Check, Camera } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/contexts/AuthContext'
-import { updateProfileName, updatePassword, updatePreferences } from '@/lib/api/settings'
+import { updateProfileName, updatePassword, updatePreferences, uploadAvatar } from '@/lib/api/settings'
 import { joinTeacherByCode } from '@/lib/api/students'
 import { toast } from 'sonner'
 
@@ -43,6 +43,9 @@ export function SettingsPage() {
   const [joiningCode, setJoiningCode] = useState(false)
 
   const [copied, setCopied] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url ?? null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Preferences (DB-backed)
   const [emailNotifs, setEmailNotifs] = useState(profile?.notifications_email ?? true)
@@ -131,6 +134,21 @@ export function SettingsPage() {
     localStorage.setItem('study_size', String(val))
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarPreview(URL.createObjectURL(file))
+    setUploadingAvatar(true)
+    const { url, error } = await uploadAvatar(file)
+    setUploadingAvatar(false)
+    if (error) {
+      toast.error(error)
+    } else {
+      await refreshProfile()
+      toast.success('Photo updated.')
+    }
+  }
+
   function copyCode() {
     if (!profile?.invite_code) return
     navigator.clipboard.writeText(profile.invite_code)
@@ -145,28 +163,76 @@ export function SettingsPage() {
         <p className="text-gray-500 text-sm mt-1">Manage your account and preferences</p>
       </div>
 
-      {/* Teacher: invite code */}
-      {isTeacher && profile.invite_code && (
+      {/* Teacher: avatar + invite code */}
+      {isTeacher && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Your Invite Code</CardTitle>
+            <CardTitle className="text-base">Teacher Profile Photo</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <p className="text-sm text-gray-500">
-              Share this code with students so they can join your class.
+              Your photo appears on the student login screen so students can find you.
             </p>
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-3xl font-bold tracking-widest text-brand">
-                {profile.invite_code}
-              </span>
-              <button
-                onClick={copyCode}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
+            <div className="flex items-center gap-4">
+              <div className="relative shrink-0">
+                {avatarPreview ? (
+                  <img
+                    src={avatarPreview}
+                    alt="Avatar"
+                    className="w-20 h-20 rounded-full object-cover ring-2 ring-brand/20"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-brand flex items-center justify-center">
+                    <span className="text-white text-2xl font-bold">
+                      {profile?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                    </span>
+                  </div>
+                )}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  className="absolute -bottom-1 -right-1 w-7 h-7 bg-brand text-white rounded-full flex items-center justify-center shadow hover:bg-brand/90 transition-colors disabled:opacity-50"
+                >
+                  <Camera size={13} />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-800">{profile?.full_name}</p>
+                {uploadingAvatar && <p className="text-xs text-gray-400 mt-0.5">Uploading…</p>}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  className="mt-1 text-xs text-brand hover:underline disabled:opacity-50"
+                >
+                  {avatarPreview ? 'Change photo' : 'Upload photo'}
+                </button>
+              </div>
             </div>
+
+            {profile.invite_code && (
+              <div className="border-t pt-4">
+                <p className="text-xs font-medium text-gray-500 mb-2">Class code (for adult students joining via Settings)</p>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-2xl font-bold tracking-widest text-brand">
+                    {profile.invite_code}
+                  </span>
+                  <button
+                    onClick={copyCode}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

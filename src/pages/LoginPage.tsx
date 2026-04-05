@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,18 +7,53 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { login } from '@/lib/api/auth'
 import { supabase } from '@/lib/supabase'
 
+type Teacher = { id: string; full_name: string; avatar_url: string | null }
+type Student = { id: string; full_name: string; email: string }
+
 export function LoginPage() {
   const navigate = useNavigate()
   const [mode, setMode] = useState<'teacher' | 'student'>('student')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Student flow state
-  const [classCode, setClassCode] = useState('')
-  const [students, setStudents] = useState<{ id: string; full_name: string; email: string }[]>([])
+  // Teacher selection
+  const [teachers, setTeachers] = useState<Teacher[]>([])
+  const [loadingTeachers, setLoadingTeachers] = useState(false)
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
+
+  // Student selection + login
+  const [students, setStudents] = useState<Student[]>([])
+  const [loadingStudents, setLoadingStudents] = useState(false)
   const [selectedStudentEmail, setSelectedStudentEmail] = useState('')
   const [studentPassword, setStudentPassword] = useState('')
-  const [loadingClass, setLoadingClass] = useState(false)
+
+  useEffect(() => {
+    if (mode === 'student') loadTeachers()
+  }, [mode])
+
+  async function loadTeachers() {
+    setLoadingTeachers(true)
+    const { data } = await supabase.rpc('get_all_teachers')
+    setTeachers(data ?? [])
+    setLoadingTeachers(false)
+  }
+
+  async function handleSelectTeacher(teacher: Teacher) {
+    setSelectedTeacher(teacher)
+    setStudents([])
+    setSelectedStudentEmail('')
+    setError('')
+    setLoadingStudents(true)
+    const { data, error: rpcError } = await supabase.rpc('get_teacher_students', {
+      p_teacher_id: teacher.id,
+    })
+    setLoadingStudents(false)
+    if (rpcError || !data?.length) {
+      setError(rpcError?.message ?? 'No students found for this teacher.')
+      return
+    }
+    setStudents(data)
+  }
 
   async function handleTeacherLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -28,26 +63,6 @@ export function LoginPage() {
     const result = await login(form.get('email') as string, form.get('password') as string)
     if (result.error) { setError(result.error); setLoading(false) }
     else navigate('/dashboard')
-  }
-
-  async function handleFindClass(e: FormEvent) {
-    e.preventDefault()
-    if (!classCode.trim()) return
-    setError('')
-    setLoadingClass(true)
-    setStudents([])
-    setSelectedStudentEmail('')
-
-    const { data, error: rpcError } = await supabase.rpc('get_class_students', {
-      class_code: classCode.trim().toUpperCase(),
-    })
-
-    setLoadingClass(false)
-    if (rpcError || !data?.length) {
-      setError(rpcError ? rpcError.message : 'No class found with that code. Check with your teacher.')
-      return
-    }
-    setStudents(data)
   }
 
   async function handleStudentLogin(e: FormEvent) {
@@ -63,10 +78,14 @@ export function LoginPage() {
   function switchMode(m: 'teacher' | 'student') {
     setMode(m)
     setError('')
+    setSelectedTeacher(null)
     setStudents([])
-    setClassCode('')
     setSelectedStudentEmail('')
     setStudentPassword('')
+  }
+
+  function getInitials(name: string) {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
   return (
@@ -127,60 +146,123 @@ export function LoginPage() {
           {/* ── Student login ── */}
           {mode === 'student' && (
             <div className="space-y-5">
-              {/* Step 1: class code */}
-              <form onSubmit={handleFindClass} className="space-y-3">
-                <Label>Step 1 — Enter your class code</Label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={classCode}
-                    onChange={e => { setClassCode(e.target.value.toUpperCase()); setStudents([]); setSelectedStudentEmail('') }}
-                    placeholder="e.g. AB3K9X"
-                    maxLength={6}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-brand"
-                  />
-                  <Button type="submit" variant="outline" disabled={loadingClass || classCode.length < 6}>
-                    {loadingClass ? '…' : 'Find'}
-                  </Button>
-                </div>
-              </form>
-
-              {/* Step 2: pick name + password */}
-              {students.length > 0 && (
-                <form onSubmit={handleStudentLogin} className="space-y-4 border-t pt-4">
-                  <div className="space-y-2">
-                    <Label>Step 2 — Who are you?</Label>
-                    <select
-                      value={selectedStudentEmail}
-                      onChange={e => setSelectedStudentEmail(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand"
-                      required
-                    >
-                      <option value="">Select your name…</option>
-                      {students.map(s => (
-                        <option key={s.id} value={s.email}>{s.full_name}</option>
+              {/* Step 1 — Teacher selection (character select screen) */}
+              {!selectedTeacher ? (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+                    Choose your teacher
+                  </p>
+                  {loadingTeachers ? (
+                    <div className="grid grid-cols-3 gap-3">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
+                          <div className="w-16 h-16 rounded-full bg-gray-200" />
+                          <div className="h-3 w-16 bg-gray-200 rounded" />
+                        </div>
                       ))}
-                    </select>
+                    </div>
+                  ) : teachers.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-6">No teachers found.</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-3">
+                      {teachers.map(teacher => (
+                        <button
+                          key={teacher.id}
+                          type="button"
+                          onClick={() => handleSelectTeacher(teacher)}
+                          className="flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-transparent hover:border-brand/40 hover:bg-brand-light transition-all group"
+                        >
+                          {teacher.avatar_url ? (
+                            <img
+                              src={teacher.avatar_url}
+                              alt={teacher.full_name}
+                              className="w-16 h-16 rounded-full object-cover ring-2 ring-transparent group-hover:ring-brand/40 transition-all"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded-full bg-brand flex items-center justify-center ring-2 ring-transparent group-hover:ring-brand/40 transition-all">
+                              <span className="text-white text-xl font-bold">
+                                {getInitials(teacher.full_name)}
+                              </span>
+                            </div>
+                          )}
+                          <span className="text-xs font-medium text-gray-700 text-center leading-tight">
+                            {teacher.full_name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Step 2 — Student name + password */
+                <div className="space-y-4">
+                  {/* Selected teacher banner */}
+                  <div className="flex items-center gap-3 bg-brand-light border border-brand/20 rounded-xl px-4 py-3">
+                    {selectedTeacher.avatar_url ? (
+                      <img
+                        src={selectedTeacher.avatar_url}
+                        alt={selectedTeacher.full_name}
+                        className="w-9 h-9 rounded-full object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-brand flex items-center justify-center shrink-0">
+                        <span className="text-white text-sm font-bold">
+                          {getInitials(selectedTeacher.full_name)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-500">Teacher</p>
+                      <p className="text-sm font-semibold text-brand truncate">{selectedTeacher.full_name}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedTeacher(null); setStudents([]); setError('') }}
+                      className="text-xs text-gray-400 hover:text-gray-600"
+                    >
+                      Change
+                    </button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="student-password">Password</Label>
-                    <Input
-                      id="student-password"
-                      type="password"
-                      value={studentPassword}
-                      onChange={e => setStudentPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={loading || !selectedStudentEmail || !studentPassword}
-                  >
-                    {loading ? 'Signing in…' : 'Sign In'}
-                  </Button>
-                </form>
+
+                  {loadingStudents ? (
+                    <p className="text-sm text-gray-400 text-center py-2">Loading students…</p>
+                  ) : students.length > 0 && (
+                    <form onSubmit={handleStudentLogin} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Who are you?</Label>
+                        <select
+                          value={selectedStudentEmail}
+                          onChange={e => setSelectedStudentEmail(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand"
+                          required
+                        >
+                          <option value="">Select your name…</option>
+                          {students.map(s => (
+                            <option key={s.id} value={s.email}>{s.full_name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="student-password">Password</Label>
+                        <Input
+                          id="student-password"
+                          type="password"
+                          value={studentPassword}
+                          onChange={e => setStudentPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={loading || !selectedStudentEmail || !studentPassword}
+                      >
+                        {loading ? 'Signing in…' : 'Sign In'}
+                      </Button>
+                    </form>
+                  )}
+                </div>
               )}
             </div>
           )}
