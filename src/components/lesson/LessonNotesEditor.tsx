@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { saveLessonNotes, addVocabularyToBank } from '@/lib/api/lessons'
+import { toast } from 'sonner'
 import type { LessonNotes, VocabularyItem, GrammarPoint, StudentGoal } from '@/lib/types/database'
 
 interface LessonNotesEditorProps {
@@ -113,7 +114,7 @@ export function LessonNotesEditor({
   async function handleSaveToVocabBank() {
     if (vocabulary.length === 0) return
     const allStudents = studentIds?.length ? studentIds : [studentId]
-    await addVocabularyToBank(
+    const result = await addVocabularyToBank(
       allStudents.flatMap(sid =>
         vocabulary.map(v => ({
           student_id: sid,
@@ -124,6 +125,11 @@ export function LessonNotesEditor({
         }))
       )
     )
+    if (result.error) {
+      toast.error('Failed to save to vocab bank: ' + result.error)
+    } else {
+      toast.success(`${vocabulary.length} word${vocabulary.length !== 1 ? 's' : ''} saved to vocab bank`)
+    }
   }
 
   async function handleManualSave() {

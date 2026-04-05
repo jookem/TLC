@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { updateVocabMastery } from '@/lib/api/lessons'
+import { speak } from '@/lib/tts'
 import type { VocabularyBankEntry, MasteryLevel } from '@/lib/types/database'
 
 const MASTERY = [
@@ -35,7 +36,16 @@ export function VocabularyFlashcard({
         <CardContent className="pt-4 pb-3 space-y-2">
           {!flipped ? (
             <div>
-              <p className="text-lg font-semibold text-gray-900">{entry.word}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-lg font-semibold text-gray-900">{entry.word}</p>
+                <button
+                  onClick={e => { e.stopPropagation(); speak(entry.word) }}
+                  className="text-gray-400 hover:text-brand transition-colors shrink-0"
+                  title="Listen"
+                >
+                  🔊
+                </button>
+              </div>
               {entry.reading && <p className="text-sm text-gray-500">{entry.reading}</p>}
               <p className="text-xs text-gray-400 mt-2">タップして意味を見る / Tap to reveal</p>
             </div>

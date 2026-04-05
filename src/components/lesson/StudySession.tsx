@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { rateVocabCard } from '@/lib/api/lessons'
+import { speak } from '@/lib/tts'
 import type { VocabularyBankEntry, MasteryLevel } from '@/lib/types/database'
 
 type Rating = 'again' | 'hard' | 'good' | 'easy'
@@ -26,6 +27,11 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
   const [stats, setStats] = useState<Stats>({ again: 0, hard: 0, good: 0, easy: 0 })
   const [done, setDone] = useState(false)
   const total = cards.length
+
+  // Auto-play word when card changes
+  useEffect(() => {
+    if (current && !done) speak(current.word)
+  }, [current, done])
 
   const remaining = queue.length + againQueue.length
   const reviewed = total - remaining + (done ? 0 : 0)
@@ -139,6 +145,13 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
                 {current.reading && (
                   <p className="text-lg text-gray-400">{current.reading}</p>
                 )}
+                <button
+                  onClick={e => { e.stopPropagation(); speak(current.word) }}
+                  className="text-2xl opacity-40 hover:opacity-80 transition-opacity"
+                  title="Listen again"
+                >
+                  🔊
+                </button>
                 <p className="text-sm text-gray-300 mt-4">Tap to reveal</p>
               </div>
             ) : (
