@@ -9,6 +9,7 @@ import { formatInTimeZone } from 'date-fns-tz'
 import { GoalForm } from '@/components/progress/GoalForm'
 import { ProgressSnapshotForm } from '@/components/progress/ProgressSnapshotForm'
 import { StudentVocabManager } from '@/components/students/StudentVocabManager'
+import { StudentProfileCard } from '@/components/students/StudentProfileCard'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
@@ -21,16 +22,18 @@ export function StudentDetailPage() {
   const [goals, setGoals] = useState<any[]>([])
   const [lessons, setLessons] = useState<any[]>([])
   const [snapshots, setSnapshots] = useState<any[]>([])
+  const [details, setDetails] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   async function loadData() {
     if (!user || !studentId) return
 
-    const [studentResult, goalsResult, lessonsResult, snapshotsResult] = await Promise.all([
+    const [studentResult, goalsResult, lessonsResult, snapshotsResult, detailsResult] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', studentId).single(),
       supabase.from('student_goals').select('*').eq('student_id', studentId).eq('teacher_id', user.id).order('created_at', { ascending: false }),
       supabase.from('lessons').select('*, lesson_notes(*)').eq('teacher_id', user.id).eq('student_id', studentId).order('scheduled_start', { ascending: false }).limit(10),
       supabase.from('progress_snapshots').select('*').eq('student_id', studentId).eq('teacher_id', user.id).order('snapshot_date', { ascending: false }).limit(5),
+      supabase.from('student_details').select('*').eq('student_id', studentId).single(),
     ])
 
     if (!studentResult.data) {
@@ -42,6 +45,7 @@ export function StudentDetailPage() {
     setGoals(goalsResult.data ?? [])
     setLessons(lessonsResult.data ?? [])
     setSnapshots(snapshotsResult.data ?? [])
+    setDetails(detailsResult.data ?? null)
     setLoading(false)
   }
 
@@ -109,6 +113,8 @@ export function StudentDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <StudentProfileCard studentId={studentId!} details={details} onSaved={loadData} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
