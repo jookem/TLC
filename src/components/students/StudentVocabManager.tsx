@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
-  addVocabularyToBank,
   deleteVocabEntry,
   uploadVocabImage,
   removeVocabImage,
@@ -19,7 +18,6 @@ import {
 } from '@/lib/api/lessons'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AnkiImporter } from './AnkiImporter'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import type { VocabularyBankEntry } from '@/lib/types/database'
@@ -176,7 +174,7 @@ function DeckEditor({
               {[...Array(3)].map((_, i) => <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />)}
             </div>
           ) : words.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4">No words yet. Add some above.</p>
+            <p className="text-sm text-gray-400 py-4">No words yet. Add some above or import from Anki.</p>
           ) : (
             <div className="space-y-1">
               {words.map(w => (
@@ -222,19 +220,10 @@ export function StudentVocabManager({ studentId }: Props) {
   const [removing, setRemoving] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [deletingVocab, setDeletingVocab] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState<string | null>(null)
   const [removingImage, setRemovingImage] = useState<string | null>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [imageTargetId, setImageTargetId] = useState<string | null>(null)
-  const [showDecks, setShowDecks] = useState(false)
-
-  // Add word form state
-  const [word, setWord] = useState('')
-  const [defJa, setDefJa] = useState('')
-  const [defEn, setDefEn] = useState('')
-  const [example, setExample] = useState('')
-  const [selectedDeckId, setSelectedDeckId] = useState<string>('')
 
   async function loadVocab() {
     const { data, error } = await supabase
@@ -256,7 +245,6 @@ export function StudentVocabManager({ studentId }: Props) {
   useEffect(() => { loadVocab() }, [studentId])
   useEffect(() => { loadDecks() }, [])
 
-  // IDs of decks already assigned to this student
   const assignedDeckIds = new Set(vocab.map(v => v.deck_id).filter(Boolean) as string[])
 
   async function handleCreateDeck(e: React.FormEvent) {
@@ -305,27 +293,6 @@ export function StudentVocabManager({ studentId }: Props) {
     }
   }
 
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault()
-    if (!word.trim() || !defJa.trim()) return
-    setSaving(true)
-    const result = await addVocabularyToBank([{
-      student_id: studentId,
-      word: word.trim(),
-      definition_ja: defJa.trim(),
-      definition_en: defEn.trim() || undefined,
-      example: example.trim() || undefined,
-    }])
-    setSaving(false)
-    if (result.error) {
-      toast.error(result.error)
-    } else {
-      setWord(''); setDefJa(''); setDefEn(''); setExample('')
-      await loadVocab()
-      toast.success(`"${word.trim()}" added to vocab bank`)
-    }
-  }
-
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !imageTargetId) return
@@ -366,7 +333,7 @@ export function StudentVocabManager({ studentId }: Props) {
     const dId = v.deck_id ?? null
     if (!seenDeckIds.has(dId)) {
       seenDeckIds.add(dId)
-      const deckName = dId ? (decks.find(d => d.id === dId)?.name ?? 'Assigned Deck') : 'Individual Words'
+      const deckName = dId ? (decks.find(d => d.id === dId)?.name ?? 'Assigned Deck') : 'Ungrouped'
       deckGroups.push({ deckId: dId, deckName, words: [] })
     }
     deckGroups.find(g => g.deckId === dId)!.words.push(v)
@@ -432,134 +399,99 @@ export function StudentVocabManager({ studentId }: Props) {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle className="text-base">
-              Vocabulary Bank
-              {!loading && (
-                <span className="ml-2 text-xs font-normal text-gray-400">{vocab.length} word{vocab.length !== 1 ? 's' : ''}</span>
-              )}
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowDecks(s => !s)}
-                className="px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Decks {decksLoading ? '' : `(${decks.length})`}
-              </button>
-              <AnkiImporter studentId={studentId} onImported={loadVocab} />
-            </div>
-          </div>
+          <CardTitle className="text-base">
+            Vocabulary Bank
+            {!loading && (
+              <span className="ml-2 text-xs font-normal text-gray-400">{vocab.length} word{vocab.length !== 1 ? 's' : ''}</span>
+            )}
+          </CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* ── Deck Library Panel ── */}
-          {showDecks && (
-            <div className="border rounded-xl p-4 bg-gray-50 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Deck Library</span>
-                {!creatingDeck && (
-                  <button
-                    onClick={() => setCreatingDeck(true)}
-                    className="text-xs text-brand hover:text-brand/80 transition-colors"
-                  >
-                    + New Deck
-                  </button>
-                )}
+          {/* ── Deck Library ── */}
+          <div className="border rounded-xl p-4 bg-gray-50 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Decks</span>
+              {!creatingDeck && (
+                <button
+                  onClick={() => setCreatingDeck(true)}
+                  className="text-xs text-brand hover:text-brand/80 transition-colors"
+                >
+                  + New Deck
+                </button>
+              )}
+            </div>
+
+            {creatingDeck && (
+              <form onSubmit={handleCreateDeck} className="flex gap-2">
+                <Input
+                  autoFocus
+                  value={newDeckName}
+                  onChange={e => setNewDeckName(e.target.value)}
+                  placeholder="Deck name…"
+                  className="flex-1 text-sm h-8"
+                />
+                <button type="submit" disabled={!newDeckName.trim()} className="px-3 py-1 bg-brand text-white text-sm rounded-md disabled:opacity-50">
+                  Create
+                </button>
+                <button type="button" onClick={() => { setCreatingDeck(false); setNewDeckName('') }} className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">
+                  Cancel
+                </button>
+              </form>
+            )}
+
+            {decksLoading ? (
+              <div className="space-y-2">
+                {[...Array(2)].map((_, i) => <div key={i} className="h-10 bg-gray-200 rounded animate-pulse" />)}
               </div>
-
-              {creatingDeck && (
-                <form onSubmit={handleCreateDeck} className="flex gap-2">
-                  <Input
-                    autoFocus
-                    value={newDeckName}
-                    onChange={e => setNewDeckName(e.target.value)}
-                    placeholder="Deck name…"
-                    className="flex-1 text-sm h-8"
-                  />
-                  <button type="submit" disabled={!newDeckName.trim()} className="px-3 py-1 bg-brand text-white text-sm rounded-md disabled:opacity-50">
-                    Create
-                  </button>
-                  <button type="button" onClick={() => { setCreatingDeck(false); setNewDeckName('') }} className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">
-                    Cancel
-                  </button>
-                </form>
-              )}
-
-              {decksLoading ? (
-                <div className="space-y-2">
-                  {[...Array(2)].map((_, i) => <div key={i} className="h-10 bg-gray-200 rounded animate-pulse" />)}
-                </div>
-              ) : decks.length === 0 ? (
-                <p className="text-xs text-gray-400">No decks yet. Create one to get started.</p>
-              ) : (
-                <div className="space-y-2">
-                  {decks.map(deck => {
-                    const isAssigned = assignedDeckIds.has(deck.id)
-                    return (
-                      <div key={deck.id} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-gray-200">
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm font-medium text-gray-900">{deck.name}</span>
-                          <span className="text-xs text-gray-400 ml-2">{deck.word_count ?? 0} words</span>
-                          {isAssigned && (
-                            <span className="ml-2 text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full">Assigned</span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => setEditingDeck(deck)}
-                          className="text-xs text-gray-400 hover:text-brand transition-colors"
-                        >
-                          Edit
-                        </button>
-                        {isAssigned ? (
-                          <button
-                            onClick={() => handleRemoveDeck(deck.id, deck.name)}
-                            disabled={removing === deck.id}
-                            className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                          >
-                            {removing === deck.id ? '…' : 'Remove'}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleAssign(deck.id)}
-                            disabled={assigning === deck.id}
-                            className="text-xs text-brand hover:text-brand/80 transition-colors disabled:opacity-50"
-                          >
-                            {assigning === deck.id ? '…' : 'Assign'}
-                          </button>
+            ) : decks.length === 0 ? (
+              <p className="text-xs text-gray-400">No decks yet. Create one to get started.</p>
+            ) : (
+              <div className="space-y-2">
+                {decks.map(deck => {
+                  const isAssigned = assignedDeckIds.has(deck.id)
+                  return (
+                    <div key={deck.id} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-gray-200">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-900">{deck.name}</span>
+                        <span className="text-xs text-gray-400 ml-2">{deck.word_count ?? 0} words</span>
+                        {isAssigned && (
+                          <span className="ml-2 text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full">Assigned</span>
                         )}
-                        <button
-                          onClick={() => handleDeleteDeck(deck.id, deck.name)}
-                          disabled={deleting === deck.id}
-                          className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50"
-                        >
-                          {deleting === deck.id ? '…' : 'Delete'}
-                        </button>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Add Word Form ── */}
-          <form onSubmit={handleAdd} className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <Input value={word} onChange={e => setWord(e.target.value)} placeholder="Word *" required />
-              <Input value={defJa} onChange={e => setDefJa(e.target.value)} placeholder="意味 (JA) *" required />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Input value={defEn} onChange={e => setDefEn(e.target.value)} placeholder="Definition (EN)" />
-              <Input value={example} onChange={e => setExample(e.target.value)} placeholder="Example sentence" />
-            </div>
-            <button
-              type="submit"
-              disabled={saving || !word.trim() || !defJa.trim()}
-              className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
-            >
-              {saving ? 'Adding…' : '+ Add Word'}
-            </button>
-          </form>
+                      <button onClick={() => setEditingDeck(deck)} className="text-xs text-gray-400 hover:text-brand transition-colors">
+                        Edit
+                      </button>
+                      {isAssigned ? (
+                        <button
+                          onClick={() => handleRemoveDeck(deck.id, deck.name)}
+                          disabled={removing === deck.id}
+                          className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                        >
+                          {removing === deck.id ? '…' : 'Remove'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAssign(deck.id)}
+                          disabled={assigning === deck.id}
+                          className="text-xs text-brand hover:text-brand/80 transition-colors disabled:opacity-50"
+                        >
+                          {assigning === deck.id ? '…' : 'Assign'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteDeck(deck.id, deck.name)}
+                        disabled={deleting === deck.id}
+                        className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50"
+                      >
+                        {deleting === deck.id ? '…' : 'Delete'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
 
           {/* ── Word List (grouped by deck) ── */}
           {loading ? (
@@ -567,7 +499,7 @@ export function StudentVocabManager({ studentId }: Props) {
               {[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}
             </div>
           ) : vocab.length === 0 ? (
-            <p className="text-sm text-gray-400">No vocabulary added yet.</p>
+            <p className="text-sm text-gray-400">No vocabulary assigned yet. Create a deck, add words, then assign it to this student.</p>
           ) : (
             <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
               {deckGroups.map(({ deckId, deckName, words }) => (
