@@ -56,7 +56,7 @@ export function LessonsPage() {
 
         const { data } = await supabase
           .from('lessons')
-          .select('id, scheduled_start, scheduled_end, status, lesson_type, is_group, lesson_notes(summary, areas_to_focus, homework), lesson_participants(student_id, student:profiles!lesson_participants_student_id_fkey(full_name))')
+          .select('id, scheduled_start, scheduled_end, status, lesson_type, is_group, group_name, lesson_notes(summary, areas_to_focus, homework), lesson_participants(student_id, student:profiles!lesson_participants_student_id_fkey(full_name))')
           .eq('teacher_id', user!.id)
           .or(orFilter)
           .order('scheduled_start', { ascending: false })

@@ -19,6 +19,8 @@ type Props = {
     scheduled_end: string
     status: string
     lesson_type: string
+    is_group?: boolean
+    group_name?: string | null
   }
   notes?: {
     summary?: string | null
@@ -48,6 +50,11 @@ export function LessonCard({ lesson, notes }: Props) {
             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 capitalize">
               {lesson.lesson_type}
             </span>
+            {lesson.is_group && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                {lesson.group_name ?? 'Group'}
+              </span>
+            )}
           </div>
 
           {!open && (
