@@ -157,6 +157,7 @@ export interface VocabularyBankEntry {
   example: string | null
   image_url: string | null
   lesson_id: string | null
+  deck_id: string | null
   mastery_level: MasteryLevel
   next_review: string | null
   created_at: string

@@ -408,3 +408,152 @@ export async function removeVocabImage(
   if (error) return { error: error.message }
   return {}
 }
+
+// ── Vocabulary Decks ─────────────────────────────────────────
+
+export interface DeckWord {
+  id: string
+  deck_id: string
+  word: string
+  reading: string | null
+  definition_ja: string | null
+  definition_en: string | null
+  example: string | null
+  created_at: string
+}
+
+export interface Deck {
+  id: string
+  teacher_id: string
+  name: string
+  created_at: string
+  word_count?: number
+  words?: DeckWord[]
+}
+
+export async function listDecks(): Promise<{ decks?: Deck[]; error?: string }> {
+  const { data, error } = await supabase
+    .from('vocabulary_decks')
+    .select('*, vocabulary_deck_words(count)')
+    .order('created_at', { ascending: false })
+
+  if (error) return { error: error.message }
+
+  const decks = (data ?? []).map((d: any) => ({
+    ...d,
+    word_count: d.vocabulary_deck_words?.[0]?.count ?? 0,
+    vocabulary_deck_words: undefined,
+  }))
+
+  return { decks }
+}
+
+export async function getDeckWithWords(deckId: string): Promise<{ deck?: Deck; error?: string }> {
+  const { data, error } = await supabase
+    .from('vocabulary_decks')
+    .select('*, words:vocabulary_deck_words(*)')
+    .eq('id', deckId)
+    .single()
+
+  if (error) return { error: error.message }
+  return { deck: data as Deck }
+}
+
+export async function createDeck(name: string): Promise<{ deck?: Deck; error?: string }> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return { error: 'Not authenticated.' }
+
+  const { data, error } = await supabase
+    .from('vocabulary_decks')
+    .insert({ name, teacher_id: session.user.id })
+    .select()
+    .single()
+
+  if (error) return { error: error.message }
+  return { deck: data as Deck }
+}
+
+export async function renameDeck(deckId: string, name: string): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from('vocabulary_decks')
+    .update({ name })
+    .eq('id', deckId)
+
+  return error ? { error: error.message } : {}
+}
+
+export async function deleteDeck(deckId: string): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from('vocabulary_decks')
+    .delete()
+    .eq('id', deckId)
+
+  return error ? { error: error.message } : {}
+}
+
+export async function addWordToDeck(
+  deckId: string,
+  word: { word: string; reading?: string; definition_ja?: string; definition_en?: string; example?: string },
+): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from('vocabulary_deck_words')
+    .upsert({ deck_id: deckId, ...word }, { onConflict: 'deck_id,word', ignoreDuplicates: false })
+
+  return error ? { error: error.message } : {}
+}
+
+export async function removeWordFromDeck(wordId: string): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from('vocabulary_deck_words')
+    .delete()
+    .eq('id', wordId)
+
+  return error ? { error: error.message } : {}
+}
+
+export async function assignDeckToStudent(
+  deckId: string,
+  studentId: string,
+): Promise<{ count?: number; error?: string }> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return { error: 'Not authenticated.' }
+
+  const { data: words, error: fetchErr } = await supabase
+    .from('vocabulary_deck_words')
+    .select('*')
+    .eq('deck_id', deckId)
+
+  if (fetchErr) return { error: fetchErr.message }
+  if (!words?.length) return { count: 0 }
+
+  const entries = words.map(w => ({
+    student_id: studentId,
+    teacher_id: session.user.id,
+    deck_id: deckId,
+    word: w.word,
+    reading: w.reading ?? null,
+    definition_ja: w.definition_ja ?? null,
+    definition_en: w.definition_en ?? null,
+    example: w.example ?? null,
+  }))
+
+  const { error } = await supabase
+    .from('vocabulary_bank')
+    .upsert(entries, { onConflict: 'student_id,word', ignoreDuplicates: true })
+
+  if (error) return { error: error.message }
+  return { count: entries.length }
+}
+
+export async function removeDeckFromStudent(
+  deckId: string,
+  studentId: string,
+): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from('vocabulary_bank')
+    .delete()
+    .eq('deck_id', deckId)
+    .eq('student_id', studentId)
+
+  return error ? { error: error.message } : {}
+}
