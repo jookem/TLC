@@ -94,6 +94,9 @@ export function ScheduleLessonModal({ studentId, studentName, onSaved }: Props) 
       if (result.error) { setError(result.error); return }
       setOpen(false)
       resetForm()
+      if (result.grouped) {
+        toast.success('Student added to existing lesson', { description: 'The slot already had a lesson — it is now a group lesson.' })
+      }
     }
 
     onSaved?.()

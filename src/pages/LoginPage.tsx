@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { PasswordInput } from '@/components/auth/PasswordInput'
 import { login } from '@/lib/api/auth'
 import { supabase } from '@/lib/supabase'
 
@@ -131,7 +132,7 @@ export function LoginPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" name="password" type="password" required placeholder="••••••••" />
+                <PasswordInput id="password" name="password" required placeholder="••••••••" />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Signing in…' : 'Sign In'}
@@ -244,9 +245,8 @@ export function LoginPage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="student-password">Password</Label>
-                        <Input
+                        <PasswordInput
                           id="student-password"
-                          type="password"
                           value={studentPassword}
                           onChange={e => setStudentPassword(e.target.value)}
                           placeholder="••••••••"

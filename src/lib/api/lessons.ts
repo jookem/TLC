@@ -61,13 +61,42 @@ export async function createLesson(data: {
   scheduled_start: string
   scheduled_end: string
   lesson_type: 'trial' | 'regular' | 'intensive'
-}): Promise<{ error?: string; success?: boolean }> {
+}): Promise<{ error?: string; success?: boolean; grouped?: boolean }> {
   const { data: { session } } = await supabase.auth.getSession()
   const user = session?.user
   if (!user) return { error: 'Not authenticated.' }
 
   const allStudents = data.student_ids?.length ? data.student_ids : [data.student_id]
   const isGroup = allStudents.length > 1
+
+  // If a lesson already exists at this exact slot, add the new students to it as a group
+  const { data: existing } = await supabase
+    .from('lessons')
+    .select('id, student_id')
+    .eq('teacher_id', user.id)
+    .eq('scheduled_start', data.scheduled_start)
+    .eq('scheduled_end', data.scheduled_end)
+    .neq('status', 'cancelled')
+    .maybeSingle()
+
+  if (existing) {
+    const { data: existingParts } = await supabase
+      .from('lesson_participants')
+      .select('student_id')
+      .eq('lesson_id', existing.id)
+
+    const taken = new Set([existing.student_id, ...((existingParts ?? []).map((p: any) => p.student_id))])
+    const newParticipants = allStudents.filter(id => !taken.has(id))
+
+    if (newParticipants.length) {
+      await supabase.from('lesson_participants').insert(
+        newParticipants.map(sid => ({ lesson_id: existing.id, student_id: sid }))
+      )
+      await supabase.from('lessons').update({ is_group: true }).eq('id', existing.id)
+    }
+
+    return { success: true, grouped: true }
+  }
 
   const { data: lesson, error } = await supabase.from('lessons').insert({
     teacher_id: user.id,
@@ -116,11 +145,44 @@ export async function createRecurringLessons(data: {
 
     const status = start > now ? 'scheduled' : 'completed'
 
+    const startISO = start.toISOString()
+    const endISO = end.toISOString()
+
+    // Check for existing lesson at this slot — merge as group instead of skipping
+    const { data: existing } = await supabase
+      .from('lessons')
+      .select('id, student_id')
+      .eq('teacher_id', user.id)
+      .eq('scheduled_start', startISO)
+      .eq('scheduled_end', endISO)
+      .neq('status', 'cancelled')
+      .maybeSingle()
+
+    if (existing) {
+      const { data: existingParts } = await supabase
+        .from('lesson_participants')
+        .select('student_id')
+        .eq('lesson_id', existing.id)
+
+      const taken = new Set([existing.student_id, ...((existingParts ?? []).map((p: any) => p.student_id))])
+      const newParticipants = allStudents.filter(id => !taken.has(id))
+
+      if (newParticipants.length) {
+        await supabase.from('lesson_participants').insert(
+          newParticipants.map(sid => ({ lesson_id: existing.id, student_id: sid }))
+        )
+        await supabase.from('lessons').update({ is_group: true }).eq('id', existing.id)
+      }
+
+      created++
+      continue
+    }
+
     const { data: lesson, error } = await supabase.from('lessons').insert({
       teacher_id: user.id,
       student_id: allStudents[0],
-      scheduled_start: start.toISOString(),
-      scheduled_end: end.toISOString(),
+      scheduled_start: startISO,
+      scheduled_end: endISO,
       lesson_type: data.lesson_type,
       status,
       is_group: isGroup,

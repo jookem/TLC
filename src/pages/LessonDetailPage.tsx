@@ -8,6 +8,7 @@ import { formatInTimeZone } from 'date-fns-tz'
 import { LessonNotesEditor } from '@/components/lesson/LessonNotesEditor'
 import { LessonAttachments } from '@/components/lesson/LessonAttachments'
 import { markLessonComplete } from '@/lib/api/lessons'
+import { cancelLesson } from '@/lib/api/bookings'
 import { toast } from 'sonner'
 import type { VocabularyItem, GrammarPoint } from '@/lib/types/database'
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton'
@@ -23,6 +24,8 @@ export function LessonDetailPage() {
   const [participants, setParticipants] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
 
   const isTeacher = profile?.role === 'teacher'
 
@@ -81,6 +84,19 @@ export function LessonDetailPage() {
   useEffect(() => {
     loadData()
   }, [user, lessonId, isTeacher])
+
+  async function handleCancelLesson() {
+    if (!lessonId) return
+    setCancelling(true)
+    const result = await cancelLesson(lessonId)
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      setLesson((prev: any) => ({ ...prev, status: 'cancelled' }))
+      setConfirmCancel(false)
+    }
+    setCancelling(false)
+  }
 
   async function handleMarkComplete() {
     if (!lessonId) return
@@ -173,6 +189,33 @@ export function LessonDetailPage() {
             >
               {completing ? 'Saving…' : 'Mark Complete'}
             </button>
+          )}
+          {lesson.status === 'scheduled' && (
+            confirmCancel ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Cancel this lesson?</span>
+                <button
+                  onClick={handleCancelLesson}
+                  disabled={cancelling}
+                  className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {cancelling ? 'Cancelling…' : 'Yes, cancel'}
+                </button>
+                <button
+                  onClick={() => setConfirmCancel(false)}
+                  className="text-sm text-gray-500 hover:text-gray-700 px-2"
+                >
+                  No
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmCancel(true)}
+                className="text-sm border border-red-200 text-red-600 px-3 py-1 rounded hover:bg-red-50 transition-colors"
+              >
+                Cancel Lesson
+              </button>
+            )
           )}
         </div>
       </div>
