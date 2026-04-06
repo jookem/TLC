@@ -21,6 +21,7 @@ type Props = {
     lesson_type: string
     is_group?: boolean
     group_name?: string | null
+    lesson_participants?: { student_id?: string }[]
   }
   notes?: {
     summary?: string | null
@@ -36,6 +37,7 @@ export function LessonCard({ lesson, notes }: Props) {
   const startTime = formatInTimeZone(new Date(lesson.scheduled_start), TZ, 'h:mm a')
   const endTime = formatInTimeZone(new Date(lesson.scheduled_end), TZ, 'h:mm a')
   const hasNotes = notes?.summary || notes?.areas_to_focus || notes?.homework
+  const isGroup = lesson.is_group || (lesson.lesson_participants?.length ?? 0) > 0
 
   return (
     <div className={`bg-white border rounded-lg px-4 py-3 space-y-2 ${open ? 'border-brand/30 shadow-sm' : 'border-gray-200'}`}>
@@ -50,7 +52,7 @@ export function LessonCard({ lesson, notes }: Props) {
             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 capitalize">
               {lesson.lesson_type}
             </span>
-            {lesson.is_group && (
+            {isGroup && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
                 {lesson.group_name ?? 'Group'}
               </span>

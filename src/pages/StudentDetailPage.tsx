@@ -270,7 +270,7 @@ export function StudentDetailPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {lesson.is_group && (
+                    {(lesson.is_group || lesson.lesson_participants?.length > 0) && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
                         {lesson.group_name ?? 'Group'}
                       </span>
