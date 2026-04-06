@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { addVocabularyToBank, deleteVocabEntry } from '@/lib/api/lessons'
+import { addVocabularyToBank, deleteVocabEntry, uploadVocabImage, removeVocabImage } from '@/lib/api/lessons'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { AnkiImporter } from './AnkiImporter'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import type { VocabularyBankEntry } from '@/lib/types/database'
@@ -23,6 +24,10 @@ export function StudentVocabManager({ studentId }: Props) {
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState<string | null>(null)
+  const [removingImage, setRemovingImage] = useState<string | null>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const [imageTargetId, setImageTargetId] = useState<string | null>(null)
 
   const [word, setWord] = useState('')
   const [defEn, setDefEn] = useState('')
@@ -76,6 +81,38 @@ export function StudentVocabManager({ studentId }: Props) {
     }
   }
 
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !imageTargetId) return
+    e.target.value = ''
+    setUploadingImage(imageTargetId)
+    const { url, error } = await uploadVocabImage(imageTargetId, file)
+    setUploadingImage(null)
+    setImageTargetId(null)
+    if (error) {
+      toast.error(error)
+    } else {
+      setVocab(prev => prev.map(v => v.id === imageTargetId ? { ...v, image_url: url ?? null } : v))
+      toast.success('Image attached')
+    }
+  }
+
+  function triggerImageUpload(entryId: string) {
+    setImageTargetId(entryId)
+    imageInputRef.current?.click()
+  }
+
+  async function handleRemoveImage(entryId: string) {
+    setRemovingImage(entryId)
+    const { error } = await removeVocabImage(entryId)
+    setRemovingImage(null)
+    if (error) {
+      toast.error(error)
+    } else {
+      setVocab(prev => prev.map(v => v.id === entryId ? { ...v, image_url: null } : v))
+    }
+  }
+
   async function handleDelete(id: string) {
     setDeleting(id)
     const { error } = await deleteVocabEntry(id)
@@ -90,14 +127,24 @@ export function StudentVocabManager({ studentId }: Props) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center justify-between">
-          <span>Vocabulary Bank</span>
-          {!loading && (
-            <span className="text-xs font-normal text-gray-400">{vocab.length} word{vocab.length !== 1 ? 's' : ''}</span>
-          )}
-        </CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base">
+            Vocabulary Bank
+            {!loading && (
+              <span className="ml-2 text-xs font-normal text-gray-400">{vocab.length} word{vocab.length !== 1 ? 's' : ''}</span>
+            )}
+          </CardTitle>
+          <AnkiImporter studentId={studentId} onImported={load} />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageUpload}
+        />
         {/* Add word form */}
         <form onSubmit={handleAdd} className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
@@ -160,13 +207,34 @@ export function StudentVocabManager({ studentId }: Props) {
                   {v.definition_ja && <p className="text-xs text-gray-400">{v.definition_ja}</p>}
                   {v.example && <p className="text-xs text-gray-400 italic">"{v.example}"</p>}
                 </div>
-                <button
-                  onClick={() => handleDelete(v.id)}
-                  disabled={deleting === v.id}
-                  className="text-xs text-gray-300 hover:text-red-500 transition-colors shrink-0 disabled:opacity-50 pt-0.5"
-                >
-                  {deleting === v.id ? '…' : 'Remove'}
-                </button>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <button
+                    onClick={() => handleDelete(v.id)}
+                    disabled={deleting === v.id}
+                    className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50"
+                  >
+                    {deleting === v.id ? '…' : 'Remove'}
+                  </button>
+                  {v.image_url ? (
+                    <button
+                      onClick={() => handleRemoveImage(v.id)}
+                      disabled={removingImage === v.id}
+                      className="text-xs text-brand hover:text-red-500 transition-colors disabled:opacity-50"
+                      title="Remove image"
+                    >
+                      {removingImage === v.id ? '…' : '🖼 Remove img'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => triggerImageUpload(v.id)}
+                      disabled={uploadingImage === v.id}
+                      className="text-xs text-gray-400 hover:text-brand transition-colors disabled:opacity-50"
+                      title="Attach image"
+                    >
+                      {uploadingImage === v.id ? 'Uploading…' : '+ Image'}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
