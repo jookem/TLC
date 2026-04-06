@@ -11,6 +11,7 @@ import {
   getDeckWithWords,
   addWordToDeck,
   removeWordFromDeck,
+  updateDeckWord,
   assignDeckToStudent,
   removeDeckFromStudent,
   type Deck,
@@ -54,6 +55,9 @@ function DeckEditor({
   const [saving, setSaving] = useState(false)
   const [removing, setRemoving] = useState<string | null>(null)
   const [loading, setLoading] = useState(!deck.words)
+  const [editingWordId, setEditingWordId] = useState<string | null>(null)
+  const [editFields, setEditFields] = useState({ word: '', reading: '', defJa: '', defEn: '', example: '' })
+  const [savingEdit, setSavingEdit] = useState(false)
   const [name, setName] = useState(deck.name)
   const [renamingName, setRenamingName] = useState(false)
 
@@ -101,6 +105,41 @@ function DeckEditor({
     setRemoving(null)
     if (error) toast.error(error)
     else { setWords(prev => prev.filter(w => w.id !== wordId)); onUpdated() }
+  }
+
+  function startEdit(w: DeckWord) {
+    setEditingWordId(w.id)
+    setEditFields({
+      word: w.word,
+      reading: w.reading ?? '',
+      defJa: w.definition_ja ?? '',
+      defEn: w.definition_en ?? '',
+      example: w.example ?? '',
+    })
+  }
+
+  async function handleEditSave() {
+    if (!editingWordId || !editFields.word.trim()) return
+    setSavingEdit(true)
+    const { error } = await updateDeckWord(editingWordId, {
+      word: editFields.word.trim(),
+      reading: editFields.reading.trim() || undefined,
+      definition_ja: editFields.defJa.trim() || undefined,
+      definition_en: editFields.defEn.trim() || undefined,
+      example: editFields.example.trim() || undefined,
+    })
+    setSavingEdit(false)
+    if (error) { toast.error(error); return }
+    setWords(prev => prev.map(w => w.id === editingWordId ? {
+      ...w,
+      word: editFields.word.trim(),
+      reading: editFields.reading.trim() || null,
+      definition_ja: editFields.defJa.trim() || null,
+      definition_en: editFields.defEn.trim() || null,
+      example: editFields.example.trim() || null,
+    } : w))
+    setEditingWordId(null)
+    onUpdated()
   }
 
   return (
@@ -178,21 +217,48 @@ function DeckEditor({
           ) : (
             <div className="space-y-1">
               {words.map(w => (
-                <div key={w.id} className="flex items-start gap-2 py-2 border-b border-gray-100 last:border-0">
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium text-sm text-gray-900">{w.word}</span>
-                    {w.reading && <span className="text-xs text-gray-400 ml-2">{w.reading}</span>}
-                    {w.definition_ja && <p className="text-xs text-gray-700 mt-0.5" dangerouslySetInnerHTML={{ __html: w.definition_ja }} />}
-                    {w.definition_en && <p className="text-xs text-gray-400" dangerouslySetInnerHTML={{ __html: w.definition_en }} />}
-                    {w.example && <p className="text-xs text-gray-400 italic" dangerouslySetInnerHTML={{ __html: `"${w.example}"` }} />}
-                  </div>
-                  <button
-                    onClick={() => handleRemoveWord(w.id)}
-                    disabled={removing === w.id}
-                    className="text-xs text-gray-300 hover:text-red-500 transition-colors shrink-0 disabled:opacity-50"
-                  >
-                    {removing === w.id ? '…' : 'Remove'}
-                  </button>
+                <div key={w.id} className="border-b border-gray-100 last:border-0">
+                  {editingWordId === w.id ? (
+                    <div className="py-2 space-y-1.5">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <Input value={editFields.word} onChange={e => setEditFields(f => ({ ...f, word: e.target.value }))} placeholder="Word *" className="h-7 text-xs" />
+                        <Input value={editFields.reading} onChange={e => setEditFields(f => ({ ...f, reading: e.target.value }))} placeholder="Reading" className="h-7 text-xs" />
+                      </div>
+                      <Input value={editFields.defJa} onChange={e => setEditFields(f => ({ ...f, defJa: e.target.value }))} placeholder="意味 (JA)" className="h-7 text-xs" />
+                      <Input value={editFields.defEn} onChange={e => setEditFields(f => ({ ...f, defEn: e.target.value }))} placeholder="Definition (EN)" className="h-7 text-xs" />
+                      <Input value={editFields.example} onChange={e => setEditFields(f => ({ ...f, example: e.target.value }))} placeholder="Example" className="h-7 text-xs" />
+                      <div className="flex gap-2">
+                        <button onClick={handleEditSave} disabled={savingEdit || !editFields.word.trim()} className="px-3 py-1 bg-brand text-white text-xs rounded-md disabled:opacity-50">
+                          {savingEdit ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={() => setEditingWordId(null)} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2 py-2">
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-sm text-gray-900">{w.word}</span>
+                        {w.reading && <span className="text-xs text-gray-400 ml-2">{w.reading}</span>}
+                        {w.definition_ja && <p className="text-xs text-gray-700 mt-0.5" dangerouslySetInnerHTML={{ __html: w.definition_ja }} />}
+                        {w.definition_en && <p className="text-xs text-gray-400" dangerouslySetInnerHTML={{ __html: w.definition_en }} />}
+                        {w.example && <p className="text-xs text-gray-400 italic" dangerouslySetInnerHTML={{ __html: `"${w.example}"` }} />}
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button onClick={() => startEdit(w)} className="text-xs text-gray-400 hover:text-brand transition-colors">
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleRemoveWord(w.id)}
+                          disabled={removing === w.id}
+                          className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50"
+                        >
+                          {removing === w.id ? '…' : 'Remove'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

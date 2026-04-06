@@ -533,6 +533,18 @@ export async function removeWordFromDeck(wordId: string): Promise<{ error?: stri
   return error ? { error: error.message } : {}
 }
 
+export async function updateDeckWord(
+  wordId: string,
+  word: { word: string; reading?: string; definition_ja?: string; definition_en?: string; example?: string },
+): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from('vocabulary_deck_words')
+    .update(word)
+    .eq('id', wordId)
+
+  return error ? { error: error.message } : {}
+}
+
 export async function assignDeckToStudent(
   deckId: string,
   studentId: string,
