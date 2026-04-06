@@ -19,21 +19,41 @@ export function CalendarPage() {
     const rangeStart = subMonths(new Date(), 6).toISOString()
     const rangeEnd = addMonths(new Date(), 6).toISOString()
 
-    const lessonQuery = supabase
-      .from('lessons')
-      .select('id, scheduled_start, scheduled_end, status, student:profiles!lessons_student_id_fkey(full_name), teacher:profiles!lessons_teacher_id_fkey(full_name)')
-      .gte('scheduled_start', rangeStart)
-      .lte('scheduled_start', rangeEnd)
-      .order('scheduled_start', { ascending: true })
+    const baseSelect = 'id, scheduled_start, scheduled_end, status, is_group, student:profiles!lessons_student_id_fkey(full_name), teacher:profiles!lessons_teacher_id_fkey(full_name), lesson_participants(student:profiles!lesson_participants_student_id_fkey(full_name))'
+
+    let lessonsPromise
 
     if (isTeacher) {
-      lessonQuery.eq('teacher_id', user.id)
+      lessonsPromise = supabase
+        .from('lessons')
+        .select(baseSelect)
+        .eq('teacher_id', user.id)
+        .gte('scheduled_start', rangeStart)
+        .lte('scheduled_start', rangeEnd)
+        .order('scheduled_start', { ascending: true })
     } else {
-      lessonQuery.eq('student_id', user.id)
+      // Students can be the primary student_id OR a participant in a group lesson
+      const { data: participations } = await supabase
+        .from('lesson_participants')
+        .select('lesson_id')
+        .eq('student_id', user.id)
+      const participantLessonIds = (participations ?? []).map((p: any) => p.lesson_id)
+
+      const orFilter = participantLessonIds.length
+        ? `student_id.eq.${user.id},id.in.(${participantLessonIds.join(',')})`
+        : `student_id.eq.${user.id}`
+
+      lessonsPromise = supabase
+        .from('lessons')
+        .select(baseSelect)
+        .or(orFilter)
+        .gte('scheduled_start', rangeStart)
+        .lte('scheduled_start', rangeEnd)
+        .order('scheduled_start', { ascending: true })
     }
 
     const [{ data: lessonsData }, { data: requestsData }] = await Promise.all([
-      lessonQuery,
+      lessonsPromise,
       isTeacher
         ? supabase
             .from('booking_requests')
@@ -48,7 +68,7 @@ export function CalendarPage() {
             .eq('status', 'pending'),
     ])
 
-    setLessons(lessonsData ?? [])
+    setLessons((lessonsData ?? []).filter((l: any) => l.status !== 'cancelled'))
     setPendingRequests(requestsData ?? [])
     setLoading(false)
   }

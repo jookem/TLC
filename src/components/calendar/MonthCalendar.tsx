@@ -14,8 +14,10 @@ type Lesson = {
   scheduled_start: string
   scheduled_end: string
   status: string
+  is_group?: boolean
   student?: { full_name: string } | null
   teacher?: { full_name: string } | null
+  lesson_participants?: { student: { full_name: string } | null }[]
 }
 
 type BookingRequest = {
@@ -34,6 +36,12 @@ type Props = {
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function lessonStudentNames(l: Lesson): string[] {
+  const primary = l.student?.full_name
+  const participants = (l.lesson_participants ?? []).map(p => p.student?.full_name).filter(Boolean) as string[]
+  return primary ? [primary, ...participants] : participants
+}
 
 export function MonthCalendar({ lessons, pendingRequests, role }: Props) {
   const [current, setCurrent] = useState(() => new Date())
@@ -112,7 +120,12 @@ export function MonthCalendar({ lessons, pendingRequests, role }: Props) {
                     {formatInTimeZone(new Date(l.scheduled_start), TZ, 'h:mm')}
                     {' '}
                     {role === 'teacher'
-                      ? l.student?.full_name?.split(' ')[0]
+                      ? (() => {
+                          const names = lessonStudentNames(l)
+                          return names.length > 1
+                            ? `Group (${names.length})`
+                            : names[0]?.split(' ')[0] ?? ''
+                        })()
                       : l.teacher?.full_name?.split(' ')[0]}
                   </div>
                 ))}
@@ -140,7 +153,12 @@ export function MonthCalendar({ lessons, pendingRequests, role }: Props) {
             <div key={l.id} className="flex items-center justify-between gap-3 text-sm">
               <div>
                 <p className="font-medium">
-                  {role === 'teacher' ? l.student?.full_name : l.teacher?.full_name}
+                  {role === 'teacher'
+                    ? (() => {
+                        const names = lessonStudentNames(l)
+                        return names.length > 1 ? names.join(' & ') : names[0] ?? ''
+                      })()
+                    : l.teacher?.full_name}
                 </p>
                 <p className="text-xs text-gray-500">
                   {formatInTimeZone(new Date(l.scheduled_start), TZ, 'h:mm a')}

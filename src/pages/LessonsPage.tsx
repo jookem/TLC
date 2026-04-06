@@ -60,7 +60,7 @@ export function LessonsPage() {
           .eq('teacher_id', user!.id)
           .or(orFilter)
           .order('scheduled_start', { ascending: false })
-        setLessons(data ?? [])
+        setLessons((data ?? []).filter((l: any) => l.status !== 'cancelled'))
       }
     } else {
       setSelectedStudent(null)
@@ -86,7 +86,7 @@ export function LessonsPage() {
       .select('*, teacher:profiles!lessons_teacher_id_fkey(id, full_name), lesson_notes(summary, areas_to_focus, homework), lesson_participants(student_id, student:profiles!lesson_participants_student_id_fkey(full_name))')
       .or(orFilter)
       .order('scheduled_start', { ascending: false })
-    setLessons(data ?? [])
+    setLessons((data ?? []).filter((l: any) => l.status !== 'cancelled'))
     setLoading(false)
   }
 
