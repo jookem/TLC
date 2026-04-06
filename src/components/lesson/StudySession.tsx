@@ -166,15 +166,13 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
                   />
                 )}
                 {current.definition_ja && (
-                  <p className="text-xl font-medium text-gray-900">{current.definition_ja}</p>
+                  <p className="text-xl font-medium text-gray-900" dangerouslySetInnerHTML={{ __html: current.definition_ja }} />
                 )}
                 {current.definition_en && (
-                  <p className="text-base text-gray-500">{current.definition_en}</p>
+                  <p className="text-base text-gray-500" dangerouslySetInnerHTML={{ __html: current.definition_en }} />
                 )}
                 {current.example && (
-                  <p className="text-sm text-gray-400 italic border-t pt-3 mt-3">
-                    &ldquo;{current.example}&rdquo;
-                  </p>
+                  <p className="text-sm text-gray-400 italic border-t pt-3 mt-3" dangerouslySetInnerHTML={{ __html: `&ldquo;${current.example}&rdquo;` }} />
                 )}
               </div>
             )}

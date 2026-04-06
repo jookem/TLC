@@ -58,10 +58,10 @@ export function VocabularyFlashcard({
                   className="w-full max-h-32 object-contain rounded-md mb-2"
                 />
               )}
-              {entry.definition_ja && <p className="text-sm font-medium text-gray-900">{entry.definition_ja}</p>}
-              {entry.definition_en && <p className="text-sm text-gray-500">{entry.definition_en}</p>}
+              {entry.definition_ja && <p className="text-sm font-medium text-gray-900" dangerouslySetInnerHTML={{ __html: entry.definition_ja }} />}
+              {entry.definition_en && <p className="text-sm text-gray-500" dangerouslySetInnerHTML={{ __html: entry.definition_en }} />}
               {entry.example && (
-                <p className="text-xs text-gray-500 italic mt-2">&ldquo;{entry.example}&rdquo;</p>
+                <p className="text-xs text-gray-500 italic mt-2" dangerouslySetInnerHTML={{ __html: `&ldquo;${entry.example}&rdquo;` }} />
               )}
             </div>
           )}

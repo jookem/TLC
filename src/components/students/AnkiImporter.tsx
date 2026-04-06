@@ -20,6 +20,10 @@ type ParseResult = {
   fieldNames: string[]
 }
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim()
+}
+
 const SQLITE_MAGIC = 'SQLite format 3\0'
 
 function isSQLite(buf: ArrayBuffer): boolean {
@@ -69,9 +73,8 @@ async function parseApkg(file: File): Promise<ParseResult> {
   // @ts-ignore - sql.js lacks perfect types for dynamic import
   const initSqlJs = (await import('sql.js')).default
 
-  const SQL = await initSqlJs({
-    locateFile: () => '/sql-wasm.wasm',
-  })
+  const wasmBinary = await fetch('/sql-wasm.wasm').then(r => r.arrayBuffer())
+  const SQL = await initSqlJs({ wasmBinary })
 
   const zip = await JSZip.loadAsync(file)
 
@@ -271,8 +274,8 @@ export function AnkiImporter({ studentId, onImported }: { studentId: string; onI
     const entries = result.cards
       .map(c => ({
         student_id: studentId,
-        word: c.fields[fieldMap.word]?.trim() ?? '',
-        definition_en: fieldMap.definition_en >= 0 ? (c.fields[fieldMap.definition_en]?.trim() ?? '') : '',
+        word: stripHtml(c.fields[fieldMap.word] ?? ''),
+        definition_en: fieldMap.definition_en >= 0 ? (c.fields[fieldMap.definition_en]?.trim() || undefined) : undefined,
         definition_ja: fieldMap.definition_ja >= 0 ? (c.fields[fieldMap.definition_ja]?.trim() || undefined) : undefined,
         example: fieldMap.example >= 0 ? (c.fields[fieldMap.example]?.trim() || undefined) : undefined,
       }))
@@ -372,8 +375,8 @@ export function AnkiImporter({ studentId, onImported }: { studentId: string; onI
 
             <div className="space-y-2">
               <FieldSelect label="Word *" value={fieldMap.word} onChange={v => setFieldMap(m => ({ ...m, word: v }))} />
-              <FieldSelect label="Definition (EN) *" value={fieldMap.definition_en} onChange={v => setFieldMap(m => ({ ...m, definition_en: v }))} />
-              <FieldSelect label="Definition (JA)" value={fieldMap.definition_ja} onChange={v => setFieldMap(m => ({ ...m, definition_ja: v }))} />
+              <FieldSelect label="意味 (JA) *" value={fieldMap.definition_ja} onChange={v => setFieldMap(m => ({ ...m, definition_ja: v }))} />
+              <FieldSelect label="Definition (EN)" value={fieldMap.definition_en} onChange={v => setFieldMap(m => ({ ...m, definition_en: v }))} />
               <FieldSelect label="Example" value={fieldMap.example} onChange={v => setFieldMap(m => ({ ...m, example: v }))} />
             </div>
 
