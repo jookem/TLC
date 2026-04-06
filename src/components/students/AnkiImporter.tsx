@@ -62,53 +62,83 @@ async function parseApkg(file: File): Promise<ParseResult> {
 
   const db = new SQL.Database(new Uint8Array(dbBuffer))
 
-  // Read field names from the first note model in col
+  // Discover what tables exist in this export
+  const tablesRes = db.exec("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+  const tables = new Set((tablesRes[0]?.values ?? []).map((r: any) => r[0] as string))
+
+  // ── Field names ──────────────────────────────────────────────
   let fieldNames: string[] = []
-  try {
-    const colRes = db.exec('SELECT models FROM col LIMIT 1')
-    if (colRes[0]?.values?.[0]?.[0]) {
-      const models = JSON.parse(colRes[0].values[0][0] as string)
-      const firstModel = Object.values(models)[0] as any
-      fieldNames = (firstModel?.flds ?? []).map((f: any) => f.name as string)
-    }
-  } catch {
-    // col table may use different schema in newer Anki versions — fall back to positional
+
+  // Try col.models JSON (Anki 2.0 / 2.1 schema)
+  if (tables.has('col')) {
+    try {
+      const colRes = db.exec('SELECT models FROM col LIMIT 1')
+      const raw = colRes[0]?.values?.[0]?.[0]
+      if (raw) {
+        const models = JSON.parse(raw as string)
+        const firstModel = Object.values(models)[0] as any
+        fieldNames = (firstModel?.flds ?? []).map((f: any) => f.name as string)
+      }
+    } catch { /* fall through */ }
   }
 
-  // If col didn't yield field names, try notetypes table (Anki 2.1.50+)
-  if (fieldNames.length === 0) {
+  // Try fields table (Anki 2.1.50+ schema)
+  if (fieldNames.length === 0 && tables.has('fields')) {
     try {
-      const ntRes = db.exec(
-        'SELECT config FROM notetypes ORDER BY id LIMIT 1'
-      )
-      if (ntRes[0]?.values?.[0]?.[0]) {
-        // config is a protobuf blob — skip, fall back to positional names
-      }
-      // Try fields table if it exists
-      const fRes = db.exec(
-        'SELECT name FROM fields ORDER BY ntid, ord'
-      )
+      const fRes = db.exec('SELECT name FROM fields ORDER BY ntid, ord')
       if (fRes[0]?.values?.length) {
         fieldNames = fRes[0].values.map((r: any) => r[0] as string)
       }
-    } catch {
-      // Not all Anki versions have these tables
-    }
+    } catch { /* fall through */ }
   }
 
-  // Read all notes
-  const notesRes = db.exec('SELECT flds FROM notes')
+  // ── Notes ────────────────────────────────────────────────────
+  // Use prepare+step to iterate all rows (avoids exec memory limits)
+  const allFlds: string[] = []
+
+  if (tables.has('notes')) {
+    try {
+      const stmt = db.prepare('SELECT flds FROM notes')
+      while (stmt.step()) {
+        const row = stmt.getAsObject() as any
+        const flds = row.flds ?? row.FLDS ?? ''
+        if (flds) allFlds.push(flds as string)
+      }
+      stmt.free()
+    } catch { /* fall through */ }
+  }
+
+  // Some newer exports store content only in cards — try joining
+  if (allFlds.length === 0 && tables.has('cards') && tables.has('notes')) {
+    try {
+      const stmt = db.prepare('SELECT n.flds FROM notes n INNER JOIN cards c ON c.nid = n.id')
+      const seen = new Set<string>()
+      while (stmt.step()) {
+        const row = stmt.getAsObject() as any
+        const flds = row.flds ?? row.FLDS ?? ''
+        if (flds && !seen.has(flds as string)) {
+          seen.add(flds as string)
+          allFlds.push(flds as string)
+        }
+      }
+      stmt.free()
+    } catch { /* fall through */ }
+  }
+
   db.close()
 
-  if (!notesRes[0]?.values?.length) {
-    throw new Error('No cards found in this deck.')
+  if (allFlds.length === 0) {
+    throw new Error(
+      `Found 0 notes in this deck.\nTables present: ${[...tables].join(', ')}\n` +
+      `Try exporting with File → Export → "Anki Deck Package (.apkg)" with "Include all decks" checked.`
+    )
   }
 
-  const cards: ParsedCard[] = notesRes[0].values.map((row: any) => ({
-    fields: (row[0] as string).split('\x1f'),
+  const cards: ParsedCard[] = allFlds.map(flds => ({
+    fields: flds.split('\x1f'),
   }))
 
-  // Ensure fieldNames covers all fields we found
+  // Ensure fieldNames covers all field positions found
   const maxFields = Math.max(...cards.map(c => c.fields.length))
   while (fieldNames.length < maxFields) {
     fieldNames.push(`Field ${fieldNames.length + 1}`)
@@ -119,16 +149,19 @@ async function parseApkg(file: File): Promise<ParseResult> {
 
 function guessFieldMap(fieldNames: string[]): FieldMap {
   const lower = fieldNames.map(n => n.toLowerCase())
-  const find = (...terms: string[]) => {
+  const find = (...terms: string[]): number => {
     for (const term of terms) {
       const i = lower.findIndex(n => n.includes(term))
       if (i !== -1) return i
     }
     return -1
   }
+  const wordIdx = find('word', 'front', 'expression', 'vocab', 'english', 'term')
+  const defIdx = find('definition', 'meaning', 'back', 'english def', 'gloss')
   return {
-    word: find('word', 'front', 'expression', 'vocab', 'english', 'term') ?? 0,
-    definition_en: find('definition', 'meaning', 'back', 'english def', 'gloss') ?? 1,
+    // Fall back to positional defaults (0=word, 1=definition) when not detected
+    word: wordIdx >= 0 ? wordIdx : 0,
+    definition_en: defIdx >= 0 ? defIdx : (fieldNames.length > 1 ? 1 : 0),
     definition_ja: find('japanese', 'ja', '日本語', 'translation', 'kana', 'reading'),
     example: find('example', 'sentence', 'usage', 'context'),
   }
