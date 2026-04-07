@@ -30,14 +30,16 @@ function isJapanese(text: string): boolean {
   return /[\u3040-\u30FF\u4E00-\u9FFF]/.test(text)
 }
 
-function tagsToLabel(tags: Record<string, boolean>): string {
-  if (tags.Pronoun) return 'Pronoun'
-  if (tags.Verb || tags.Copula || tags.Auxiliary || tags.Modal) return 'Verb'
-  if (tags.Adjective) return 'Adjective'
-  if (tags.Adverb) return 'Adverb'
-  if (tags.Preposition) return 'Preposition'
-  if (tags.Conjunction) return 'Conjunction'
-  if (tags.Noun || tags.ProperNoun) return 'Noun'
+// compromise v14 returns {text, terms:[{text, tags:[]}]} per sentence
+// Use the stable .has() API to check POS tags
+function termToLabel(term: ReturnType<ReturnType<typeof nlp>['terms']>['first']): string {
+  if (term.has('#Pronoun')) return 'Pronoun'
+  if (term.has('#Verb') || term.has('#Copula') || term.has('#Auxiliary') || term.has('#Modal')) return 'Verb'
+  if (term.has('#Adjective')) return 'Adjective'
+  if (term.has('#Adverb')) return 'Adverb'
+  if (term.has('#Preposition')) return 'Preposition'
+  if (term.has('#Conjunction')) return 'Conjunction'
+  if (term.has('#Noun') || term.has('#ProperNoun')) return 'Noun'
   return 'Other'
 }
 
@@ -54,11 +56,13 @@ async function translateAndParse(
     english = json.responseData?.translatedText ?? text
   }
 
+  // Use compromise's stable forEach API rather than .json() which varies by version
   const doc = nlp(english)
-  const terms = doc.terms().json() as Array<{ text: string; tags: Record<string, boolean> }>
-  const parts: PuzzlePart[] = terms
-    .map(t => ({ text: t.text.trim(), label: tagsToLabel(t.tags) }))
-    .filter(p => p.text.length > 0)
+  const parts: PuzzlePart[] = []
+  doc.terms().forEach((term: any) => {
+    const text = term.text('trim')
+    if (text) parts.push({ text, label: termToLabel(term) })
+  })
 
   return { english, parts }
 }
@@ -130,6 +134,12 @@ function PuzzleEditor({
     if (selectedGrammar) {
       const { deck: gd } = await getGrammarDeckWithPoints(selectedGrammar)
       for (const pt of gd?.points ?? []) {
+        // New fill-in-the-blank format: fill the blank with the answer to get a complete sentence
+        if (pt.sentence_with_blank && pt.answer) {
+          const s = pt.sentence_with_blank.replace('_____', pt.answer).trim()
+          if (s) sentences.push({ sentence: s, hint: pt.hint_ja ?? pt.point })
+        }
+        // Legacy format: use examples array
         for (const ex of pt.examples ?? []) {
           const s = ex.trim()
           if (s) sentences.push({ sentence: s, hint: pt.point })
