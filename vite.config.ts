@@ -63,6 +63,20 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor':  ['react', 'react-dom', 'react-router-dom'],
+          'pdf':           ['@react-pdf/renderer'],
+          'charts':        ['recharts'],
+          'dnd':           ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          'nlp':           ['compromise'],
+          'supabase':      ['@supabase/supabase-js'],
+        },
+      },
+    },
+  },
   optimizeDeps: {
     exclude: ['sql.js'],
   },
