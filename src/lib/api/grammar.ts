@@ -12,6 +12,10 @@ export interface GrammarBankEntry {
   point: string
   explanation: string
   examples: string[]
+  sentence_with_blank: string | null
+  answer: string | null
+  hint_ja: string | null
+  distractors: string[]
   mastery_level: MasteryLevel
   next_review: string | null
   created_at: string
@@ -24,6 +28,10 @@ export interface GrammarDeckPoint {
   point: string
   explanation: string
   examples: string[]
+  sentence_with_blank: string | null
+  answer: string | null
+  hint_ja: string | null
+  distractors: string[]
   created_at: string
 }
 
@@ -186,14 +194,29 @@ export async function deleteGrammarDeck(
   return error ? { error: error.message } : {}
 }
 
+export type GrammarPointFields = {
+  point: string
+  explanation: string
+  examples?: string[]
+  sentence_with_blank?: string
+  answer?: string
+  hint_ja?: string
+  distractors?: string[]
+}
+
 export async function addPointToDeck(
   deckId: string,
-  point: { point: string; explanation: string; examples?: string[] },
+  point: GrammarPointFields,
 ): Promise<{ error?: string }> {
   const { error } = await supabase
     .from('grammar_deck_points')
     .upsert(
-      { deck_id: deckId, ...point, examples: point.examples ?? [] },
+      {
+        deck_id: deckId,
+        ...point,
+        examples: point.examples ?? [],
+        distractors: point.distractors ?? [],
+      },
       { onConflict: 'deck_id,point', ignoreDuplicates: false },
     )
 
@@ -202,11 +225,15 @@ export async function addPointToDeck(
 
 export async function updateGrammarDeckPoint(
   pointId: string,
-  fields: { point: string; explanation: string; examples?: string[] },
+  fields: GrammarPointFields,
 ): Promise<{ error?: string }> {
   const { error } = await supabase
     .from('grammar_deck_points')
-    .update({ ...fields, examples: fields.examples ?? [] })
+    .update({
+      ...fields,
+      examples: fields.examples ?? [],
+      distractors: fields.distractors ?? [],
+    })
     .eq('id', pointId)
 
   return error ? { error: error.message } : {}
@@ -245,6 +272,10 @@ export async function assignGrammarDeckToStudent(
     point: p.point,
     explanation: p.explanation,
     examples: p.examples,
+    sentence_with_blank: p.sentence_with_blank,
+    answer: p.answer,
+    hint_ja: p.hint_ja,
+    distractors: p.distractors ?? [],
   }))
 
   const { error } = await supabase

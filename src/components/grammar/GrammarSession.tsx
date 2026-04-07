@@ -13,38 +13,51 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
 }
 
-function isEnglish(text: string): boolean {
-  return text.trim().length > 0 && !/[\u3040-\u30FF\u4E00-\u9FFF]/.test(text)
-}
+function buildChoices(current: GrammarBankEntry): string[] {
+  const answer = current.answer ?? current.explanation
+  const teacherDistractors = (current.distractors ?? []).filter(d => d && d !== answer)
 
-function buildChoices(current: GrammarBankEntry, all: GrammarBankEntry[]): string[] {
-  const correct = current.explanation
-
-  // Only use English explanations as distractors
-  const pool = all
-    .filter(e => e.id !== current.id && isEnglish(e.explanation))
-    .map(e => e.explanation)
-    .filter(e => e !== correct)
-
-  const distractors = shuffle(pool).slice(0, 3)
-
-  // Pad with English fallbacks if not enough entries
+  // Use teacher-defined distractors first, pad with generic fallbacks only if needed
   const fallbacks = [
-    'Used to express a past action',
-    'Indicates a continuing state',
-    'Expresses desire or wish',
-    'Shows a conditional relationship',
-    'Used for making requests',
-    'Expresses obligation or necessity',
-    'Describes a habitual action',
-    'Used to give or receive something',
-  ].filter(f => f !== correct && !distractors.includes(f))
+    'am', 'is', 'are', 'was', 'were', 'be', 'been',
+    'have', 'has', 'had', 'do', 'does', 'did',
+    'will', 'would', 'can', 'could', 'should', 'may', 'might',
+  ].filter(f => f !== answer && !teacherDistractors.includes(f))
 
+  const distractors = [...teacherDistractors]
   while (distractors.length < 3) {
-    distractors.push(fallbacks[distractors.length])
+    distractors.push(fallbacks[distractors.length] ?? `option ${distractors.length + 1}`)
   }
 
-  return shuffle([correct, ...distractors.slice(0, 3)])
+  return shuffle([answer, ...distractors.slice(0, 3)])
+}
+
+// Render the sentence with the blank highlighted or filled
+function SentenceDisplay({
+  sentence,
+  fill,
+  fillColor = 'text-white',
+}: {
+  sentence: string
+  fill?: string
+  fillColor?: string
+}) {
+  const parts = sentence.split('_____')
+  if (parts.length === 1) return <span className="text-3xl font-bold text-gray-900">{sentence}</span>
+
+  return (
+    <span className="text-3xl font-bold text-gray-900">
+      {parts[0]}
+      <span className={`inline-block min-w-[3rem] text-center font-bold text-3xl mx-1 px-2 rounded-lg border-b-4 ${
+        fill
+          ? 'bg-green-500 border-green-600 text-white'
+          : 'bg-transparent border-gray-300 text-transparent select-none'
+      }`}>
+        {fill ?? '_____'}
+      </span>
+      {parts[1]}
+    </span>
+  )
 }
 
 export function GrammarSession({ cards, onClose, onComplete }: Props) {
@@ -61,7 +74,7 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
 
   useEffect(() => {
     if (current && !done) {
-      setChoices(buildChoices(current, cards))
+      setChoices(buildChoices(current))
       setSelected(null)
       setPhase('question')
     }
@@ -73,7 +86,8 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
     if (phase !== 'question' || !current) return
     setSelected(choice)
     setPhase('revealed')
-    if (choice === current.explanation) {
+    const answer = current.answer ?? current.explanation
+    if (choice === answer) {
       setStats(s => ({ ...s, correct: s.correct + 1 }))
     } else {
       setStats(s => ({ ...s, incorrect: s.incorrect + 1 }))
@@ -107,22 +121,20 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
     onClose()
   }
 
-  const isCorrect = selected === current?.explanation
+  if (!current && !done) return null
+
+  const answer = current ? (current.answer ?? current.explanation) : ''
+  const isCorrect = selected === answer
+  const sentence = current?.sentence_with_blank ?? current?.point ?? ''
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center p-4">
       {/* Header */}
-      <div className="w-full max-w-lg flex items-center justify-between mb-6">
-        <div className="text-sm text-gray-400">
-          {done ? (
-            <span className="text-white font-medium">Session complete!</span>
-          ) : (
-            <span>{total - queue.length} / {total}</span>
-          )}
-        </div>
-        <button onClick={handleClose} className="text-gray-500 hover:text-white text-sm transition-colors">
-          ✕ Exit
-        </button>
+      <div className="w-full max-w-lg flex items-center justify-between mb-4">
+        <span className="text-sm text-gray-400">
+          {done ? <span className="text-white font-medium">Session complete!</span> : `${total - queue.length} / ${total}`}
+        </span>
+        <button onClick={handleClose} className="text-gray-500 hover:text-white text-sm transition-colors">✕ Exit</button>
       </div>
 
       {/* Progress bar */}
@@ -136,7 +148,7 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
         <div className="w-full max-w-lg text-center space-y-6">
           <div className="text-5xl mb-2">🎉</div>
           <h2 className="text-2xl font-bold text-white">Session Complete</h2>
-          <p className="text-gray-400">You reviewed {total} grammar point{total !== 1 ? 's' : ''}</p>
+          <p className="text-gray-400">You reviewed {total} question{total !== 1 ? 's' : ''}</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-gray-800 rounded-xl p-3 text-center">
               <div className="text-2xl font-bold text-green-400">{stats.correct}</div>
@@ -147,26 +159,30 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
               <div className="text-xs text-gray-500 mt-1">Incorrect</div>
             </div>
           </div>
-          <button
-            onClick={handleClose}
-            className="px-8 py-3 bg-brand text-white rounded-xl font-medium hover:bg-brand/90 transition-colors"
-          >
+          <button onClick={handleClose} className="px-8 py-3 bg-brand text-white rounded-xl font-medium hover:bg-brand/90 transition-colors">
             Done
           </button>
         </div>
       ) : current ? (
         <div className="w-full max-w-lg space-y-4">
-          {/* Grammar point card */}
-          <div className="bg-white rounded-2xl p-8 shadow-2xl text-center">
-            <p className="text-xs text-gray-400 uppercase tracking-widest mb-3">Grammar Point</p>
-            <p className="text-4xl font-bold text-gray-900">{current.point}</p>
+          {/* Question card */}
+          <div className="bg-white rounded-2xl p-8 shadow-2xl text-center space-y-4">
+            <div className="text-sm text-gray-800 leading-relaxed">
+              <SentenceDisplay
+                sentence={sentence}
+                fill={phase === 'revealed' ? answer : undefined}
+              />
+            </div>
+            {current.hint_ja && (
+              <p className="text-base text-gray-500 font-medium">{current.hint_ja}</p>
+            )}
           </div>
 
           {/* Choices */}
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
             {choices.map((choice, i) => {
-              const isThis = choice === current.explanation
-              let cls = 'w-full text-left px-4 py-3 rounded-xl text-sm transition-colors border-2 '
+              const isThis = choice === answer
+              let cls = 'w-full text-left px-4 py-3 rounded-xl text-base font-medium transition-colors border-2 '
               if (phase === 'question') {
                 cls += 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700 hover:border-gray-600'
               } else if (isThis) {
@@ -178,49 +194,39 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
               }
               return (
                 <button key={i} onClick={() => handleSelect(choice)} disabled={phase === 'revealed'} className={cls}>
-                  <span className="opacity-50 mr-2">{String.fromCharCode(65 + i)}.</span>
+                  <span className="opacity-50 mr-2 text-sm">{String.fromCharCode(65 + i)}.</span>
                   {choice}
                 </button>
               )
             })}
           </div>
 
-          {/* After answer: examples + rating */}
+          {/* After answer: SRS rating */}
           {phase === 'revealed' && (
-            <div className="space-y-3">
-              {current.examples.length > 0 && (
-                <div className="bg-gray-800 rounded-xl px-4 py-3 space-y-1">
-                  {current.examples.map((ex, i) => (
-                    <p key={i} className="text-sm text-gray-300 italic">"{ex}"</p>
-                  ))}
-                </div>
+            <div className="grid grid-cols-2 gap-2">
+              {isCorrect ? (
+                <>
+                  <button onClick={() => handleRate('good')} disabled={rating} className="py-3 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 text-sm font-medium transition-colors disabled:opacity-50">
+                    <span className="block">Good</span>
+                    <span className="block text-xs opacity-60 mt-0.5">+level</span>
+                  </button>
+                  <button onClick={() => handleRate('easy')} disabled={rating} className="py-3 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm font-medium transition-colors disabled:opacity-50">
+                    <span className="block">Easy</span>
+                    <span className="block text-xs opacity-60 mt-0.5">skip ahead</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => handleRate('again')} disabled={rating} className="py-3 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm font-medium transition-colors disabled:opacity-50">
+                    <span className="block">Again</span>
+                    <span className="block text-xs opacity-60 mt-0.5">retry</span>
+                  </button>
+                  <button onClick={() => handleRate('hard')} disabled={rating} className="py-3 rounded-xl bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 text-sm font-medium transition-colors disabled:opacity-50">
+                    <span className="block">Hard</span>
+                    <span className="block text-xs opacity-60 mt-0.5">same interval</span>
+                  </button>
+                </>
               )}
-
-              <div className="grid grid-cols-2 gap-2">
-                {isCorrect ? (
-                  <>
-                    <button onClick={() => handleRate('good')} disabled={rating} className="py-3 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 text-sm font-medium transition-colors disabled:opacity-50">
-                      <span className="block text-xs mb-0.5">Good</span>
-                      <span className="block text-xs opacity-60">+level</span>
-                    </button>
-                    <button onClick={() => handleRate('easy')} disabled={rating} className="py-3 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm font-medium transition-colors disabled:opacity-50">
-                      <span className="block text-xs mb-0.5">Easy</span>
-                      <span className="block text-xs opacity-60">skip ahead</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => handleRate('again')} disabled={rating} className="py-3 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm font-medium transition-colors disabled:opacity-50">
-                      <span className="block text-xs mb-0.5">Again</span>
-                      <span className="block text-xs opacity-60">retry</span>
-                    </button>
-                    <button onClick={() => handleRate('hard')} disabled={rating} className="py-3 rounded-xl bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 text-sm font-medium transition-colors disabled:opacity-50">
-                      <span className="block text-xs mb-0.5">Hard</span>
-                      <span className="block text-xs opacity-60">same interval</span>
-                    </button>
-                  </>
-                )}
-              </div>
             </div>
           )}
 

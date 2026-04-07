@@ -29,6 +29,19 @@ const MASTERY_COLORS = [
 ]
 const MASTERY_LABELS = ['New', 'Seen', 'Familiar', 'Mastered']
 
+// Render a sentence with _____ highlighted
+function SentenceWithBlank({ sentence }: { sentence: string }) {
+  const parts = sentence.split('_____')
+  if (parts.length === 1) return <span>{sentence}</span>
+  return (
+    <span>
+      {parts[0]}
+      <span className="inline-block bg-brand-light text-brand-dark font-semibold px-1 rounded mx-0.5">_____</span>
+      {parts[1]}
+    </span>
+  )
+}
+
 // ── Deck Editor Modal ─────────────────────────────────────────
 function DeckEditor({
   deck,
@@ -47,14 +60,15 @@ function DeckEditor({
   const [renamingName, setRenamingName] = useState(false)
 
   // Add form
-  const [addPoint, setAddPoint] = useState('')
-  const [addExplanation, setAddExplanation] = useState('')
-  const [addExample, setAddExample] = useState('')
+  const [addSentence, setAddSentence] = useState('')
+  const [addAnswer, setAddAnswer] = useState('')
+  const [addHint, setAddHint] = useState('')
+  const [addDistractors, setAddDistractors] = useState('')
   const [saving, setSaving] = useState(false)
 
   // Inline edit
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editFields, setEditFields] = useState({ point: '', explanation: '', example: '' })
+  const [editFields, setEditFields] = useState({ sentence: '', answer: '', hint: '', distractors: '' })
   const [savingEdit, setSavingEdit] = useState(false)
   const [removing, setRemoving] = useState<string | null>(null)
 
@@ -77,41 +91,66 @@ function DeckEditor({
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
-    if (!addPoint.trim() || !addExplanation.trim()) return
+    const sentence = addSentence.trim()
+    const answer = addAnswer.trim()
+    if (!sentence || !answer) return
+    if (!sentence.includes('_____')) {
+      toast.error('Sentence must contain _____ to mark the blank.')
+      return
+    }
+    const distractors = addDistractors.split(',').map(s => s.trim()).filter(Boolean)
     setSaving(true)
     const { error } = await addPointToDeck(deck.id, {
-      point: addPoint.trim(),
-      explanation: addExplanation.trim(),
-      examples: addExample.trim() ? [addExample.trim()] : [],
+      point: sentence, // sentence acts as the unique key
+      explanation: answer,
+      sentence_with_blank: sentence,
+      answer,
+      hint_ja: addHint.trim() || undefined,
+      distractors,
     })
     setSaving(false)
     if (error) { toast.error(error); return }
     const { deck: refreshed } = await getGrammarDeckWithPoints(deck.id)
     setPoints(refreshed?.points ?? points)
-    setAddPoint(''); setAddExplanation(''); setAddExample('')
+    setAddSentence(''); setAddAnswer(''); setAddHint(''); setAddDistractors('')
     onUpdated()
   }
 
   function startEdit(p: GrammarDeckPoint) {
     setEditingId(p.id)
-    setEditFields({ point: p.point, explanation: p.explanation, example: p.examples[0] ?? '' })
+    setEditFields({
+      sentence: p.sentence_with_blank ?? p.point,
+      answer: p.answer ?? p.explanation,
+      hint: p.hint_ja ?? '',
+      distractors: (p.distractors ?? []).join(', '),
+    })
   }
 
   async function handleEditSave() {
-    if (!editingId || !editFields.point.trim() || !editFields.explanation.trim()) return
+    if (!editingId) return
+    const sentence = editFields.sentence.trim()
+    const answer = editFields.answer.trim()
+    if (!sentence || !answer) return
+    const distractors = editFields.distractors.split(',').map(s => s.trim()).filter(Boolean)
     setSavingEdit(true)
     const { error } = await updateGrammarDeckPoint(editingId, {
-      point: editFields.point.trim(),
-      explanation: editFields.explanation.trim(),
-      examples: editFields.example.trim() ? [editFields.example.trim()] : [],
+      point: sentence,
+      explanation: answer,
+      sentence_with_blank: sentence,
+      answer,
+      hint_ja: editFields.hint.trim() || undefined,
+      distractors,
     })
     setSavingEdit(false)
     if (error) { toast.error(error); return }
     setPoints(prev => prev.map(p => p.id === editingId ? {
       ...p,
-      point: editFields.point.trim(),
-      explanation: editFields.explanation.trim(),
-      examples: editFields.example.trim() ? [editFields.example.trim()] : [],
+      point: sentence,
+      explanation: answer,
+      sentence_with_blank: sentence,
+      answer,
+      hint_ja: editFields.hint.trim() || null,
+      distractors,
     } : p))
     setEditingId(null)
     onUpdated()
@@ -132,66 +171,86 @@ function DeckEditor({
         <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
           {renamingName ? (
             <input
-              autoFocus
-              value={name}
+              autoFocus value={name}
               onChange={e => setName(e.target.value)}
               onBlur={handleSaveName}
               onKeyDown={e => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setRenamingName(false) }}
               className="text-lg font-semibold border-b-2 border-brand outline-none flex-1"
             />
           ) : (
-            <button onClick={() => setRenamingName(true)} className="text-lg font-semibold text-gray-900 hover:text-brand transition-colors text-left" title="Click to rename">
+            <button onClick={() => setRenamingName(true)} className="text-lg font-semibold text-gray-900 hover:text-brand transition-colors text-left">
               {name} <span className="text-xs text-gray-400 font-normal">✏️</span>
             </button>
           )}
           <div className="flex items-center gap-3 ml-4">
-            <button onClick={async () => { await onDelete(deck.id, name); onClose() }} className="text-xs text-gray-300 hover:text-red-500 transition-colors">
-              Delete deck
-            </button>
+            <button onClick={async () => { await onDelete(deck.id, name); onClose() }} className="text-xs text-gray-300 hover:text-red-500 transition-colors">Delete deck</button>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
           </div>
         </div>
 
         {/* Add form */}
-        <form onSubmit={handleAdd} className="px-6 py-4 border-b space-y-2 shrink-0">
+        <form onSubmit={handleAdd} className="px-6 py-4 border-b space-y-2 shrink-0 bg-gray-50">
+          <p className="text-xs text-gray-500">Use <code className="bg-gray-200 px-1 rounded">_____</code> (5 underscores) to mark the blank.</p>
+          <Input
+            value={addSentence}
+            onChange={e => setAddSentence(e.target.value)}
+            placeholder='Sentence with blank * e.g. "There _____ a park."'
+            required
+          />
           <div className="grid grid-cols-2 gap-2">
-            <Input value={addPoint} onChange={e => setAddPoint(e.target.value)} placeholder="Grammar point * (e.g. 〜ている)" required />
-            <Input value={addExample} onChange={e => setAddExample(e.target.value)} placeholder="Example sentence" />
+            <Input value={addAnswer} onChange={e => setAddAnswer(e.target.value)} placeholder="Answer * e.g. is" required />
+            <Input value={addHint} onChange={e => setAddHint(e.target.value)} placeholder="Japanese hint e.g. 「単数」です" />
           </div>
-          <Input value={addExplanation} onChange={e => setAddExplanation(e.target.value)} placeholder="Explanation / meaning *" required />
-          <button type="submit" disabled={saving || !addPoint.trim() || !addExplanation.trim()} className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
-            {saving ? 'Adding…' : '+ Add Point'}
+          <Input
+            value={addDistractors}
+            onChange={e => setAddDistractors(e.target.value)}
+            placeholder="Wrong choices (comma-separated) e.g. am, are, were"
+          />
+          <button type="submit" disabled={saving || !addSentence.trim() || !addAnswer.trim()} className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+            {saving ? 'Adding…' : '+ Add Question'}
           </button>
         </form>
 
         {/* Point list */}
         <div className="overflow-y-auto flex-1 px-6 py-3">
           {loading ? (
-            <div className="space-y-2 py-4">{[...Array(3)].map((_, i) => <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />)}</div>
+            <div className="space-y-2 py-4">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}</div>
           ) : points.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4">No points yet. Add some above.</p>
+            <p className="text-sm text-gray-400 py-4">No questions yet. Add some above.</p>
           ) : (
             <div className="space-y-1">
               {points.map(p => (
                 <div key={p.id} className="border-b border-gray-100 last:border-0">
                   {editingId === p.id ? (
                     <div className="py-2 space-y-1.5">
-                      <Input value={editFields.point} onChange={e => setEditFields(f => ({ ...f, point: e.target.value }))} placeholder="Grammar point *" className="h-7 text-xs" />
-                      <Input value={editFields.explanation} onChange={e => setEditFields(f => ({ ...f, explanation: e.target.value }))} placeholder="Explanation *" className="h-7 text-xs" />
-                      <Input value={editFields.example} onChange={e => setEditFields(f => ({ ...f, example: e.target.value }))} placeholder="Example sentence" className="h-7 text-xs" />
+                      <Input value={editFields.sentence} onChange={e => setEditFields(f => ({ ...f, sentence: e.target.value }))} placeholder='Sentence with blank *' className="h-7 text-xs" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input value={editFields.answer} onChange={e => setEditFields(f => ({ ...f, answer: e.target.value }))} placeholder="Answer *" className="h-7 text-xs" />
+                        <Input value={editFields.hint} onChange={e => setEditFields(f => ({ ...f, hint: e.target.value }))} placeholder="Japanese hint" className="h-7 text-xs" />
+                      </div>
+                      <Input value={editFields.distractors} onChange={e => setEditFields(f => ({ ...f, distractors: e.target.value }))} placeholder="Wrong choices, comma-separated" className="h-7 text-xs" />
                       <div className="flex gap-2">
-                        <button onClick={handleEditSave} disabled={savingEdit} className="px-3 py-1 bg-brand text-white text-xs rounded-md disabled:opacity-50">
-                          {savingEdit ? 'Saving…' : 'Save'}
-                        </button>
+                        <button onClick={handleEditSave} disabled={savingEdit} className="px-3 py-1 bg-brand text-white text-xs rounded-md disabled:opacity-50">{savingEdit ? 'Saving…' : 'Save'}</button>
                         <button onClick={() => setEditingId(null)} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
                       </div>
                     </div>
                   ) : (
                     <div className="flex items-start gap-2 py-2">
                       <div className="flex-1 min-w-0">
-                        <span className="font-medium text-sm text-gray-900">{p.point}</span>
-                        <p className="text-xs text-gray-600 mt-0.5">{p.explanation}</p>
-                        {p.examples[0] && <p className="text-xs text-gray-400 italic">"{p.examples[0]}"</p>}
+                        <p className="text-sm text-gray-900">
+                          <SentenceWithBlank sentence={p.sentence_with_blank ?? p.point} />
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
+                            ✓ {p.answer ?? p.explanation}
+                          </span>
+                          {p.hint_ja && <span className="text-xs text-gray-500">{p.hint_ja}</span>}
+                          {(p.distractors ?? []).length > 0 && (
+                            <span className="text-xs text-gray-400">
+                              wrong: {p.distractors!.join(' | ')}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <button onClick={() => startEdit(p)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
@@ -208,7 +267,7 @@ function DeckEditor({
         </div>
 
         <div className="px-6 py-3 border-t text-xs text-gray-400 shrink-0">
-          {points.length} point{points.length !== 1 ? 's' : ''} in this deck
+          {points.length} question{points.length !== 1 ? 's' : ''} in this deck
         </div>
       </div>
     </div>
@@ -415,13 +474,19 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
                     <div key={e.id} className="flex items-start gap-2 py-2 border-b border-gray-100 last:border-0">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-sm text-gray-900">{e.point}</span>
+                          <span className="font-medium text-sm text-gray-900">
+                            <SentenceWithBlank sentence={e.sentence_with_blank ?? e.point} />
+                          </span>
                           <span className={`text-xs px-1.5 py-0.5 rounded-full ${MASTERY_COLORS[e.mastery_level]}`}>
                             {MASTERY_LABELS[e.mastery_level]}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600 mt-0.5">{e.explanation}</p>
-                        {e.examples[0] && <p className="text-xs text-gray-400 italic">"{e.examples[0]}"</p>}
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                            ✓ {e.answer ?? e.explanation}
+                          </span>
+                          {e.hint_ja && <span className="text-xs text-gray-400">{e.hint_ja}</span>}
+                        </div>
                       </div>
                       <button onClick={() => handleDeleteEntry(e.id)} disabled={deletingEntry === e.id} className="text-xs text-gray-300 hover:text-red-500 transition-colors shrink-0 disabled:opacity-50">
                         {deletingEntry === e.id ? '…' : 'Remove'}
