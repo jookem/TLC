@@ -242,6 +242,59 @@ export function SettingsPage() {
             </Card>
           )}
 
+          {/* Student: avatar */}
+          {!isTeacher && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Profile Photo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <div className="relative shrink-0">
+                    {avatarPreview ? (
+                      <img
+                        src={avatarPreview}
+                        alt="Avatar"
+                        className="w-20 h-20 rounded-full object-cover ring-2 ring-brand/20"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-full bg-brand flex items-center justify-center">
+                        <span className="text-white text-2xl font-bold">
+                          {profile?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                        </span>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="absolute -bottom-1 -right-1 w-7 h-7 bg-brand text-white rounded-full flex items-center justify-center shadow hover:bg-brand/90 transition-colors disabled:opacity-50"
+                    >
+                      <Camera size={13} />
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{profile?.full_name}</p>
+                    {uploadingAvatar && <p className="text-xs text-gray-400 mt-0.5">Uploading…</p>}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="mt-1 text-xs text-brand hover:underline disabled:opacity-50"
+                    >
+                      {avatarPreview ? 'Change photo' : 'Upload photo'}
+                    </button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Student: join a teacher */}
           {!isTeacher && (
             <Card>
