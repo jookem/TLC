@@ -65,6 +65,7 @@ export function SettingsPage() {
     setEmailNotifs(profile?.notifications_email ?? true)
     setDefaultMins(profile?.default_lesson_mins ?? 60)
     setTimezone(profile?.timezone ?? 'Asia/Tokyo')
+    if (profile?.avatar_url) setAvatarPreview(profile.avatar_url)
   }, [profile])
 
   async function handleSaveName(e: React.FormEvent) {

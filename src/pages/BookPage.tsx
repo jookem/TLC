@@ -89,13 +89,23 @@ export function BookPage() {
       </div>
 
       {pendingRequests.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-2">
           <p className="text-sm text-yellow-800 font-medium">
-            保留中のリクエスト: {pendingRequests.length}件
+            保留中のリクエスト / Pending Requests ({pendingRequests.length})
           </p>
-          <p className="text-xs text-yellow-600 mt-1">
-            You have {pendingRequests.length} pending booking request(s) awaiting teacher approval.
-          </p>
+          <p className="text-xs text-yellow-600">Awaiting teacher approval:</p>
+          <ul className="space-y-1">
+            {pendingRequests.map((req: any) => (
+              <li key={req.id} className="text-xs text-yellow-700 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0" />
+                {new Date(req.requested_start).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
+                {' · '}
+                {new Date(req.requested_start).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })}
+                {' – '}
+                {new Date(req.requested_end).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

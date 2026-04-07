@@ -16,6 +16,7 @@ export function StudentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [search, setSearch] = useState('')
 
   const [addingName, setAddingName] = useState('')
   const [addingPassword, setAddingPassword] = useState('')
@@ -166,6 +167,16 @@ export function StudentsPage() {
         </div>
       )}
 
+      {students.length > 0 && (
+        <input
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search students…"
+          className="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+        />
+      )}
+
       {students.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-gray-500">
@@ -173,13 +184,24 @@ export function StudentsPage() {
             <p className="text-sm mt-1">Click "+ Add Student" to add your first student.</p>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {students.map((rel: any) => (
-            <StudentCard key={rel.id} relationship={rel} onRemoved={loadStudents} onLinked={loadStudents} />
-          ))}
-        </div>
-      )}
+      ) : (() => {
+        const q = search.trim().toLowerCase()
+        const filtered = q
+          ? students.filter((rel: any) =>
+              rel.student.full_name.toLowerCase().includes(q) ||
+              rel.student.email?.toLowerCase().includes(q)
+            )
+          : students
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.length === 0 ? (
+              <p className="text-sm text-gray-500 col-span-full">No students match "{search}"</p>
+            ) : filtered.map((rel: any) => (
+              <StudentCard key={rel.id} relationship={rel} onRemoved={loadStudents} onLinked={loadStudents} />
+            ))}
+          </div>
+        )
+      })()}
     </div>
   )
 }

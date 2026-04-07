@@ -125,9 +125,10 @@ export function GrammarPage() {
 
         {entries.length === 0 && (
           <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-gray-500">文法がまだありません。</p>
-              <p className="text-sm text-gray-400 mt-1">Your teacher will add grammar points from your lessons here.</p>
+            <CardContent className="py-12 text-center space-y-2">
+              <p className="text-4xl">📖</p>
+              <p className="text-gray-600 font-medium">文法がまだありません。</p>
+              <p className="text-sm text-gray-400">Your teacher will add grammar points from your lessons here.</p>
             </CardContent>
           </Card>
         )}

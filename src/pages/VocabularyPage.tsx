@@ -25,6 +25,7 @@ export function VocabularyPage() {
   const [error, setError] = useState<string | null>(null)
   const [studyCards, setStudyCards] = useState<VocabularyBankEntry[] | null>(null)
   const [view, setView] = useState<'decks' | 'mastery'>('decks')
+  const [search, setSearch] = useState('')
 
   async function loadVocab() {
     if (!user) return
@@ -67,6 +68,15 @@ export function VocabularyPage() {
     return <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />
   }
 
+  const q = search.trim().toLowerCase()
+  const filtered = q
+    ? vocab.filter(v =>
+        v.word?.toLowerCase().includes(q) ||
+        v.definition_en?.toLowerCase().includes(q) ||
+        v.definition_ja?.toLowerCase().includes(q)
+      )
+    : vocab
+
   const dueForReview = vocab.filter(v => {
     if (!v.next_review) return v.mastery_level < 3
     return new Date(v.next_review) <= new Date()
@@ -74,7 +84,7 @@ export function VocabularyPage() {
 
   // Build deck groups
   const deckGroupMap = new Map<string | null, DeckGroup>()
-  for (const v of vocab) {
+  for (const v of filtered) {
     const dId = v.deck_id ?? null
     if (!deckGroupMap.has(dId)) {
       const deckName = dId ? (deckNames[dId] ?? 'Assigned Deck') : 'その他 / Other'
@@ -91,7 +101,7 @@ export function VocabularyPage() {
 
   const byMastery = [0, 1, 2, 3].map(level => ({
     level,
-    words: vocab.filter(v => v.mastery_level === level),
+    words: filtered.filter(v => v.mastery_level === level),
   }))
 
   return (
@@ -134,6 +144,17 @@ export function VocabularyPage() {
             )}
           </div>
         </div>
+
+        {/* Search */}
+        {vocab.length > 0 && (
+          <input
+            type="search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search words…"
+            className="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+          />
+        )}
 
         {/* View toggle */}
         {vocab.length > 0 && (
@@ -218,6 +239,14 @@ export function VocabularyPage() {
             <CardContent className="py-12 text-center">
               <p className="text-gray-500">単語がまだありません。</p>
               <p className="text-sm text-gray-400 mt-1">Your teacher will add vocabulary words from your lessons here.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {vocab.length > 0 && filtered.length === 0 && (
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="text-gray-500">No words match "{search}"</p>
             </CardContent>
           </Card>
         )}

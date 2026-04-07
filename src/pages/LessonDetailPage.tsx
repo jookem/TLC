@@ -277,7 +277,6 @@ export function LessonDetailPage() {
             {formatInTimeZone(new Date(lesson.scheduled_start), tz, 'EEEE, MMMM d, yyyy · h:mm a')}
             {' - '}
             {formatInTimeZone(new Date(lesson.scheduled_end), tz, 'h:mm a')}
-            {' JST'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -304,6 +303,21 @@ export function LessonDetailPage() {
               label="Export PDF"
             />
           )}
+          {!isTeacher && (studentNotes || groupNotes) && (
+            <PDFDownloadButton
+              document={
+                <LessonNotesPDF
+                  lesson={lesson}
+                  notes={studentNotes ?? groupNotes}
+                  studentName={profile?.full_name ?? ''}
+                  teacherName={lesson.teacher?.full_name ?? ''}
+                  participants={[]}
+                />
+              }
+              filename={`lesson-notes-${lesson.scheduled_start.slice(0, 10)}.pdf`}
+              label="Save PDF"
+            />
+          )}
           {isTeacher && lesson.status === 'scheduled' && (
             <button
               onClick={handleMarkComplete}
@@ -313,7 +327,7 @@ export function LessonDetailPage() {
               {completing ? 'Saving…' : 'Mark Complete'}
             </button>
           )}
-          {lesson.status === 'scheduled' && (
+          {isTeacher && lesson.status === 'scheduled' && (
             confirmCancel ? (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Cancel this lesson?</span>
