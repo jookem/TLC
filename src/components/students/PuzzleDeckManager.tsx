@@ -1,165 +1,28 @@
 import { useEffect, useState } from 'react'
 import {
   listPuzzleDecks, createPuzzleDeck, deletePuzzleDeck, renamePuzzleDeck,
-  getPuzzleDeckWithPuzzles, createPuzzle, updatePuzzle, deletePuzzle,
+  getPuzzleDeckWithPuzzles, createPuzzle, deletePuzzle,
   assignPuzzleDeckToStudent, removePuzzleDeckFromStudent, getAssignedDeckIds,
   type PuzzleDeck, type Puzzle, type PuzzlePart,
 } from '@/lib/api/puzzles'
-import { supabase } from '@/lib/supabase'
+import { listGrammarDecks, getGrammarDeckWithPoints, type GrammarDeck } from '@/lib/api/grammar'
+import { listDecks, getDeckWithWords, type Deck } from '@/lib/api/lessons'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 
-// ── Source picker types ───────────────────────────────────────
-interface SourceItem {
-  sentence: string   // the Japanese / example sentence to use as prompt
-  hint: string       // the grammar point / word as a hint
-  source: string     // deck name for display
+// ── Helpers ───────────────────────────────────────────────────
+
+function stripHtml(html: string | null | undefined): string {
+  return (html ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
 }
 
-async function loadSourceItems(): Promise<SourceItem[]> {
-  const items: SourceItem[] = []
-
-  // Grammar decks — each point may have example sentences
-  const { data: grammarDecks } = await supabase
-    .from('grammar_decks')
-    .select('name, grammar_deck_points(point, explanation, examples)')
-    .order('created_at', { ascending: false })
-
-  for (const deck of grammarDecks ?? []) {
-    for (const pt of (deck as any).grammar_deck_points ?? []) {
-      for (const ex of pt.examples ?? []) {
-        if (ex?.trim()) {
-          items.push({ sentence: ex.trim(), hint: pt.point, source: `Grammar: ${deck.name}` })
-        }
-      }
-    }
-  }
-
-  // Vocabulary decks — use example > definition_en > definition_ja as fallback
-  const { data: vocabDecks } = await supabase
-    .from('vocabulary_decks')
-    .select('name, vocabulary_deck_words(word, example, definition_en, definition_ja)')
-    .order('created_at', { ascending: false })
-
-  function stripHtml(html: string | null | undefined): string {
-    return (html ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
-  }
-
-  for (const deck of vocabDecks ?? []) {
-    for (const w of (deck as any).vocabulary_deck_words ?? []) {
-      const sentence =
-        w.example?.trim() ||
-        stripHtml(w.definition_en) ||
-        stripHtml(w.definition_ja)
-      if (sentence) {
-        items.push({ sentence, hint: w.word, source: `Vocab: ${deck.name}` })
-      }
-    }
-  }
-
-  return items
-}
-
-// ── Source Picker Modal ───────────────────────────────────────
-function SourcePicker({
-  onSelect,
-  onClose,
-}: {
-  onSelect: (sentence: string, hint: string) => void
-  onClose: () => void
-}) {
-  const [items, setItems] = useState<SourceItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('')
-
-  useEffect(() => {
-    loadSourceItems().then(i => { setItems(i); setLoading(false) })
-  }, [])
-
-  const filtered = filter.trim()
-    ? items.filter(i =>
-        i.sentence.toLowerCase().includes(filter.toLowerCase()) ||
-        i.hint.toLowerCase().includes(filter.toLowerCase()) ||
-        i.source.toLowerCase().includes(filter.toLowerCase())
-      )
-    : items
-
-  // Group by source deck
-  const groups = filtered.reduce<Record<string, SourceItem[]>>((acc, item) => {
-    ;(acc[item.source] ??= []).push(item)
-    return acc
-  }, {})
-
-  return (
-    <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
-          <span className="font-semibold text-gray-900">Source from Deck</span>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
-        </div>
-        <div className="px-6 py-3 border-b shrink-0">
-          <Input
-            autoFocus
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-            placeholder="Filter by sentence, word, or deck…"
-            className="h-8 text-sm"
-          />
-        </div>
-        <div className="overflow-y-auto flex-1 px-6 py-3 space-y-4">
-          {loading ? (
-            <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />)}</div>
-          ) : Object.keys(groups).length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">
-              {items.length === 0
-                ? 'No examples found in your grammar or vocabulary decks yet.'
-                : 'No matches for that filter.'}
-            </p>
-          ) : (
-            Object.entries(groups).map(([source, groupItems]) => (
-              <div key={source}>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{source}</p>
-                <div className="space-y-1">
-                  {groupItems.map((item, i) => (
-                    <button
-                      key={i}
-                      onClick={() => { onSelect(item.sentence, item.hint); onClose() }}
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-brand-light border border-transparent hover:border-brand/20 transition-colors"
-                    >
-                      <p className="text-sm text-gray-900">{item.sentence}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">hint: {item.hint}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const LABELS = [
-  'Noun', 'Pronoun', 'Verb', 'Adjective', 'Adverb',
-  'Preposition', 'Conjunction', 'Interjection',
-  'Subject', 'Object', 'Complement', 'Other',
-]
-
-const LABEL_COLORS: Record<string, string> = {
-  Noun:         'bg-blue-100 text-blue-700',
-  Pronoun:      'bg-sky-100 text-sky-700',
-  Verb:         'bg-red-100 text-red-700',
-  Adjective:    'bg-purple-100 text-purple-700',
-  Adverb:       'bg-orange-100 text-orange-700',
-  Preposition:  'bg-teal-100 text-teal-700',
-  Conjunction:  'bg-yellow-100 text-yellow-700',
-  Interjection: 'bg-rose-100 text-rose-700',
-  Subject:      'bg-indigo-100 text-indigo-700',
-  Object:       'bg-green-100 text-green-700',
-  Complement:   'bg-pink-100 text-pink-700',
-  Other:        'bg-gray-100 text-gray-600',
+function sentenceToParts(sentence: string): PuzzlePart[] {
+  return sentence
+    .trim()
+    .split(/\s+/)
+    .filter(w => w.length > 0)
+    .map(text => ({ text, label: 'Other' }))
 }
 
 // ── Puzzle Editor Modal ───────────────────────────────────────
@@ -179,19 +42,18 @@ function PuzzleEditor({
   const [name, setName] = useState(deck.name)
   const [renamingName, setRenamingName] = useState(false)
 
-  // New puzzle form
-  const [japanese, setJapanese] = useState('')
-  const [hint, setHint] = useState('')
-  const [parts, setParts] = useState<PuzzlePart[]>([{ text: '', label: 'Subject' }])
-  const [saving, setSaving] = useState(false)
-  const [showSourcePicker, setShowSourcePicker] = useState(false)
+  // Source selection
+  const [grammarDecks, setGrammarDecks] = useState<GrammarDeck[]>([])
+  const [vocabDecks, setVocabDecks] = useState<Deck[]>([])
+  const [selectedGrammar, setSelectedGrammar] = useState('')
+  const [selectedVocab, setSelectedVocab] = useState('')
+  const [generating, setGenerating] = useState(false)
 
-  // Editing existing puzzle
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editJapanese, setEditJapanese] = useState('')
-  const [editHint, setEditHint] = useState('')
-  const [editParts, setEditParts] = useState<PuzzlePart[]>([])
-  const [savingEdit, setSavingEdit] = useState(false)
+  // Manual add
+  const [manualSentence, setManualSentence] = useState('')
+  const [manualHint, setManualHint] = useState('')
+  const [addingManual, setAddingManual] = useState(false)
+
   const [deleting, setDeleting] = useState<string | null>(null)
 
   useEffect(() => {
@@ -201,6 +63,11 @@ function PuzzleEditor({
         setLoading(false)
       })
     }
+    // Load source deck options
+    Promise.all([listGrammarDecks(), listDecks()]).then(([g, v]) => {
+      setGrammarDecks(g.decks ?? [])
+      setVocabDecks(v.decks ?? [])
+    })
   }, [deck.id])
 
   async function handleSaveName() {
@@ -211,53 +78,89 @@ function PuzzleEditor({
     setRenamingName(false)
   }
 
-  function addPart() { setParts(p => [...p, { text: '', label: 'Subject' }]) }
-  function removePart(i: number) { setParts(p => p.filter((_, idx) => idx !== i)) }
-  function updatePart(i: number, field: keyof PuzzlePart, val: string) {
-    setParts(p => p.map((part, idx) => idx === i ? { ...part, [field]: val } : part))
+  async function handleGenerate() {
+    if (!selectedGrammar && !selectedVocab) {
+      toast.error('Pick at least one deck to generate from.')
+      return
+    }
+    setGenerating(true)
+
+    const sentences: { sentence: string; hint: string }[] = []
+
+    // Collect from grammar deck
+    if (selectedGrammar) {
+      const { deck: gd } = await getGrammarDeckWithPoints(selectedGrammar)
+      for (const pt of gd?.points ?? []) {
+        for (const ex of pt.examples ?? []) {
+          const s = ex.trim()
+          if (s) sentences.push({ sentence: s, hint: pt.point })
+        }
+      }
+    }
+
+    // Collect from vocabulary deck
+    if (selectedVocab) {
+      const { deck: vd } = await getDeckWithWords(selectedVocab)
+      for (const w of vd?.words ?? []) {
+        const s = w.example?.trim() || stripHtml(w.definition_en) || stripHtml(w.definition_ja)
+        if (s) sentences.push({ sentence: s, hint: w.word })
+      }
+    }
+
+    if (sentences.length === 0) {
+      toast.error('No example sentences found in the selected decks.')
+      setGenerating(false)
+      return
+    }
+
+    // Deduplicate against existing puzzles
+    const existingSentences = new Set(puzzles.map(p => p.japanese_sentence.toLowerCase()))
+    const toCreate = sentences.filter(s => !existingSentences.has(s.sentence.toLowerCase()))
+
+    if (toCreate.length === 0) {
+      toast.info('All sentences from those decks are already in this puzzle deck.')
+      setGenerating(false)
+      return
+    }
+
+    // Create puzzles — skip any sentence that splits into fewer than 2 parts
+    let created = 0
+    for (const { sentence, hint } of toCreate) {
+      const parts = sentenceToParts(sentence)
+      if (parts.length < 2) continue
+      const { puzzle, error } = await createPuzzle(deck.id, {
+        japanese_sentence: sentence,
+        hint: hint || undefined,
+        parts,
+      })
+      if (!error && puzzle) {
+        setPuzzles(prev => [...prev, puzzle])
+        created++
+      }
+    }
+
+    setGenerating(false)
+    onUpdated()
+    if (created > 0) toast.success(`Generated ${created} puzzle${created !== 1 ? 's' : ''}`)
+    else toast.error('No valid sentences found (need at least 2 words each).')
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleAddManual(e: React.FormEvent) {
     e.preventDefault()
-    const validParts = parts.filter(p => p.text.trim())
-    if (!japanese.trim() || validParts.length < 2) return
-    setSaving(true)
+    const s = manualSentence.trim()
+    if (!s) return
+    const parts = sentenceToParts(s)
+    if (parts.length < 2) { toast.error('Need at least 2 words.'); return }
+    setAddingManual(true)
     const { puzzle, error } = await createPuzzle(deck.id, {
-      japanese_sentence: japanese.trim(),
-      hint: hint.trim() || undefined,
-      parts: validParts.map(p => ({ text: p.text.trim(), label: p.label })),
+      japanese_sentence: s,
+      hint: manualHint.trim() || undefined,
+      parts,
     })
-    setSaving(false)
+    setAddingManual(false)
     if (error) { toast.error(error); return }
     setPuzzles(prev => [...prev, puzzle!])
-    setJapanese(''); setHint(''); setParts([{ text: '', label: 'Subject' }])
-    onUpdated()
-  }
-
-  function startEdit(p: Puzzle) {
-    setEditingId(p.id)
-    setEditJapanese(p.japanese_sentence)
-    setEditHint(p.hint ?? '')
-    setEditParts([...p.parts])
-  }
-
-  async function handleEditSave() {
-    if (!editingId) return
-    const validParts = editParts.filter(p => p.text.trim())
-    if (!editJapanese.trim() || validParts.length < 2) return
-    setSavingEdit(true)
-    const { error } = await updatePuzzle(editingId, {
-      japanese_sentence: editJapanese.trim(),
-      hint: editHint.trim() || undefined,
-      parts: validParts.map(p => ({ text: p.text.trim(), label: p.label })),
-    })
-    setSavingEdit(false)
-    if (error) { toast.error(error); return }
-    setPuzzles(prev => prev.map(p => p.id === editingId ? {
-      ...p, japanese_sentence: editJapanese.trim(), hint: editHint.trim() || null,
-      parts: validParts,
-    } : p))
-    setEditingId(null)
+    setManualSentence(''); setManualHint('')
     onUpdated()
   }
 
@@ -269,51 +172,10 @@ function PuzzleEditor({
     else { setPuzzles(prev => prev.filter(p => p.id !== puzzleId)); onUpdated() }
   }
 
-  function PartsForm({
-    parts: pts,
-    onChange,
-    onAdd,
-    onRemove,
-  }: {
-    parts: PuzzlePart[]
-    onChange: (i: number, f: keyof PuzzlePart, v: string) => void
-    onAdd: () => void
-    onRemove: (i: number) => void
-  }) {
-    return (
-      <div className="space-y-1.5">
-        <p className="text-xs text-gray-500 font-medium">Parts — in correct order:</p>
-        {pts.map((part, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-400 w-4">{i + 1}.</span>
-            <Input
-              value={part.text}
-              onChange={e => onChange(i, 'text', e.target.value)}
-              placeholder="English text"
-              className="h-7 text-xs flex-1"
-            />
-            <select
-              value={part.label}
-              onChange={e => onChange(i, 'label', e.target.value)}
-              className="h-7 text-xs border border-gray-200 rounded px-1 bg-white"
-            >
-              {LABELS.map(l => <option key={l}>{l}</option>)}
-            </select>
-            {pts.length > 2 && (
-              <button type="button" onClick={() => onRemove(i)} className="text-gray-300 hover:text-red-500 text-xs transition-colors">✕</button>
-            )}
-          </div>
-        ))}
-        <button type="button" onClick={onAdd} className="text-xs text-brand hover:text-brand/80 transition-colors">
-          + Add part
-        </button>
-      </div>
-    )
-  }
-
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
           {renamingName ? (
@@ -335,92 +197,87 @@ function PuzzleEditor({
           </div>
         </div>
 
-        {showSourcePicker && (
-          <SourcePicker
-            onSelect={(sentence, hint) => { setJapanese(sentence); setHint(hint) }}
-            onClose={() => setShowSourcePicker(false)}
-          />
-        )}
-
-        {/* Add puzzle form */}
-        <form onSubmit={handleCreate} className="px-6 py-4 border-b space-y-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="grid grid-cols-2 gap-2 flex-1">
-              <Input value={japanese} onChange={e => setJapanese(e.target.value)} placeholder="Japanese sentence *" required />
-              <Input value={hint} onChange={e => setHint(e.target.value)} placeholder="Hint / explanation (optional)" />
+        {/* Auto-generate section */}
+        <div className="px-6 py-4 border-b space-y-3 shrink-0 bg-gray-50">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Auto-generate puzzles from decks</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Grammar deck</label>
+              <select
+                value={selectedGrammar}
+                onChange={e => setSelectedGrammar(e.target.value)}
+                className="w-full h-8 text-sm border border-gray-200 rounded-md px-2 bg-white"
+              >
+                <option value="">— none —</option>
+                {grammarDecks.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowSourcePicker(true)}
-              className="shrink-0 px-3 py-1.5 text-xs border border-brand/30 text-brand rounded-md hover:bg-brand-light transition-colors"
-              title="Pick from grammar or vocabulary deck"
-            >
-              Source from Deck
-            </button>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Vocabulary deck</label>
+              <select
+                value={selectedVocab}
+                onChange={e => setSelectedVocab(e.target.value)}
+                className="w-full h-8 text-sm border border-gray-200 rounded-md px-2 bg-white"
+              >
+                <option value="">— none —</option>
+                {vocabDecks.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
           </div>
-          <PartsForm
-            parts={parts}
-            onChange={(i, f, v) => updatePart(i, f, v)}
-            onAdd={addPart}
-            onRemove={removePart}
+          <button
+            onClick={handleGenerate}
+            disabled={generating || (!selectedGrammar && !selectedVocab)}
+            className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
+          >
+            {generating ? 'Generating…' : '⚡ Generate Puzzles'}
+          </button>
+        </div>
+
+        {/* Manual add */}
+        <form onSubmit={handleAddManual} className="px-6 py-3 border-b shrink-0 flex items-center gap-2">
+          <Input
+            value={manualSentence}
+            onChange={e => setManualSentence(e.target.value)}
+            placeholder="Or type a sentence manually…"
+            className="flex-1 h-8 text-sm"
           />
-          <button type="submit" disabled={saving || !japanese.trim() || parts.filter(p => p.text.trim()).length < 2}
-            className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
-            {saving ? 'Adding…' : '+ Add Puzzle'}
+          <Input
+            value={manualHint}
+            onChange={e => setManualHint(e.target.value)}
+            placeholder="Hint (optional)"
+            className="w-40 h-8 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={addingManual || !manualSentence.trim()}
+            className="px-3 py-1.5 text-sm bg-brand text-white rounded-md disabled:opacity-50 whitespace-nowrap"
+          >
+            {addingManual ? '…' : '+ Add'}
           </button>
         </form>
 
         {/* Puzzle list */}
         <div className="overflow-y-auto flex-1 px-6 py-3">
           {loading ? (
-            <div className="space-y-2 py-4">{[...Array(2)].map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />)}</div>
+            <div className="space-y-2 py-4">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}</div>
           ) : puzzles.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4">No puzzles yet. Add one above.</p>
+            <p className="text-sm text-gray-400 py-4">No puzzles yet. Generate from decks above or add one manually.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {puzzles.map(p => (
-                <div key={p.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                  {editingId === p.id ? (
-                    <div className="p-3 space-y-2 bg-gray-50">
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input value={editJapanese} onChange={e => setEditJapanese(e.target.value)} placeholder="Japanese sentence *" className="h-7 text-xs" />
-                        <Input value={editHint} onChange={e => setEditHint(e.target.value)} placeholder="Hint" className="h-7 text-xs" />
-                      </div>
-                      <PartsForm
-                        parts={editParts}
-                        onChange={(i, f, v) => setEditParts(ps => ps.map((pt, idx) => idx === i ? { ...pt, [f]: v } : pt))}
-                        onAdd={() => setEditParts(ps => [...ps, { text: '', label: 'Subject' }])}
-                        onRemove={i => setEditParts(ps => ps.filter((_, idx) => idx !== i))}
-                      />
-                      <div className="flex gap-2">
-                        <button onClick={handleEditSave} disabled={savingEdit} className="px-3 py-1 bg-brand text-white text-xs rounded-md disabled:opacity-50">
-                          {savingEdit ? 'Saving…' : 'Save'}
-                        </button>
-                        <button onClick={() => setEditingId(null)} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-3">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="text-sm font-medium text-gray-900">{p.japanese_sentence}</p>
-                        <div className="flex gap-2 shrink-0">
-                          <button onClick={() => startEdit(p)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
-                          <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id} className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
-                            {deleting === p.id ? '…' : 'Delete'}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {p.parts.map((pt, i) => (
-                          <span key={i} className={`text-xs px-2 py-0.5 rounded-full font-medium ${LABEL_COLORS[pt.label] ?? LABEL_COLORS.Other}`}>
-                            {pt.text}
-                            <span className="opacity-60 ml-1">({pt.label})</span>
-                          </span>
-                        ))}
-                      </div>
-                      {p.hint && <p className="text-xs text-gray-400 italic mt-1">💡 {p.hint}</p>}
-                    </div>
-                  )}
+                <div key={p.id} className="flex items-start justify-between gap-3 px-3 py-2 rounded-lg border border-gray-100 hover:border-gray-200 bg-white">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-900">{p.japanese_sentence}</p>
+                    {p.hint && <p className="text-xs text-gray-400 italic mt-0.5">💡 {p.hint}</p>}
+                    <p className="text-xs text-gray-300 mt-0.5">{p.parts.length} parts</p>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(p.id)}
+                    disabled={deleting === p.id}
+                    className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50 shrink-0 mt-0.5"
+                  >
+                    {deleting === p.id ? '…' : 'Delete'}
+                  </button>
                 </div>
               ))}
             </div>
