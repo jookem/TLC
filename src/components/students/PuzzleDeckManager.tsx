@@ -36,15 +36,22 @@ async function loadSourceItems(): Promise<SourceItem[]> {
     }
   }
 
-  // Vocabulary decks — use example sentence when available, fall back to definition_en
+  // Vocabulary decks — use example > definition_en > definition_ja as fallback
   const { data: vocabDecks } = await supabase
     .from('vocabulary_decks')
-    .select('name, vocabulary_deck_words(word, example, definition_en)')
+    .select('name, vocabulary_deck_words(word, example, definition_en, definition_ja)')
     .order('created_at', { ascending: false })
+
+  function stripHtml(html: string | null | undefined): string {
+    return (html ?? '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
+  }
 
   for (const deck of vocabDecks ?? []) {
     for (const w of (deck as any).vocabulary_deck_words ?? []) {
-      const sentence = w.example?.trim() || w.definition_en?.replace(/<[^>]*>/g, '').trim()
+      const sentence =
+        w.example?.trim() ||
+        stripHtml(w.definition_en) ||
+        stripHtml(w.definition_ja)
       if (sentence) {
         items.push({ sentence, hint: w.word, source: `Vocab: ${deck.name}` })
       }
