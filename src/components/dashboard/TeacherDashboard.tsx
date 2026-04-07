@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatInTimeZone } from 'date-fns-tz'
+import { useTimezone } from '@/lib/hooks/useTimezone'
 import { format, subWeeks, startOfWeek, endOfWeek } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
@@ -34,6 +35,7 @@ function buildWeeklyData(lessons: { scheduled_start: string }[]) {
 
 export function TeacherDashboard() {
   const { user } = useAuth()
+  const tz = useTimezone()
   const [upcomingLessons, setUpcomingLessons] = useState<any[]>([])
   const [pendingBookings, setPendingBookings] = useState<any[]>([])
   const [studentCount, setStudentCount] = useState(0)
@@ -172,7 +174,7 @@ export function TeacherDashboard() {
                     <div>
                       <p className="text-sm font-medium text-gray-900">{lesson.student?.full_name}</p>
                       <p className="text-xs text-gray-500">
-                        {formatInTimeZone(new Date(lesson.scheduled_start), 'Asia/Tokyo', 'MMM d, h:mm a')}
+                        {formatInTimeZone(new Date(lesson.scheduled_start), tz, 'MMM d, h:mm a')}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -203,9 +205,9 @@ export function TeacherDashboard() {
                       <Badge className="text-xs bg-yellow-100 text-yellow-700 border-yellow-200">Pending</Badge>
                     </div>
                     <p className="text-xs text-gray-500">
-                      {formatInTimeZone(new Date(req.requested_start), 'Asia/Tokyo', 'MMM d, h:mm a')}
+                      {formatInTimeZone(new Date(req.requested_start), tz, 'MMM d, h:mm a')}
                       {' - '}
-                      {formatInTimeZone(new Date(req.requested_end), 'Asia/Tokyo', 'h:mm a')}
+                      {formatInTimeZone(new Date(req.requested_end), tz, 'h:mm a')}
                     </p>
                     {req.student_note && (
                       <p className="text-xs text-gray-600 italic">&ldquo;{req.student_note}&rdquo;</p>

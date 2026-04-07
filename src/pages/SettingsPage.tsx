@@ -50,6 +50,7 @@ export function SettingsPage() {
   // Preferences (DB-backed)
   const [emailNotifs, setEmailNotifs] = useState(profile?.notifications_email ?? true)
   const [defaultMins, setDefaultMins] = useState(profile?.default_lesson_mins ?? 60)
+  const [timezone, setTimezone] = useState(profile?.timezone ?? 'Asia/Tokyo')
   const [savingPrefs, setSavingPrefs] = useState(false)
 
   // Preferences (localStorage)
@@ -63,6 +64,7 @@ export function SettingsPage() {
   useEffect(() => {
     setEmailNotifs(profile?.notifications_email ?? true)
     setDefaultMins(profile?.default_lesson_mins ?? 60)
+    setTimezone(profile?.timezone ?? 'Asia/Tokyo')
   }, [profile])
 
   async function handleSaveName(e: React.FormEvent) {
@@ -111,7 +113,7 @@ export function SettingsPage() {
 
   async function handleSavePrefs() {
     setSavingPrefs(true)
-    const prefs: Record<string, unknown> = { notifications_email: emailNotifs }
+    const prefs: Record<string, unknown> = { notifications_email: emailNotifs, timezone }
     if (isTeacher) prefs.default_lesson_mins = defaultMins
     const { error } = await updatePreferences(prefs)
     if (error) {
@@ -377,7 +379,32 @@ export function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-5">
 
-              <div className="flex items-center justify-between gap-4 pr-2">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-800">Timezone</p>
+                <p className="text-xs text-gray-400">Used for all lesson times and scheduling</p>
+                <select
+                  value={timezone}
+                  onChange={e => setTimezone(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent bg-white"
+                >
+                  <option value="Asia/Tokyo">Asia/Tokyo (JST, UTC+9)</option>
+                  <option value="Asia/Seoul">Asia/Seoul (KST, UTC+9)</option>
+                  <option value="Asia/Shanghai">Asia/Shanghai (CST, UTC+8)</option>
+                  <option value="Asia/Singapore">Asia/Singapore (SGT, UTC+8)</option>
+                  <option value="Asia/Bangkok">Asia/Bangkok (ICT, UTC+7)</option>
+                  <option value="Australia/Sydney">Australia/Sydney (AEDT, UTC+11)</option>
+                  <option value="Pacific/Auckland">Pacific/Auckland (NZDT, UTC+13)</option>
+                  <option value="Europe/London">Europe/London (GMT/BST)</option>
+                  <option value="Europe/Paris">Europe/Paris (CET, UTC+1)</option>
+                  <option value="America/New_York">America/New_York (EST, UTC-5)</option>
+                  <option value="America/Chicago">America/Chicago (CST, UTC-6)</option>
+                  <option value="America/Los_Angeles">America/Los_Angeles (PST, UTC-8)</option>
+                  <option value="America/Vancouver">America/Vancouver (PST, UTC-8)</option>
+                  <option value="America/Toronto">America/Toronto (EST, UTC-5)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 border-t pt-4 pr-2">
                 <div>
                   <p className="text-sm font-medium text-gray-800">Email notifications</p>
                   <p className="text-xs text-gray-400 mt-0.5">

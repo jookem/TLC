@@ -49,6 +49,7 @@ export async function updatePassword(newPassword: string): Promise<{ error?: str
 export async function updatePreferences(prefs: {
   notifications_email?: boolean
   default_lesson_mins?: number
+  timezone?: string
 }): Promise<{ error?: string }> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.user) return { error: 'Not authenticated' }

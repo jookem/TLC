@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { format, differenceInDays } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
+import { useTimezone } from '@/lib/hooks/useTimezone'
 import { GoalForm } from '@/components/progress/GoalForm'
 import { ProgressSnapshotForm } from '@/components/progress/ProgressSnapshotForm'
 import { StudentVocabManager } from '@/components/students/StudentVocabManager'
@@ -24,6 +25,7 @@ import {
 export function StudentDetailPage() {
   const { studentId } = useParams<{ studentId: string }>()
   const { user, profile } = useAuth()
+  const tz = useTimezone()
   const navigate = useNavigate()
   const [student, setStudent] = useState<any>(null)
   const [goals, setGoals] = useState<any[]>([])
@@ -307,12 +309,12 @@ export function StudentDetailPage() {
                 <div key={lesson.id} className="flex items-center justify-between py-2 border-b last:border-0">
                   <div>
                     <p className="text-sm font-medium">
-                      {formatInTimeZone(new Date(lesson.scheduled_start), 'Asia/Tokyo', 'MMM d, yyyy')}
+                      {formatInTimeZone(new Date(lesson.scheduled_start), tz, 'MMM d, yyyy')}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {formatInTimeZone(new Date(lesson.scheduled_start), 'Asia/Tokyo', 'h:mm a')}
+                      {formatInTimeZone(new Date(lesson.scheduled_start), tz, 'h:mm a')}
                       {' - '}
-                      {formatInTimeZone(new Date(lesson.scheduled_end), 'Asia/Tokyo', 'h:mm a')}
+                      {formatInTimeZone(new Date(lesson.scheduled_end), tz, 'h:mm a')}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

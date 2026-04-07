@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatInTimeZone } from 'date-fns-tz'
 import { QuickNotesForm } from './QuickNotesForm'
-
-const TZ = 'Asia/Tokyo'
+import { useTimezone } from '@/lib/hooks/useTimezone'
 
 const statusStyle: Record<string, string> = {
   completed: 'bg-green-100 text-green-700',
@@ -32,10 +31,11 @@ type Props = {
 
 export function LessonCard({ lesson, notes }: Props) {
   const [open, setOpen] = useState(false)
+  const tz = useTimezone()
 
-  const date = formatInTimeZone(new Date(lesson.scheduled_start), TZ, 'MMM d, yyyy')
-  const startTime = formatInTimeZone(new Date(lesson.scheduled_start), TZ, 'h:mm a')
-  const endTime = formatInTimeZone(new Date(lesson.scheduled_end), TZ, 'h:mm a')
+  const date = formatInTimeZone(new Date(lesson.scheduled_start), tz, 'MMM d, yyyy')
+  const startTime = formatInTimeZone(new Date(lesson.scheduled_start), tz, 'h:mm a')
+  const endTime = formatInTimeZone(new Date(lesson.scheduled_end), tz, 'h:mm a')
   const hasNotes = notes?.summary || notes?.areas_to_focus || notes?.homework
   const isGroup = lesson.is_group || (lesson.lesson_participants?.length ?? 0) > 0
 

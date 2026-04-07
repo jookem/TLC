@@ -5,10 +5,12 @@ import { Badge } from '@/components/ui/badge'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatInTimeZone } from 'date-fns-tz'
+import { useTimezone } from '@/lib/hooks/useTimezone'
 import { format } from 'date-fns'
 
 export function StudentDashboard() {
   const { user } = useAuth()
+  const tz = useTimezone()
   const [upcomingLessons, setUpcomingLessons] = useState<any[]>([])
   const [goals, setGoals] = useState<any[]>([])
   const [recentNotes, setRecentNotes] = useState<any[]>([])
@@ -87,7 +89,7 @@ export function StudentDashboard() {
                   Next Lesson / 次のレッスン
                 </p>
                 <p className="text-lg font-semibold text-gray-900 mt-1">
-                  {formatInTimeZone(new Date(nextLesson.scheduled_start), 'Asia/Tokyo', 'M月d日 (EEE) HH:mm')}
+                  {formatInTimeZone(new Date(nextLesson.scheduled_start), tz, 'M月d日 (EEE) HH:mm')}
                 </p>
                 <p className="text-sm text-gray-600">with {nextLesson.teacher?.full_name}</p>
               </div>
@@ -156,7 +158,7 @@ export function StudentDashboard() {
                   <div key={note.id} className="border rounded-lg p-3">
                     <p className="text-xs text-gray-500">
                       {note.lesson?.scheduled_start &&
-                        formatInTimeZone(new Date(note.lesson.scheduled_start), 'Asia/Tokyo', 'M月d日')}
+                        formatInTimeZone(new Date(note.lesson.scheduled_start), tz, 'M月d日')}
                     </p>
                     {note.summary && (
                       <p className="text-sm text-gray-700 mt-1 line-clamp-2">{note.summary}</p>

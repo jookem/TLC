@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { addDays, startOfWeek, format, isSameDay, parseISO, setHours, setMinutes } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
+import { useTimezone } from '@/lib/hooks/useTimezone'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -25,6 +26,7 @@ export function BookingCalendar({
   studentId,
   onBooked,
 }: BookingCalendarProps) {
+  const tz = useTimezone()
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null)
   const [note, setNote] = useState('')
@@ -102,9 +104,9 @@ export function BookingCalendar({
           <div>
             <p className="font-medium text-brand-dark">予約リクエスト / Booking Request</p>
             <p className="text-sm text-brand-dark">
-              {formatInTimeZone(selectedSlot.start, 'Asia/Tokyo', 'M月d日 (EEE) HH:mm')}
+              {formatInTimeZone(selectedSlot.start, tz, 'M月d日 (EEE) HH:mm')}
               {' - '}
-              {formatInTimeZone(selectedSlot.end, 'Asia/Tokyo', 'HH:mm')} JST
+              {formatInTimeZone(selectedSlot.end, tz, 'HH:mm')}
             </p>
           </div>
           <div className="space-y-1">

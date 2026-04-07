@@ -6,8 +6,7 @@ import {
   addMonths, subMonths, format,
 } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
-
-const TZ = 'Asia/Tokyo'
+import { useTimezone } from '@/lib/hooks/useTimezone'
 
 type Lesson = {
   id: string
@@ -54,6 +53,7 @@ function lessonLabel(l: Lesson): string {
 export function MonthCalendar({ lessons, pendingRequests, role }: Props) {
   const [current, setCurrent] = useState(() => new Date())
   const [selected, setSelected] = useState<Date | null>(null)
+  const TZ = useTimezone()
 
   const monthStart = startOfMonth(current)
   const monthEnd = endOfMonth(current)

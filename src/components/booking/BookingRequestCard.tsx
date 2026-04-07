@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { approveBookingRequest, declineBookingRequest } from '@/lib/api/bookings'
 import { formatInTimeZone } from 'date-fns-tz'
 import type { BookingRequestWithProfiles } from '@/lib/types/database'
+import { useTimezone } from '@/lib/hooks/useTimezone'
 
 export function BookingRequestCard({
   request,
@@ -14,6 +15,7 @@ export function BookingRequestCard({
   request: BookingRequestWithProfiles
   onHandled?: () => void
 }) {
+  const tz = useTimezone()
   const [declining, setDeclining] = useState(false)
   const [declineNote, setDeclineNote] = useState('')
   const [loading, setLoading] = useState(false)
@@ -43,12 +45,11 @@ export function BookingRequestCard({
           <div>
             <p className="font-medium text-gray-900">{request.student.full_name}</p>
             <p className="text-sm text-gray-600">
-              {formatInTimeZone(new Date(request.requested_start), 'Asia/Tokyo', 'MMM d, yyyy')}
+              {formatInTimeZone(new Date(request.requested_start), tz, 'MMM d, yyyy')}
               {' · '}
-              {formatInTimeZone(new Date(request.requested_start), 'Asia/Tokyo', 'h:mm a')}
+              {formatInTimeZone(new Date(request.requested_start), tz, 'h:mm a')}
               {' - '}
-              {formatInTimeZone(new Date(request.requested_end), 'Asia/Tokyo', 'h:mm a')}
-              {' JST'}
+              {formatInTimeZone(new Date(request.requested_end), tz, 'h:mm a')}
             </p>
           </div>
           <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200">Pending</Badge>

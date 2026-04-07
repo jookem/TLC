@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatInTimeZone } from 'date-fns-tz'
+import { useTimezone } from '@/lib/hooks/useTimezone'
 import { LessonNotesEditor } from '@/components/lesson/LessonNotesEditor'
 import { LessonAttachments } from '@/components/lesson/LessonAttachments'
 import { markLessonComplete, updateGroupName } from '@/lib/api/lessons'
@@ -81,6 +82,7 @@ function NotesReadView({ notes }: { notes: any }) {
 export function LessonDetailPage() {
   const { lessonId } = useParams<{ lessonId: string }>()
   const { user, profile } = useAuth()
+  const tz = useTimezone()
   const navigate = useNavigate()
   const [lesson, setLesson] = useState<any>(null)
   const [notesMap, setNotesMap] = useState<Record<string, any>>({})  // key: 'group' | student_id
@@ -272,9 +274,9 @@ export function LessonDetailPage() {
             </div>
           )}
           <p className="text-gray-500 mt-1">
-            {formatInTimeZone(new Date(lesson.scheduled_start), 'Asia/Tokyo', 'EEEE, MMMM d, yyyy · h:mm a')}
+            {formatInTimeZone(new Date(lesson.scheduled_start), tz, 'EEEE, MMMM d, yyyy · h:mm a')}
             {' - '}
-            {formatInTimeZone(new Date(lesson.scheduled_end), 'Asia/Tokyo', 'h:mm a')}
+            {formatInTimeZone(new Date(lesson.scheduled_end), tz, 'h:mm a')}
             {' JST'}
           </p>
         </div>
