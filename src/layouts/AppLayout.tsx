@@ -84,7 +84,7 @@ export function AppLayout() {
       </main>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
-        <div className="grid grid-cols-5 h-16">
+        <div className={`grid h-16 ${isTeacher ? 'grid-cols-5' : 'grid-cols-7'}`}>
           {nav.map(item => (
             <NavLink
               key={item.href}
@@ -95,8 +95,8 @@ export function AppLayout() {
                 }`
               }
             >
-              <item.icon size={20} />
-              <span className="text-[10px]">
+              <item.icon size={isTeacher ? 20 : 18} />
+              <span className="text-[9px] leading-tight text-center">
                 {isTeacher
                   ? ('shortLabel' in item ? item.shortLabel : item.label)
                   : ('sub' in item ? item.sub : item.label)}
