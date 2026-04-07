@@ -30,9 +30,7 @@ function isJapanese(text: string): boolean {
   return /[\u3040-\u30FF\u4E00-\u9FFF]/.test(text)
 }
 
-// compromise v14 returns {text, terms:[{text, tags:[]}]} per sentence
-// Use the stable .has() API to check POS tags
-function termToLabel(term: ReturnType<ReturnType<typeof nlp>['terms']>['first']): string {
+function termToLabel(term: any): string {
   if (term.has('#Pronoun')) return 'Pronoun'
   if (term.has('#Verb') || term.has('#Copula') || term.has('#Auxiliary') || term.has('#Modal')) return 'Verb'
   if (term.has('#Adjective')) return 'Adjective'
@@ -56,12 +54,11 @@ async function translateAndParse(
     english = json.responseData?.translatedText ?? text
   }
 
-  // Use compromise's stable forEach API rather than .json() which varies by version
   const doc = nlp(english)
   const parts: PuzzlePart[] = []
   doc.terms().forEach((term: any) => {
-    const text = term.text('trim')
-    if (text) parts.push({ text, label: termToLabel(term) })
+    const t = term.text('trim')
+    if (t) parts.push({ text: t, label: termToLabel(term) })
   })
 
   return { english, parts }
