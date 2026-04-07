@@ -5,6 +5,7 @@ import { BookingRequestCard } from '@/components/booking/BookingRequestCard'
 import { MonthCalendar } from '@/components/calendar/MonthCalendar'
 import type { BookingRequestWithProfiles } from '@/lib/types/database'
 import { subMonths, addMonths } from 'date-fns'
+import { PageError } from '@/components/shared/PageError'
 
 export function CalendarPage() {
   const { user, profile } = useAuth()
@@ -12,9 +13,11 @@ export function CalendarPage() {
   const [lessons, setLessons] = useState<any[]>([])
   const [pendingRequests, setPendingRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   async function loadData() {
     if (!user || !profile) return
+    try {
 
     const rangeStart = subMonths(new Date(), 6).toISOString()
     const rangeEnd = addMonths(new Date(), 6).toISOString()
@@ -68,14 +71,22 @@ export function CalendarPage() {
             .eq('status', 'pending'),
     ])
 
-    setLessons((lessonsData ?? []).filter((l: any) => l.status !== 'cancelled'))
-    setPendingRequests(requestsData ?? [])
-    setLoading(false)
+      if (lessonsData === null) throw new Error('Failed to load calendar')
+      setLessons(lessonsData.filter((l: any) => l.status !== 'cancelled'))
+      setPendingRequests(requestsData ?? [])
+      setError(null)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to load calendar')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     loadData()
   }, [user, profile])
+
+  if (error) return <PageError message={error} onRetry={loadData} />
 
   if (loading) {
     return (

@@ -2,30 +2,40 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { AvailabilityManager } from '@/components/calendar/AvailabilityManager'
+import { PageError } from '@/components/shared/PageError'
 
 export function AvailabilityPage() {
   const { user } = useAuth()
   const [recurringSlots, setRecurringSlots] = useState<any[]>([])
   const [oneOffSlots, setOneOffSlots] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   async function loadSlots() {
     if (!user) return
-    const { data } = await supabase
-      .from('availability_slots')
-      .select('*')
-      .eq('teacher_id', user.id)
-      .order('day_of_week', { ascending: true })
-      .order('start_time', { ascending: true })
-
-    setRecurringSlots((data ?? []).filter((s: any) => s.slot_type === 'recurring'))
-    setOneOffSlots((data ?? []).filter((s: any) => s.slot_type === 'one_off'))
-    setLoading(false)
+    try {
+      const { data, error: err } = await supabase
+        .from('availability_slots')
+        .select('*')
+        .eq('teacher_id', user.id)
+        .order('day_of_week', { ascending: true })
+        .order('start_time', { ascending: true })
+      if (err) throw err
+      setRecurringSlots((data ?? []).filter((s: any) => s.slot_type === 'recurring'))
+      setOneOffSlots((data ?? []).filter((s: any) => s.slot_type === 'one_off'))
+      setError(null)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to load availability')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     loadSlots()
   }, [user])
+
+  if (error) return <PageError message={error} onRetry={loadSlots} />
 
   if (loading) {
     return (

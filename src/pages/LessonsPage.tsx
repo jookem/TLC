@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { LessonCard } from '@/components/lesson/LessonCard'
 import { ScheduleLessonModal } from '@/components/lesson/ScheduleLessonModal'
+import { PageError } from '@/components/shared/PageError'
 
 export function LessonsPage() {
   const { user, profile } = useAuth()
@@ -16,6 +17,7 @@ export function LessonsPage() {
   const [lessons, setLessons] = useState<any[]>([])
   const [selectedStudent, setSelectedStudent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user || !profile) return
@@ -28,67 +30,83 @@ export function LessonsPage() {
   }, [user, profile, selectedStudentId])
 
   async function loadTeacherData() {
-    const { data: relationships } = await supabase
-      .from('teacher_student_relationships')
-      .select('student:profiles!teacher_student_relationships_student_id_fkey(id, full_name, email)')
-      .eq('teacher_id', user!.id)
-      .eq('status', 'active')
-      .order('started_at')
+    try {
+      const { data: relationships, error: relErr } = await supabase
+        .from('teacher_student_relationships')
+        .select('student:profiles!teacher_student_relationships_student_id_fkey(id, full_name, email)')
+        .eq('teacher_id', user!.id)
+        .eq('status', 'active')
+        .order('started_at')
+      if (relErr) throw relErr
 
-    const studentList = (relationships ?? []).map((r: any) => r.student).filter(Boolean)
-    setStudents(studentList)
+      const studentList = (relationships ?? []).map((r: any) => r.student).filter(Boolean)
+      setStudents(studentList)
 
-    if (selectedStudentId) {
-      const found = studentList.find((s: any) => s.id === selectedStudentId)
-      setSelectedStudent(found ?? null)
+      if (selectedStudentId) {
+        const found = studentList.find((s: any) => s.id === selectedStudentId)
+        setSelectedStudent(found ?? null)
 
-      if (found) {
-        // Get lessons where student is primary + lessons where student is a participant
-        const { data: participations } = await supabase
-          .from('lesson_participants')
-          .select('lesson_id')
-          .eq('student_id', selectedStudentId)
-        const participantLessonIds = (participations ?? []).map((p: any) => p.lesson_id)
+        if (found) {
+          const { data: participations } = await supabase
+            .from('lesson_participants')
+            .select('lesson_id')
+            .eq('student_id', selectedStudentId)
+          const participantLessonIds = (participations ?? []).map((p: any) => p.lesson_id)
 
-        const orFilter = participantLessonIds.length
-          ? `student_id.eq.${selectedStudentId},id.in.(${participantLessonIds.join(',')})`
-          : `student_id.eq.${selectedStudentId}`
+          const orFilter = participantLessonIds.length
+            ? `student_id.eq.${selectedStudentId},id.in.(${participantLessonIds.join(',')})`
+            : `student_id.eq.${selectedStudentId}`
 
-        const { data } = await supabase
-          .from('lessons')
-          .select('id, scheduled_start, scheduled_end, status, lesson_type, is_group, group_name, lesson_notes(summary, areas_to_focus, homework), lesson_participants(student_id, student:profiles!lesson_participants_student_id_fkey(full_name))')
-          .eq('teacher_id', user!.id)
-          .or(orFilter)
-          .order('scheduled_start', { ascending: false })
-        setLessons((data ?? []).filter((l: any) => l.status !== 'cancelled'))
+          const { data, error: lessonsErr } = await supabase
+            .from('lessons')
+            .select('id, scheduled_start, scheduled_end, status, lesson_type, is_group, group_name, lesson_notes(summary, areas_to_focus, homework), lesson_participants(student_id, student:profiles!lesson_participants_student_id_fkey(full_name))')
+            .eq('teacher_id', user!.id)
+            .or(orFilter)
+            .order('scheduled_start', { ascending: false })
+          if (lessonsErr) throw lessonsErr
+          setLessons((data ?? []).filter((l: any) => l.status !== 'cancelled'))
+        }
+      } else {
+        setSelectedStudent(null)
+        setLessons([])
       }
-    } else {
-      setSelectedStudent(null)
-      setLessons([])
+      setError(null)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to load lessons')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   async function loadStudentLessons() {
-    const { data: participations } = await supabase
-      .from('lesson_participants')
-      .select('lesson_id')
-      .eq('student_id', user!.id)
-    const participantLessonIds = (participations ?? []).map((p: any) => p.lesson_id)
+    try {
+      const { data: participations } = await supabase
+        .from('lesson_participants')
+        .select('lesson_id')
+        .eq('student_id', user!.id)
+      const participantLessonIds = (participations ?? []).map((p: any) => p.lesson_id)
 
-    const orFilter = participantLessonIds.length
-      ? `student_id.eq.${user!.id},id.in.(${participantLessonIds.join(',')})`
-      : `student_id.eq.${user!.id}`
+      const orFilter = participantLessonIds.length
+        ? `student_id.eq.${user!.id},id.in.(${participantLessonIds.join(',')})`
+        : `student_id.eq.${user!.id}`
 
-    const { data } = await supabase
-      .from('lessons')
-      .select('*, teacher:profiles!lessons_teacher_id_fkey(id, full_name), lesson_notes(summary, areas_to_focus, homework), lesson_participants(student_id, student:profiles!lesson_participants_student_id_fkey(full_name))')
-      .or(orFilter)
-      .order('scheduled_start', { ascending: false })
-    setLessons((data ?? []).filter((l: any) => l.status !== 'cancelled'))
-    setLoading(false)
+      const { data, error: err } = await supabase
+        .from('lessons')
+        .select('*, teacher:profiles!lessons_teacher_id_fkey(id, full_name), lesson_notes(summary, areas_to_focus, homework), lesson_participants(student_id, student:profiles!lesson_participants_student_id_fkey(full_name))')
+        .or(orFilter)
+        .order('scheduled_start', { ascending: false })
+      if (err) throw err
+      setLessons((data ?? []).filter((l: any) => l.status !== 'cancelled'))
+      setError(null)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to load lessons')
+    } finally {
+      setLoading(false)
+    }
   }
+
+  const reload = isTeacher ? loadTeacherData : loadStudentLessons
+  if (error) return <PageError message={error} onRetry={reload} />
 
   if (loading) {
     return <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />

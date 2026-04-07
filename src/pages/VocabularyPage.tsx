@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { VocabularyFlashcard } from '@/components/lesson/VocabularyFlashcard'
 import { StudySession } from '@/components/lesson/StudySession'
 import type { VocabularyBankEntry } from '@/lib/types/database'
+import { PageError } from '@/components/shared/PageError'
 
 const MASTERY_LABELS = ['新しい', '見た', '覚えてる', 'マスター']
 const MASTERY_LABELS_EN = ['New', 'Seen', 'Familiar', 'Mastered']
@@ -20,38 +21,46 @@ export function VocabularyPage() {
   const [vocab, setVocab] = useState<VocabularyBankEntry[]>([])
   const [deckNames, setDeckNames] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [studyCards, setStudyCards] = useState<VocabularyBankEntry[] | null>(null)
   const [view, setView] = useState<'decks' | 'mastery'>('decks')
 
   async function loadVocab() {
     if (!user) return
-    const { data } = await supabase
-      .from('vocabulary_bank')
-      .select('*')
-      .eq('student_id', user.id)
-      .order('created_at', { ascending: false })
+    try {
+      const { data, error: err } = await supabase
+        .from('vocabulary_bank')
+        .select('*')
+        .eq('student_id', user.id)
+        .order('created_at', { ascending: false })
+      if (err) throw err
 
-    const entries = data ?? []
-    setVocab(entries)
+      const entries = data ?? []
+      setVocab(entries)
 
-    // Load deck names for any deck_ids found
-    const deckIds = [...new Set(entries.map(v => v.deck_id).filter(Boolean) as string[])]
-    if (deckIds.length > 0) {
-      const { data: decks } = await supabase
-        .from('vocabulary_decks')
-        .select('id, name')
-        .in('id', deckIds)
-      if (decks) {
-        const map: Record<string, string> = {}
-        for (const d of decks) map[d.id] = d.name
-        setDeckNames(map)
+      const deckIds = [...new Set(entries.map(v => v.deck_id).filter(Boolean) as string[])]
+      if (deckIds.length > 0) {
+        const { data: decks } = await supabase
+          .from('vocabulary_decks')
+          .select('id, name')
+          .in('id', deckIds)
+        if (decks) {
+          const map: Record<string, string> = {}
+          for (const d of decks) map[d.id] = d.name
+          setDeckNames(map)
+        }
       }
+      setError(null)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to load vocabulary')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   useEffect(() => { loadVocab() }, [user])
+
+  if (error) return <PageError message={error} onRetry={loadVocab} />
 
   if (loading) {
     return <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />

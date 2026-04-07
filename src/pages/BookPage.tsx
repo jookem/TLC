@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { BookingCalendar } from '@/components/booking/BookingCalendar'
+import { PageError } from '@/components/shared/PageError'
 
 export function BookPage() {
   const { user } = useAuth()
@@ -12,10 +13,11 @@ export function BookPage() {
   const [pendingRequests, setPendingRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [noTeacher, setNoTeacher] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function loadData() {
     if (!user) return
-
+    try {
     const { data: relationships } = await supabase
       .from('teacher_student_relationships')
       .select('*, teacher:profiles!teacher_student_relationships_teacher_id_fkey(id, full_name, display_name, avatar_url)')
@@ -32,21 +34,29 @@ export function BookPage() {
     const t = (teacherRel as any).teacher
     setTeacher(t)
 
-    const [{ data: slots }, { data: lessons }, { data: pending }] = await Promise.all([
+    const [{ data: slots, error: sErr }, { data: lessons, error: lErr }, { data: pending, error: pErr }] = await Promise.all([
       supabase.from('availability_slots').select('*').eq('teacher_id', t.id).eq('is_active', true),
       supabase.from('lessons').select('scheduled_start, scheduled_end, status, student_id').eq('teacher_id', t.id).in('status', ['scheduled']).gte('scheduled_start', new Date().toISOString()),
       supabase.from('booking_requests').select('*').eq('student_id', user.id).eq('status', 'pending'),
     ])
+    if (sErr || lErr || pErr) throw sErr ?? lErr ?? pErr
 
     setAvailabilitySlots(slots ?? [])
     setExistingLessons(lessons ?? [])
     setPendingRequests(pending ?? [])
-    setLoading(false)
+    setError(null)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to load booking data')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     loadData()
   }, [user])
+
+  if (error) return <PageError message={error} onRetry={loadData} />
 
   if (loading) {
     return (

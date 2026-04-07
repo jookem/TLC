@@ -8,11 +8,13 @@ import { useAuth } from '@/contexts/AuthContext'
 import { RemoveStudentButton } from '@/components/students/RemoveStudentButton'
 import { createPlaceholderStudent, linkPlaceholderToStudent, setStudentPassword } from '@/lib/api/students'
 import { toast } from 'sonner'
+import { PageError } from '@/components/shared/PageError'
 
 export function StudentsPage() {
   const { user, profile } = useAuth()
   const [students, setStudents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   const [addingName, setAddingName] = useState('')
@@ -29,14 +31,21 @@ export function StudentsPage() {
 
   async function loadStudents() {
     if (!user) return
-    const { data } = await supabase
-      .from('teacher_student_relationships')
-      .select('*, student:profiles!teacher_student_relationships_student_id_fkey(*)')
-      .eq('teacher_id', user.id)
-      .eq('status', 'active')
-      .order('started_at', { ascending: false })
-    setStudents(data ?? [])
-    setLoading(false)
+    try {
+      const { data, error: err } = await supabase
+        .from('teacher_student_relationships')
+        .select('*, student:profiles!teacher_student_relationships_student_id_fkey(*)')
+        .eq('teacher_id', user.id)
+        .eq('status', 'active')
+        .order('started_at', { ascending: false })
+      if (err) throw err
+      setStudents(data ?? [])
+      setError(null)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to load students')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { loadStudents() }, [user])
@@ -58,6 +67,8 @@ export function StudentsPage() {
       loadStudents()
     }
   }
+
+  if (error) return <PageError message={error} onRetry={loadStudents} />
 
   if (loading) {
     return (

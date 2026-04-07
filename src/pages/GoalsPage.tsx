@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { format, differenceInDays } from 'date-fns'
+import { PageError } from '@/components/shared/PageError'
 
 const statusColors: Record<string, string> = {
   active: 'bg-brand-light text-brand-dark',
@@ -22,21 +23,30 @@ export function GoalsPage() {
   const { user } = useAuth()
   const [goals, setGoals] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  async function loadGoals() {
     if (!user) return
+    try {
+      const { data, error: err } = await supabase
+        .from('student_goals')
+        .select('*')
+        .eq('student_id', user.id)
+        .order('status', { ascending: true })
+        .order('target_date', { ascending: true })
+      if (err) throw err
+      setGoals(data ?? [])
+      setError(null)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to load goals')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-    supabase
-      .from('student_goals')
-      .select('*')
-      .eq('student_id', user.id)
-      .order('status', { ascending: true })
-      .order('target_date', { ascending: true })
-      .then(({ data }) => {
-        setGoals(data ?? [])
-        setLoading(false)
-      })
-  }, [user])
+  useEffect(() => { loadGoals() }, [user])
+
+  if (error) return <PageError message={error} onRetry={loadGoals} />
 
   if (loading) {
     return <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />

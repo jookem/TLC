@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { listGrammar, type GrammarBankEntry } from '@/lib/api/grammar'
 import { Card, CardContent } from '@/components/ui/card'
 import { GrammarSession } from '@/components/grammar/GrammarSession'
+import { PageError } from '@/components/shared/PageError'
 
 const MASTERY_LABELS = ['新しい', '見た', '覚えてる', 'マスター']
 const MASTERY_LABELS_EN = ['New', 'Seen', 'Familiar', 'Mastered']
@@ -17,17 +18,26 @@ export function GrammarPage() {
   const { user } = useAuth()
   const [entries, setEntries] = useState<GrammarBankEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [studyCards, setStudyCards] = useState<GrammarBankEntry[] | null>(null)
 
   async function load() {
     if (!user) return
-    const { entries: e } = await listGrammar(user.id)
-    setEntries(e ?? [])
-    setLoading(false)
+    try {
+      const { entries: e, error: err } = await listGrammar(user.id)
+      if (err) throw new Error(String(err))
+      setEntries(e ?? [])
+      setError(null)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to load grammar')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [user])
 
+  if (error) return <PageError message={error} onRetry={load} />
   if (loading) return <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />
 
   const due = entries.filter(e => {
