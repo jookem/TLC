@@ -145,9 +145,22 @@ export async function assignPuzzleDeckToStudent(
   deckId: string,
   studentId: string,
 ): Promise<{ error?: string }> {
+  // Fetch teacher_id from the deck so we can store it on the assignment
+  // (required for non-recursive RLS on puzzle_deck_assignments)
+  const { data: deck, error: deckErr } = await supabase
+    .from('puzzle_decks')
+    .select('teacher_id')
+    .eq('id', deckId)
+    .single()
+
+  if (deckErr || !deck) return { error: deckErr?.message ?? 'Deck not found.' }
+
   const { error } = await supabase
     .from('puzzle_deck_assignments')
-    .upsert({ deck_id: deckId, student_id: studentId }, { ignoreDuplicates: true })
+    .upsert(
+      { deck_id: deckId, student_id: studentId, teacher_id: deck.teacher_id },
+      { ignoreDuplicates: true },
+    )
 
   return error ? { error: error.message } : {}
 }
