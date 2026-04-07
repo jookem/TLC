@@ -9,6 +9,7 @@ import {
 } from '@/lib/api/puzzles'
 import { Card, CardContent } from '@/components/ui/card'
 import { TrainPuzzle } from '@/components/puzzle/TrainPuzzle'
+import { CelebrationScreen } from '@/components/shared/CelebrationScreen'
 
 type DeckWithPuzzles = PuzzleDeck & { puzzles: Puzzle[] }
 
@@ -88,13 +89,13 @@ export function GamePage() {
   // Session complete screen
   if (sessionComplete && activePuzzles) {
     return (
-      <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center p-4 text-center">
-        <div className="text-6xl mb-4">🚉</div>
-        <h2 className="text-3xl font-bold text-white mb-2">All aboard!</h2>
-        <p className="text-gray-400 mb-8">You completed {activePuzzles.length} puzzle{activePuzzles.length !== 1 ? 's' : ''}</p>
-        <button onClick={handleClose} className="px-8 py-3 bg-brand text-white rounded-xl font-medium hover:bg-brand/90 transition-colors">
-          Back to Decks
-        </button>
+      <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center p-4">
+        <CelebrationScreen
+          title="All Aboard! 🚉"
+          subtitle={`You completed ${activePuzzles.length} puzzle${activePuzzles.length !== 1 ? 's' : ''}`}
+          onClose={handleClose}
+          closeLabel="Back to Decks"
+        />
       </div>
     )
   }

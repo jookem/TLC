@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { rateVocabCard } from '@/lib/api/lessons'
 import { speak } from '@/lib/tts'
 import type { VocabularyBankEntry, MasteryLevel } from '@/lib/types/database'
+import { CelebrationScreen } from '@/components/shared/CelebrationScreen'
 
 type Rating = 'again' | 'hard' | 'good' | 'easy'
 
@@ -105,33 +106,26 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
       )}
 
       {done ? (
-        /* Done screen */
-        <div className="w-full max-w-lg text-center space-y-6">
-          <div className="text-5xl mb-2">🎉</div>
-          <h2 className="text-2xl font-bold text-white">Session Complete</h2>
-          <p className="text-gray-400">You reviewed {total} word{total !== 1 ? 's' : ''}</p>
-
-          <div className="grid grid-cols-4 gap-3">
-            {([
-              { label: 'Again', key: 'again', color: 'text-red-400' },
-              { label: 'Hard', key: 'hard', color: 'text-yellow-400' },
-              { label: 'Good', key: 'good', color: 'text-green-400' },
-              { label: 'Easy', key: 'easy', color: 'text-blue-400' },
-            ] as const).map(({ label, key, color }) => (
-              <div key={key} className="bg-gray-800 rounded-xl p-3 text-center">
-                <div className={`text-2xl font-bold ${color}`}>{stats[key]}</div>
-                <div className="text-xs text-gray-500 mt-1">{label}</div>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={handleClose}
-            className="px-8 py-3 bg-brand text-white rounded-xl font-medium hover:bg-brand/90 transition-colors"
-          >
-            Done
-          </button>
-        </div>
+        <CelebrationScreen
+          title="Session Complete!"
+          subtitle={`You reviewed ${total} word${total !== 1 ? 's' : ''}`}
+          onClose={handleClose}
+          stats={
+            <div className="grid grid-cols-4 gap-3">
+              {([
+                { label: 'Again', key: 'again', color: 'text-red-400' },
+                { label: 'Hard', key: 'hard', color: 'text-yellow-400' },
+                { label: 'Good', key: 'good', color: 'text-green-400' },
+                { label: 'Easy', key: 'easy', color: 'text-blue-400' },
+              ] as const).map(({ label, key, color }) => (
+                <div key={key} className="bg-gray-800 rounded-xl p-3 text-center">
+                  <div className={`text-2xl font-bold ${color}`}>{stats[key]}</div>
+                  <div className="text-xs text-gray-500 mt-1">{label}</div>
+                </div>
+              ))}
+            </div>
+          }
+        />
       ) : current ? (
         /* Card */
         <div className="w-full max-w-lg space-y-6">

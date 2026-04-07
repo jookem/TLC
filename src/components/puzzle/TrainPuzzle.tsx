@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { recordPuzzleAttempt, type Puzzle, type PuzzlePart } from '@/lib/api/puzzles'
+import { launchConfetti } from '@/lib/confetti'
 
 const LABEL_COLORS: Record<string, { car: string; badge: string }> = {
   Noun:         { car: 'bg-blue-50 border-blue-300',    badge: 'bg-blue-200 text-blue-800' },
@@ -187,6 +188,7 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
     if (isCorrect) {
       setGameState('correct')
       recordPuzzleAttempt(puzzle.id, true)
+      launchConfetti()
       setTimeout(() => setTrainExiting(true), 200)
       setTimeout(() => setShowCorrect(true), 1100)
     } else {

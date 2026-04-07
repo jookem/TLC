@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { rateGrammarCard, type GrammarBankEntry, type GrammarRating } from '@/lib/api/grammar'
+import { CelebrationScreen } from '@/components/shared/CelebrationScreen'
 
 interface Props {
   cards: GrammarBankEntry[]
@@ -145,24 +146,23 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
       )}
 
       {done ? (
-        <div className="w-full max-w-lg text-center space-y-6">
-          <div className="text-5xl mb-2">🎉</div>
-          <h2 className="text-2xl font-bold text-white">Session Complete</h2>
-          <p className="text-gray-400">You reviewed {total} question{total !== 1 ? 's' : ''}</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-gray-800 rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold text-green-400">{stats.correct}</div>
-              <div className="text-xs text-gray-500 mt-1">Correct</div>
+        <CelebrationScreen
+          title="Session Complete!"
+          subtitle={`You reviewed ${total} question${total !== 1 ? 's' : ''}`}
+          onClose={handleClose}
+          stats={
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-800 rounded-xl p-3 text-center">
+                <div className="text-2xl font-bold text-green-400">{stats.correct}</div>
+                <div className="text-xs text-gray-500 mt-1">Correct</div>
+              </div>
+              <div className="bg-gray-800 rounded-xl p-3 text-center">
+                <div className="text-2xl font-bold text-red-400">{stats.incorrect}</div>
+                <div className="text-xs text-gray-500 mt-1">Incorrect</div>
+              </div>
             </div>
-            <div className="bg-gray-800 rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold text-red-400">{stats.incorrect}</div>
-              <div className="text-xs text-gray-500 mt-1">Incorrect</div>
-            </div>
-          </div>
-          <button onClick={handleClose} className="px-8 py-3 bg-brand text-white rounded-xl font-medium hover:bg-brand/90 transition-colors">
-            Done
-          </button>
-        </div>
+          }
+        />
       ) : current ? (
         <div className="w-full max-w-lg space-y-4">
           {/* Question card */}
