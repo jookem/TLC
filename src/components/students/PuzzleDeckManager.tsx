@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import nlp from 'compromise'
 import {
   listPuzzleDecks, createPuzzleDeck, deletePuzzleDeck, renamePuzzleDeck,
-  getPuzzleDeckWithPuzzles, createPuzzle, deletePuzzle,
+  getPuzzleDeckWithPuzzles, createPuzzle, updatePuzzle, deletePuzzle,
   assignPuzzleDeckToStudent, removePuzzleDeckFromStudent, getAssignedDeckIds,
   type PuzzleDeck, type Puzzle, type PuzzlePart,
 } from '@/lib/api/puzzles'
@@ -11,6 +11,29 @@ import { listDecks, getDeckWithWords, type Deck } from '@/lib/api/lessons'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+
+// ── Parts of speech ───────────────────────────────────────────
+
+const LABELS = [
+  'Noun', 'Pronoun', 'Verb', 'Adjective', 'Adverb',
+  'Preposition', 'Conjunction', 'Interjection',
+  'Subject', 'Object', 'Complement', 'Other',
+]
+
+const LABEL_COLORS: Record<string, string> = {
+  Noun:         'bg-blue-100 text-blue-700',
+  Pronoun:      'bg-sky-100 text-sky-700',
+  Verb:         'bg-red-100 text-red-700',
+  Adjective:    'bg-purple-100 text-purple-700',
+  Adverb:       'bg-orange-100 text-orange-700',
+  Preposition:  'bg-teal-100 text-teal-700',
+  Conjunction:  'bg-yellow-100 text-yellow-700',
+  Interjection: 'bg-rose-100 text-rose-700',
+  Subject:      'bg-indigo-100 text-indigo-700',
+  Object:       'bg-green-100 text-green-700',
+  Complement:   'bg-pink-100 text-pink-700',
+  Other:        'bg-gray-100 text-gray-600',
+}
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -242,6 +265,40 @@ function PuzzleEditor({
     else { setPuzzles(prev => prev.filter(p => p.id !== puzzleId)); onUpdated() }
   }
 
+  // ── Inline edit state ─────────────────────────────────────────
+  const [editingPuzzleId, setEditingPuzzleId] = useState<string | null>(null)
+  const [editParts, setEditParts] = useState<PuzzlePart[]>([])
+  const [editHint, setEditHint] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  function startEditPuzzle(p: Puzzle) {
+    setEditingPuzzleId(p.id)
+    setEditParts(p.parts.map(pt => ({ ...pt })))
+    setEditHint(p.hint ?? '')
+  }
+
+  function updateEditPart(i: number, field: keyof PuzzlePart, val: string) {
+    setEditParts(prev => prev.map((pt, idx) => idx === i ? { ...pt, [field]: val } : pt))
+  }
+
+  async function saveEditPuzzle(puzzleId: string) {
+    const valid = editParts.filter(p => p.text.trim())
+    if (valid.length < 2) { toast.error('Need at least 2 parts.'); return }
+    setSavingEdit(true)
+    const { error } = await updatePuzzle(puzzleId, {
+      hint: editHint.trim() || undefined,
+      parts: valid,
+    })
+    setSavingEdit(false)
+    if (error) { toast.error(error); return }
+    setPuzzles(prev => prev.map(p => p.id === puzzleId
+      ? { ...p, parts: valid, hint: editHint.trim() || null }
+      : p
+    ))
+    setEditingPuzzleId(null)
+    onUpdated()
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
@@ -345,19 +402,74 @@ function PuzzleEditor({
           ) : (
             <div className="space-y-1.5">
               {puzzles.map(p => (
-                <div key={p.id} className="flex items-start justify-between gap-3 px-3 py-2 rounded-lg border border-gray-100 hover:border-gray-200 bg-white">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900">{p.japanese_sentence}</p>
-                    {p.hint && <p className="text-xs text-gray-400 italic mt-0.5">💡 {p.hint}</p>}
-                    <p className="text-xs text-gray-300 mt-0.5">{p.parts.length} parts</p>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(p.id)}
-                    disabled={deleting === p.id}
-                    className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50 shrink-0 mt-0.5"
-                  >
-                    {deleting === p.id ? '…' : 'Delete'}
-                  </button>
+                <div key={p.id} className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+                  {editingPuzzleId === p.id ? (
+                    /* ── Edit mode ── */
+                    <div className="p-3 space-y-2 bg-gray-50">
+                      <p className="text-xs font-medium text-gray-600">{p.japanese_sentence}</p>
+                      <div className="space-y-1.5">
+                        {editParts.map((pt, i) => (
+                          <div key={i} className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-400 w-4 shrink-0">{i + 1}.</span>
+                            <input
+                              value={pt.text}
+                              onChange={e => updateEditPart(i, 'text', e.target.value)}
+                              className="flex-1 h-7 text-xs border border-gray-200 rounded px-2 bg-white"
+                            />
+                            <select
+                              value={pt.label}
+                              onChange={e => updateEditPart(i, 'label', e.target.value)}
+                              className="h-7 text-xs border border-gray-200 rounded px-1 bg-white"
+                            >
+                              {LABELS.map(l => <option key={l}>{l}</option>)}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={editHint}
+                          onChange={e => setEditHint(e.target.value)}
+                          placeholder="Hint (optional)"
+                          className="flex-1 h-7 text-xs border border-gray-200 rounded px-2 bg-white"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => saveEditPuzzle(p.id)} disabled={savingEdit}
+                          className="px-3 py-1 bg-brand text-white text-xs rounded-md disabled:opacity-50">
+                          {savingEdit ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={() => setEditingPuzzleId(null)} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── View mode ── */
+                    <div className="flex items-start gap-3 px-3 py-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900">{p.japanese_sentence}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {p.parts.map((pt, i) => (
+                            <span key={i} className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${LABEL_COLORS[pt.label] ?? LABEL_COLORS.Other}`}>
+                              {pt.text}
+                              <span className="opacity-50 ml-0.5 text-[10px]">({pt.label})</span>
+                            </span>
+                          ))}
+                        </div>
+                        {p.hint && <p className="text-xs text-gray-400 italic mt-1">💡 {p.hint}</p>}
+                      </div>
+                      <div className="flex gap-2 shrink-0 mt-0.5">
+                        <button onClick={() => startEditPuzzle(p)} className="text-xs text-gray-400 hover:text-brand transition-colors">
+                          Edit
+                        </button>
+                        <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id}
+                          className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
+                          {deleting === p.id ? '…' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
