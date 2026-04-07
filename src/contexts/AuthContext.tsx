@@ -27,7 +27,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // TOKEN_REFRESHED fires whenever the tab regains focus — ignore it to
+      // prevent the UI from blanking out and re-fetching unnecessarily.
+      if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') return
+
       setUser(session?.user ?? null)
       if (session?.user) {
         setLoading(true)
