@@ -137,7 +137,7 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
         <div className="w-full max-w-lg space-y-6">
           <div
             onClick={() => !flipped && setFlipped(true)}
-            className={`min-h-52 bg-white rounded-2xl p-8 shadow-2xl flex flex-col justify-center transition-all ${
+            className={`min-h-52 bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center justify-center transition-all ${
               !flipped ? 'cursor-pointer hover:shadow-brand/20' : ''
             }`}
           >
@@ -157,12 +157,12 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
                 <p className="text-sm text-gray-300 mt-4">Tap to reveal</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="flex flex-col items-center text-center space-y-3">
                 {current.image_url && (
                   <img
                     src={current.image_url}
                     alt={current.word}
-                    className="w-full max-h-48 object-contain rounded-lg mb-1"
+                    className="max-h-48 object-contain rounded-lg mb-1"
                   />
                 )}
                 {current.definition_ja && (
@@ -172,7 +172,7 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
                   <p className="text-base text-gray-500" dangerouslySetInnerHTML={{ __html: current.definition_en }} />
                 )}
                 {current.example && (
-                  <p className="text-sm text-gray-400 italic border-t pt-3 mt-3" dangerouslySetInnerHTML={{ __html: `&ldquo;${current.example}&rdquo;` }} />
+                  <p className="text-sm text-gray-400 italic border-t pt-3 mt-3 w-full" dangerouslySetInnerHTML={{ __html: `&ldquo;${current.example}&rdquo;` }} />
                 )}
               </div>
             )}
