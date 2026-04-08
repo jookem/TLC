@@ -281,6 +281,14 @@ function PuzzleEditor({
     setEditParts(prev => prev.map((pt, idx) => idx === i ? { ...pt, [field]: val } : pt))
   }
 
+  function removeEditPart(i: number) {
+    setEditParts(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  function addEditPart() {
+    setEditParts(prev => [...prev, { text: '', label: 'Other' }])
+  }
+
   async function saveEditPuzzle(puzzleId: string) {
     const valid = editParts.filter(p => p.text.trim())
     if (valid.length < 2) { toast.error('Need at least 2 parts.'); return }
@@ -414,6 +422,7 @@ function PuzzleEditor({
                             <input
                               value={pt.text}
                               onChange={e => updateEditPart(i, 'text', e.target.value)}
+                              placeholder="word"
                               className="flex-1 h-7 text-xs border border-gray-200 rounded px-2 bg-white"
                             />
                             <select
@@ -423,8 +432,22 @@ function PuzzleEditor({
                             >
                               {LABELS.map(l => <option key={l}>{l}</option>)}
                             </select>
+                            <button
+                              onClick={() => removeEditPart(i)}
+                              disabled={editParts.length <= 2}
+                              className="text-gray-300 hover:text-red-500 transition-colors disabled:opacity-20 text-sm leading-none px-0.5"
+                              title="Remove word"
+                            >
+                              ×
+                            </button>
                           </div>
                         ))}
+                        <button
+                          onClick={addEditPart}
+                          className="text-xs text-brand hover:text-brand/80 transition-colors mt-1"
+                        >
+                          + Add word
+                        </button>
                       </div>
                       <div className="flex items-center gap-2">
                         <input
