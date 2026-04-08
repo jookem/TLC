@@ -24,7 +24,12 @@ export function LandingPage() {
     <div className="min-h-screen bg-white">
       {/* Hero */}
       <section className="max-w-5xl mx-auto px-6 py-20 text-center">
-        <img src="/narubase_v2.svg" alt="NaruBase" style={{ height: 120, width: 'auto' }} className="mx-auto mb-6" />
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <img src="/narubase_v2.svg" alt="" aria-hidden="true" style={{ height: 120, width: 'auto' }} />
+          <span style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 300, fontSize: 48, color: '#3D3DB4', letterSpacing: '0.01em', lineHeight: 1 }}>
+            NaruBase
+          </span>
+        </div>
         <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 leading-tight">
           English lessons,<br />
           <span className="text-brand">organized.</span>
