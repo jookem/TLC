@@ -187,7 +187,7 @@ function TrainScrollBar({ scrollRef }: { scrollRef: React.RefObject<HTMLDivEleme
   return (
     <div
       ref={trackRef}
-      className="relative mx-1 mt-3 rounded-full cursor-pointer"
+      className="relative mx-1 rounded-full cursor-pointer"
       style={{
         height: 28,
         background: 'repeating-linear-gradient(90deg, #374151 0px, #374151 2px, #0f172a 2px, #0f172a 22px)',
@@ -310,8 +310,9 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
           <div className="h-px flex-1 bg-gray-700" />
         </div>
 
-        {/* Train */}
-        <div ref={trackScrollRef} className={`pt-6 pb-3 train-track ${trainExiting ? 'overflow-hidden' : 'overflow-x-auto'}`}>
+        {/* Train + scrollbar grouped so scrollbar sits flush below the cars */}
+        <div>
+        <div ref={trackScrollRef} className={`pt-6 pb-2 train-track ${trainExiting ? 'overflow-hidden' : 'overflow-x-auto'}`}>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -350,8 +351,8 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
             </DragOverlay>
           </DndContext>
         </div>
-
         <TrainScrollBar scrollRef={trackScrollRef} />
+        </div>
 
         <p className="text-center text-xs text-gray-600">
           Drag cars along the track to reorder them
