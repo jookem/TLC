@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -126,6 +126,87 @@ function GhostCar({ car }: { car: Car }) {
   )
 }
 
+// ── Custom scrollbar for the train track ─────────────────────
+function TrainScrollBar({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElement | null> }) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [thumb, setThumb] = useState({ left: 0, width: 0 })
+  const dragStart = useRef<{ x: number; scrollLeft: number } | null>(null)
+
+  const recalc = useCallback(() => {
+    const el = scrollRef.current
+    const track = trackRef.current
+    if (!el || !track) return
+    const ratio = el.clientWidth / el.scrollWidth
+    if (ratio >= 1) { setThumb({ left: 0, width: 0 }); return }
+    const trackW = track.clientWidth
+    const thumbW = Math.max(48, ratio * trackW)
+    const maxScroll = el.scrollWidth - el.clientWidth
+    const thumbLeft = maxScroll > 0 ? (el.scrollLeft / maxScroll) * (trackW - thumbW) : 0
+    setThumb({ left: thumbLeft, width: thumbW })
+  }, [scrollRef])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    el.addEventListener('scroll', recalc, { passive: true })
+    const ro = new ResizeObserver(recalc)
+    ro.observe(el)
+    recalc()
+    return () => { el.removeEventListener('scroll', recalc); ro.disconnect() }
+  }, [recalc])
+
+  function jumpToClick(e: React.PointerEvent<HTMLDivElement>) {
+    const el = scrollRef.current
+    const track = trackRef.current
+    if (!el || !track) return
+    const rect = track.getBoundingClientRect()
+    const ratio = (e.clientX - rect.left) / rect.width
+    el.scrollLeft = ratio * (el.scrollWidth - el.clientWidth)
+  }
+
+  function onThumbDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.stopPropagation()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragStart.current = { x: e.clientX, scrollLeft: scrollRef.current?.scrollLeft ?? 0 }
+  }
+
+  function onThumbMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragStart.current) return
+    const el = scrollRef.current
+    const track = trackRef.current
+    if (!el || !track) return
+    const dx = e.clientX - dragStart.current.x
+    const scrollRatio = (el.scrollWidth - el.clientWidth) / (track.clientWidth - thumb.width)
+    el.scrollLeft = dragStart.current.scrollLeft + dx * scrollRatio
+  }
+
+  function onThumbUp() { dragStart.current = null }
+
+  if (thumb.width === 0) return null
+
+  return (
+    <div
+      ref={trackRef}
+      className="relative mx-1 mt-3 rounded-full cursor-pointer"
+      style={{
+        height: 28,
+        background: 'repeating-linear-gradient(90deg, #374151 0px, #374151 2px, #0f172a 2px, #0f172a 22px)',
+        borderRadius: 14,
+      }}
+      onPointerDown={jumpToClick}
+    >
+      <div
+        className="absolute rounded-full bg-gray-300 active:bg-white cursor-grab active:cursor-grabbing"
+        style={{ top: 4, height: 20, left: thumb.left, width: thumb.width }}
+        onPointerDown={onThumbDown}
+        onPointerMove={onThumbMove}
+        onPointerUp={onThumbUp}
+        onPointerCancel={onThumbUp}
+      />
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────
 interface Props {
   puzzle: Puzzle
@@ -146,6 +227,7 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
   const [activeCar, setActiveCar] = useState<Car | null>(null)
   const [trainExiting, setTrainExiting] = useState(false)
   const [showCorrect, setShowCorrect] = useState(false)
+  const trackScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const shuffled = shuffle(
@@ -229,7 +311,7 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
         </div>
 
         {/* Train */}
-        <div className={`pt-6 pb-3 train-track ${trainExiting ? 'overflow-hidden' : 'overflow-x-auto'}`}>
+        <div ref={trackScrollRef} className={`pt-6 pb-3 train-track ${trainExiting ? 'overflow-hidden' : 'overflow-x-auto'}`}>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -268,6 +350,8 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
             </DragOverlay>
           </DndContext>
         </div>
+
+        <TrainScrollBar scrollRef={trackScrollRef} />
 
         <p className="text-center text-xs text-gray-600">
           Drag cars along the track to reorder them
