@@ -45,10 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // SIGNED_IN: only do a full re-init when this is a genuine new login,
-      // not a background session restore after the first load.
       if (event === 'SIGNED_IN') {
-        if (initializedRef.current) return  // already loaded — ignore
         setUser(session?.user ?? null)
         if (session?.user) fetchProfile(session.user.id)
         return
