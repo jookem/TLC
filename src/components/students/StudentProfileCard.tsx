@@ -268,7 +268,7 @@ export function StudentProfileCard({
                 {(d.birthday || d.age || d.grade || d.school_name || d.occupation) && (
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Background</p>
-                    <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                    <dl className="grid gap-x-6 gap-y-1.5 text-sm" style={{ gridTemplateColumns: 'max-content auto' }}>
                       {d.birthday && <><dt className="text-gray-500">Birthday</dt><dd>{format(new Date(d.birthday), 'MMMM d, yyyy')}</dd></>}
                       {d.age && <><dt className="text-gray-500">Age</dt><dd>{d.age}</dd></>}
                       {d.grade && <><dt className="text-gray-500">Grade / Level</dt><dd>{GRADE_LABELS[d.grade] ?? d.grade}</dd></>}
@@ -281,7 +281,7 @@ export function StudentProfileCard({
                 {(d.eiken_grade || d.self_cefr || d.toeic_score || d.ielts_score || d.toefl_score) && (
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">English Proficiency</p>
-                    <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                    <dl className="grid gap-x-6 gap-y-1.5 text-sm" style={{ gridTemplateColumns: 'max-content auto' }}>
                       {d.self_cefr && <><dt className="text-gray-500">Self-assessed CEFR</dt><dd>{d.self_cefr}</dd></>}
                       {d.eiken_grade && <><dt className="text-gray-500">EIKEN</dt><dd>{EIKEN_LABELS[d.eiken_grade] ?? d.eiken_grade}</dd></>}
                       {d.toeic_score && <><dt className="text-gray-500">TOEIC</dt><dd>{d.toeic_score}</dd></>}
