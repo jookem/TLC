@@ -64,20 +64,33 @@ function isJapanese(text: string): boolean {
 }
 
 function termToLabel(term: any): string {
+  const t = term.text('trim').toLowerCase()
+  // Articles — check text directly since compromise folds them into Determiner
+  if (t === 'a' || t === 'an' || t === 'the') return 'Article'
+  // Interrogatives (who, what, where, when, why, how, which)
+  if (term.has('#QuestionWord')) return 'Interrogative'
+  // Pronouns before modals so "I/you/he" isn't mis-tagged
   if (term.has('#Pronoun')) return 'Pronoun'
-  if (term.has('#Verb') || term.has('#Copula') || term.has('#Auxiliary') || term.has('#Modal')) return 'Verb'
+  // Modal verbs (can, could, will, would, should, may, might, must)
+  if (term.has('#Modal')) return 'Modal'
+  // Auxiliary / copula (be, have, do and their forms)
+  if (term.has('#Auxiliary') || term.has('#Copula')) return 'Auxiliary'
+  if (term.has('#Verb')) return 'Verb'
   if (term.has('#Adjective')) return 'Adjective'
   if (term.has('#Adverb')) return 'Adverb'
+  if (term.has('#Determiner')) return 'Determiner'
   if (term.has('#Preposition')) return 'Preposition'
   if (term.has('#Conjunction')) return 'Conjunction'
+  if (term.has('#Ordinal') || term.has('#Cardinal')) return 'Numeral'
   if (term.has('#Noun') || term.has('#ProperNoun')) return 'Noun'
   return 'Other'
 }
 
 async function translateAndParse(
   text: string,
-): Promise<{ english: string; parts: PuzzlePart[] }> {
+): Promise<{ english: string; japanese: string | null; parts: PuzzlePart[] }> {
   let english = text.trim()
+  let japanese: string | null = null
 
   if (isJapanese(text)) {
     const res = await fetch(
@@ -85,6 +98,15 @@ async function translateAndParse(
     )
     const json = await res.json()
     english = json.responseData?.translatedText ?? text
+  } else {
+    // Translate English → Japanese for the hint
+    try {
+      const res = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(english)}&langpair=en|ja`,
+      )
+      const json = await res.json()
+      japanese = json.responseData?.translatedText ?? null
+    } catch { /* no hint if translation fails */ }
   }
 
   const doc = nlp(english)
@@ -94,7 +116,7 @@ async function translateAndParse(
     if (t) parts.push({ text: t, label: termToLabel(term) })
   })
 
-  return { english, parts }
+  return { english, japanese, parts }
 }
 
 // ── Puzzle Editor Modal ───────────────────────────────────────
@@ -229,11 +251,12 @@ function PuzzleEditor({
     if (!s) return
     setTranslating(true)
     try {
-      const { english, parts } = await translateAndParse(s)
+      const { english, japanese, parts } = await translateAndParse(s)
       if (parts.length < 2) { toast.error('Need at least 2 words after translation.'); return }
+      const autoHint = isJapanese(s) ? english : (japanese ?? undefined)
       const { puzzle, error } = await createPuzzle(deck.id, {
         japanese_sentence: isJapanese(s) ? s : english,
-        hint: manualHint.trim() || (isJapanese(s) ? english : undefined),
+        hint: manualHint.trim() || autoHint,
         parts,
       })
       if (error) { toast.error(error); return }
