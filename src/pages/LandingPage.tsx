@@ -25,7 +25,7 @@ export function LandingPage() {
       {/* Header */}
       <header className="border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <img src="/narubase.svg" alt="" width={100} height={42} />
+          <img src="/narubase.svg" alt="" style={{ height: 40, width: 'auto' }} />
           <div className="flex items-center gap-3">
             <Link
               to="/login"
@@ -50,7 +50,7 @@ export function LandingPage() {
           <span className="text-brand">organized.</span>
         </h1>
         <p className="mt-4 text-lg text-gray-500 max-w-xl mx-auto">
-          's platform for teachers and students. Track progress, manage lessons, and build vocabulary — all in one place.
+          The platform for teachers and students. Track progress, manage lessons, and build vocabulary — all in one place.
         </p>
         <div className="mt-8 flex items-center justify-center gap-4">
           <Link
