@@ -6,7 +6,6 @@ import { VocabularyFlashcard } from '@/components/lesson/VocabularyFlashcard'
 import { StudySession } from '@/components/lesson/StudySession'
 import type { VocabularyBankEntry } from '@/lib/types/database'
 import { PageError } from '@/components/shared/PageError'
-import { AnkiImporter } from '@/components/students/AnkiImporter'
 
 const MASTERY_LABELS = ['新しい', '見た', '覚えてる', 'マスター']
 const MASTERY_LABELS_EN = ['New', 'Seen', 'Familiar', 'Mastered']
@@ -116,16 +115,14 @@ export function VocabularyPage() {
 
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="space-y-3">
           <div>
             <h1 className="text-2xl font-semibold">単語 / Vocabulary</h1>
             <p className="text-gray-500 text-sm mt-1">
               {vocab.length}語 collected · {dueForReview.length} due for review
             </p>
           </div>
-
-          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            <AnkiImporter studentId={user!.id} onImported={loadVocab} />
+          <div className="flex items-center gap-2 flex-wrap">
             {dueForReview.length > 0 && (
               <button
                 onClick={() => setStudyCards(dueForReview)}
