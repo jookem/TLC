@@ -7,13 +7,23 @@ import { createProgressSnapshot } from '@/lib/api/goals'
 
 const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const
 
+type PreviousSnapshot = {
+  speaking_score?: number | null
+  listening_score?: number | null
+  reading_score?: number | null
+  writing_score?: number | null
+  cefr_level?: string | null
+}
+
 export function ProgressSnapshotForm({
   studentId,
   teacherId,
+  latestSnapshot,
   onSaved,
 }: {
   studentId: string
   teacherId: string
+  latestSnapshot?: PreviousSnapshot | null
   onSaved?: () => void
 }) {
   const [open, setOpen] = useState(false)
@@ -22,6 +32,24 @@ export function ProgressSnapshotForm({
   const [scores, setScores] = useState({ speaking: 0, listening: 0, reading: 0, writing: 0 })
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
+
+  function handleOpen() {
+    if (latestSnapshot) {
+      setScores({
+        speaking: latestSnapshot.speaking_score ?? 0,
+        listening: latestSnapshot.listening_score ?? 0,
+        reading: latestSnapshot.reading_score ?? 0,
+        writing: latestSnapshot.writing_score ?? 0,
+      })
+      setCefrLevel(latestSnapshot.cefr_level ?? '')
+    } else {
+      setScores({ speaking: 0, listening: 0, reading: 0, writing: 0 })
+      setCefrLevel('')
+    }
+    setNotes('')
+    setError('')
+    setOpen(true)
+  }
 
   async function handleSubmit() {
     setLoading(true)
@@ -47,7 +75,7 @@ export function ProgressSnapshotForm({
 
   if (!open) {
     return (
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="w-full">
+      <Button variant="outline" size="sm" onClick={handleOpen} className="w-full">
         + Record Assessment
       </Button>
     )

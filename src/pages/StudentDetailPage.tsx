@@ -281,7 +281,7 @@ export function StudentDetailPage() {
               </CardContent>
             </Card>
           )}
-          <ProgressSnapshotForm studentId={studentId!} teacherId={user!.id} onSaved={loadData} />
+          <ProgressSnapshotForm studentId={studentId!} teacherId={user!.id} latestSnapshot={snapshots[0] ?? null} onSaved={loadData} />
         </div>
       </div>
 
