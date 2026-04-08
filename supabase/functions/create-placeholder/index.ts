@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     }
 
     // Create auth user for the placeholder student
-    const placeholderEmail = `student_${crypto.randomUUID()}@tlc-student.internal`
+    const placeholderEmail = `student_${crypto.randomUUID()}@narubase-student.internal`
 
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email: placeholderEmail,

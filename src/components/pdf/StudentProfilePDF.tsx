@@ -1,8 +1,8 @@
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { format } from 'date-fns'
 
-const BRAND = '#02508E'
-const BRAND_LIGHT = '#E8F2FA'
+const BRAND = '#3D3DB4'
+const BRAND_LIGHT = '#EEF0FC'
 const GRAY = '#6B7280'
 const DARK = '#111827'
 const GREEN = '#166534'
@@ -83,7 +83,7 @@ export function StudentProfilePDF({ student, details: d, goals, latestSnapshot, 
         {/* Header */}
         <View style={s.header}>
           <View style={s.headerLeft}>
-            <Text style={s.schoolName}>TOYOOKA LANGUAGE CENTRE</Text>
+            <Text style={s.schoolName}>NARUBASE</Text>
             <Text style={s.studentName}>{student.full_name}</Text>
             <Text style={s.studentMeta}>{student.email}</Text>
           </View>
@@ -203,7 +203,7 @@ export function StudentProfilePDF({ student, details: d, goals, latestSnapshot, 
 
         {/* Footer */}
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>Toyooka Language Centre · Confidential</Text>
+          <Text style={s.footerText}>NaruBase · Confidential</Text>
           <Text style={s.footerText}>{student.full_name} · {format(new Date(), 'MMM d, yyyy')}</Text>
         </View>
       </Page>

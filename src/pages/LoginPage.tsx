@@ -93,8 +93,13 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center pb-4">
-          <img src="/tlc_logo.svg" alt="The Language Centre" className="mx-auto mb-3 h-12 w-auto" />
-          <p className="text-sm font-medium text-gray-700">The Language Centre</p>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            {/* icon = text (32px) × 1.333 ≈ 43px */}
+            <img src="/NaruBase_B_IndigoTeal.svg" alt="" aria-hidden="true" style={{ height: 43, width: 'auto' }} />
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 300, fontSize: 32, color: '#3D3DB4', letterSpacing: '0.01em', lineHeight: 1 }}>
+              NaruBase
+            </span>
+          </div>
         </CardHeader>
         <CardContent>
           {/* Mode tabs */}

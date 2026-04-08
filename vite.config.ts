@@ -10,12 +10,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['tlc_logo.svg'],
+      includeAssets: ['NaruBase_B_IndigoTeal.svg'],
       manifest: {
-        name: 'Toyooka Language Center',
-        short_name: 'TLC',
-        description: 'English learning app for TLC students',
-        theme_color: '#02508E',
+        name: 'NaruBase',
+        short_name: 'NaruBase',
+        description: 'English learning app powered by NaruBase',
+        theme_color: '#3D3DB4',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',

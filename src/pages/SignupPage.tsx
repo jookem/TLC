@@ -38,7 +38,7 @@ export function SignupPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create Account</CardTitle>
-          <CardDescription>The Language Centre</CardDescription>
+          <CardDescription>NaruBase</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (

@@ -4,10 +4,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-brand: #02508E;
-  --color-brand-light: #e6eef6;
-  --color-brand-dark: #013d6b;
-  --color-brand-purple: #9b51e0;
+  --color-brand: #3D3DB4;
+  --color-brand-light: #EEF0FC;
+  --color-brand-dark: #2B2B8A;
+  --color-brand-teal: #00C4A1;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans), 'Poppins', sans-serif;
@@ -44,8 +44,8 @@
 }
 
 :root {
-  --tlc-blue: #02508E;
-  --tlc-purple: #9b51e0;
+  --brand-indigo: #3D3DB4;
+  --brand-teal: #00C4A1;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

@@ -25,7 +25,7 @@ export function LandingPage() {
       {/* Header */}
       <header className="border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <img src="/tlc_logo.svg" alt="Toyooka Language Center" width={100} height={42} />
+          <img src="/NaruBase_B_IndigoTeal.svg" alt="" width={100} height={42} />
           <div className="flex items-center gap-3">
             <Link
               to="/login"
@@ -50,7 +50,7 @@ export function LandingPage() {
           <span className="text-brand">organized.</span>
         </h1>
         <p className="mt-4 text-lg text-gray-500 max-w-xl mx-auto">
-          Toyooka Language Center's platform for teachers and students. Track progress, manage lessons, and build vocabulary — all in one place.
+          's platform for teachers and students. Track progress, manage lessons, and build vocabulary — all in one place.
         </p>
         <div className="mt-8 flex items-center justify-center gap-4">
           <Link
@@ -82,7 +82,7 @@ export function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-gray-100 py-6 text-center text-sm text-gray-400">
-        © {new Date().getFullYear()} Toyooka Language Center
+        © {new Date().getFullYear()} 
       </footer>
     </div>
   )
