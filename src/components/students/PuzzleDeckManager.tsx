@@ -226,20 +226,22 @@ function PuzzleEditor({
       return
     }
 
-    // Create puzzles — skip any sentence that splits into fewer than 2 parts
+    // Translate + parse each sentence — same flow as manual input
     let created = 0
     for (const { sentence, hint } of toCreate) {
-      const parts = sentenceToParts(sentence)
-      if (parts.length < 2) continue
-      const { puzzle, error } = await createPuzzle(deck.id, {
-        japanese_sentence: sentence,
-        hint: hint || undefined,
-        parts,
-      })
-      if (!error && puzzle) {
-        setPuzzles(prev => [...prev, puzzle])
-        created++
-      }
+      try {
+        const { english, japanese, parts } = await translateAndParse(sentence)
+        if (parts.length < 2) continue
+        const { puzzle, error } = await createPuzzle(deck.id, {
+          japanese_sentence: isJapanese(sentence) ? sentence : (japanese ?? sentence),
+          hint: hint || english,
+          parts,
+        })
+        if (!error && puzzle) {
+          setPuzzles(prev => [...prev, puzzle])
+          created++
+        }
+      } catch { /* skip sentences that fail translation */ }
     }
 
     setGenerating(false)
