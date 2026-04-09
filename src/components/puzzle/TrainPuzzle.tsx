@@ -152,8 +152,11 @@ function TrainTrack({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElement |
     el.addEventListener('scroll', update, { passive: true })
     const ro = new ResizeObserver(update)
     ro.observe(el)
+    // Detect when cars render or change (dnd-kit uses transforms, not DOM moves, so this is lightweight)
+    const mo = new MutationObserver(update)
+    mo.observe(el, { childList: true, subtree: true })
     update()
-    return () => { el.removeEventListener('scroll', update); ro.disconnect() }
+    return () => { el.removeEventListener('scroll', update); ro.disconnect(); mo.disconnect() }
   }, [update])
 
   function scroll(dir: 'left' | 'right') {
@@ -284,19 +287,19 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
   const progress = Math.round((puzzleNumber / total) * 100)
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Train puzzle session" className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" aria-label="Train puzzle session" className="fixed inset-0 z-50 bg-slate-900 overflow-y-auto flex flex-col items-center p-4 pt-4">
       {/* Header */}
-      <div className="w-full max-w-2xl flex items-center justify-between mb-4">
+      <div className="w-full max-w-2xl flex items-center justify-between mb-3">
         <span className="text-sm text-gray-400">{puzzleNumber} / {total}</span>
         <button aria-label="Exit puzzle session" onClick={onClose} className="text-gray-500 hover:text-white text-sm transition-colors">✕ Exit</button>
       </div>
 
       {/* Progress bar */}
-      <div className="w-full max-w-2xl h-1 bg-gray-700 rounded-full mb-8">
+      <div className="w-full max-w-2xl h-1 bg-gray-700 rounded-full mb-5">
         <div className="h-full bg-brand rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
       </div>
 
-      <div className="w-full max-w-2xl space-y-8">
+      <div className="w-full max-w-2xl space-y-5">
         {/* Prompt */}
         <div className="text-center">
           <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">Arrange the English translation</p>
