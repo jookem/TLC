@@ -7,6 +7,12 @@ import { StudySession } from '@/components/lesson/StudySession'
 import type { VocabularyBankEntry } from '@/lib/types/database'
 import { PageError } from '@/components/shared/PageError'
 
+function getStudyBatch<T>(arr: T[]): T[] {
+  const size = parseInt(localStorage.getItem('study_size') ?? '20', 10)
+  const shuffled = [...arr].sort(() => Math.random() - 0.5)
+  return size === 0 ? shuffled : shuffled.slice(0, size)
+}
+
 type DeckGroup = {
   deckId: string | null
   deckName: string
@@ -116,7 +122,7 @@ export function VocabularyPage() {
           <div className="flex items-center gap-2 flex-wrap">
             {dueForReview.length > 0 && (
               <button
-                onClick={() => setStudyCards(dueForReview)}
+                onClick={() => setStudyCards(getStudyBatch(dueForReview))}
                 className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors"
               >
                 復習 ({dueForReview.length})
@@ -124,7 +130,7 @@ export function VocabularyPage() {
             )}
             {vocab.length > 0 && (
               <button
-                onClick={() => setStudyCards([...vocab])}
+                onClick={() => setStudyCards(getStudyBatch(vocab))}
                 className="px-4 py-2 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand/90 transition-colors"
               >
                 全部学習
@@ -166,7 +172,7 @@ export function VocabularyPage() {
                 {deckName} ({words.length})
               </h2>
               <button
-                onClick={() => setStudyCards(words)}
+                onClick={() => setStudyCards(getStudyBatch(words))}
                 className="text-xs text-gray-400 hover:text-brand transition-colors"
               >
                 このデッキを学習 →

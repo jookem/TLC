@@ -5,6 +5,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { GrammarSession } from '@/components/grammar/GrammarSession'
 import { PageError } from '@/components/shared/PageError'
 
+function getStudyBatch<T>(arr: T[]): T[] {
+  const size = parseInt(localStorage.getItem('study_size') ?? '20', 10)
+  const shuffled = [...arr].sort(() => Math.random() - 0.5)
+  return size === 0 ? shuffled : shuffled.slice(0, size)
+}
+
 const MASTERY_LABELS = ['新しい', '見た', '覚えてる', 'マスター']
 const MASTERY_LABELS_EN = ['New', 'Seen', 'Familiar', 'Mastered']
 const MASTERY_COLORS = [
@@ -73,14 +79,14 @@ export function GrammarPage() {
             <div className="flex items-center gap-2 flex-wrap">
               {due.length > 0 && (
                 <button
-                  onClick={() => setStudyCards(due)}
+                  onClick={() => setStudyCards(getStudyBatch(due))}
                   className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors"
                 >
                   復習 ({due.length})
                 </button>
               )}
               <button
-                onClick={() => setStudyCards([...entries])}
+                onClick={() => setStudyCards(getStudyBatch(entries))}
                 className="px-4 py-2 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand/90 transition-colors"
               >
                 全部学習
@@ -110,7 +116,7 @@ export function GrammarPage() {
                   {MASTERY_LABELS[level]} / {MASTERY_LABELS_EN[level]} ({items.length})
                 </h2>
                 <button
-                  onClick={() => setStudyCards(items)}
+                  onClick={() => setStudyCards(getStudyBatch(items))}
                   className="text-xs text-gray-400 hover:text-brand transition-colors"
                 >
                   Study this group →

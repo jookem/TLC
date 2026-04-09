@@ -17,6 +17,12 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
 }
 
+function getStudyBatch<T>(arr: T[]): T[] {
+  const size = parseInt(localStorage.getItem('study_size') ?? '20', 10)
+  const shuffled = shuffle(arr)
+  return size === 0 ? shuffled : shuffled.slice(0, size)
+}
+
 export function GamePage() {
   const { user } = useAuth()
   const [decks, setDecks] = useState<DeckWithPuzzles[]>([])
@@ -49,7 +55,7 @@ export function GamePage() {
     let puzzles = deck.puzzles
     if (onlyIncomplete) puzzles = puzzles.filter(p => !progressMap[p.id]?.completed)
     if (!puzzles.length) return
-    setActivePuzzles(shuffle(puzzles))
+    setActivePuzzles(getStudyBatch(puzzles))
     setPuzzleIdx(0)
     setSessionComplete(false)
   }
@@ -102,9 +108,11 @@ export function GamePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">🚂 パズル / Train Puzzles</h1>
-        <p className="text-gray-500 text-sm mt-1">英語の語順を並べ替えよう</p>
+      <div className="space-y-3">
+        <div>
+          <h1 className="text-2xl font-semibold">🚂 パズル / Train Puzzles</h1>
+          <p className="text-gray-500 text-sm mt-1">英語の語順を並べ替えよう</p>
+        </div>
       </div>
 
       {decks.length === 0 ? (
@@ -126,23 +134,23 @@ export function GamePage() {
             return (
               <Card key={deck.id}>
                 <CardContent className="py-4 space-y-3">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-3">
                     <div>
                       <h2 className="font-semibold text-gray-900">{deck.name}</h2>
                       <p className="text-sm text-gray-500">{totalPuzzles}問 · {completed}問クリア</p>
                     </div>
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {incomplete > 0 && (
                         <button
                           onClick={() => startDeck(deck, true)}
-                          className="px-3 py-1.5 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                          className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors"
                         >
                           続ける ({incomplete})
                         </button>
                       )}
                       <button
                         onClick={() => startDeck(deck, false)}
-                        className="px-3 py-1.5 text-sm bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors"
+                        className="px-4 py-2 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand/90 transition-colors"
                       >
                         {completed === totalPuzzles && totalPuzzles > 0 ? 'もう一度' : '開始'}
                       </button>
