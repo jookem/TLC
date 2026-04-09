@@ -160,16 +160,11 @@ function TrainTrack({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElement |
     scrollRef.current?.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' })
   }
 
-  // Don't render the track controls if everything fits
-  if (!canLeft && !canRight) return (
-    <TrackRails />
-  )
-
   return (
     <div>
       {/* Rails */}
       <TrackRails />
-      {/* Scroll arrows */}
+      {/* Scroll arrows — always visible, dimmed when not scrollable */}
       <div className="flex items-center justify-between mt-2 px-1">
         <button
           onClick={() => scroll('left')}
