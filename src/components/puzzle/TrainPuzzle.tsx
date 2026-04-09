@@ -61,10 +61,12 @@ interface Car {
 function TrainCar({
   car,
   isCorrect,
+  isInPlace,
   isDragging,
 }: {
   car: Car
   isCorrect: boolean
+  isInPlace: boolean
   isDragging?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: car.id })
@@ -88,13 +90,15 @@ function TrainCar({
             transition-colors duration-150
             ${isCorrect
               ? 'bg-green-100 border-green-400'
+              : isInPlace
+              ? 'bg-emerald-100 border-emerald-400 animate-pulse'
               : `${colors.car} hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/20`
             }
           `}
         >
           <p className="text-sm font-semibold text-gray-900 text-center leading-tight">{car.part.text}</p>
           <span className={`text-xs px-1.5 py-0.5 rounded-full mt-1.5 font-medium
-            ${isCorrect ? 'bg-green-200 text-green-800' : colors.badge}`}>
+            ${isCorrect ? 'bg-green-200 text-green-800' : isInPlace ? 'bg-emerald-200 text-emerald-800' : colors.badge}`}>
             {car.part.label}
           </span>
         </div>
@@ -227,6 +231,7 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
   const [gameState, setGameState] = useState<State>('playing')
   const [attempts, setAttempts] = useState(0)
   const [shake, setShake] = useState(false)
+  const [showHints, setShowHints] = useState(false)
   const [activeCar, setActiveCar] = useState<Car | null>(null)
   const [trainExiting, setTrainExiting] = useState(false)
   const [showCorrect, setShowCorrect] = useState(false)
@@ -242,6 +247,7 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
     setActiveCar(null)
     setTrainExiting(false)
     setShowCorrect(false)
+    setShowHints(false)
   }, [puzzle.id])
 
   const sensors = useSensors(
@@ -280,7 +286,8 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
       setGameState('wrong')
       recordPuzzleAttempt(puzzle.id, false)
       setShake(true)
-      setTimeout(() => { setShake(false); setGameState('playing') }, 800)
+      setTimeout(() => { setShake(false); setGameState('playing'); setShowHints(true) }, 800)
+      setTimeout(() => setShowHints(false), 2800)
     }
   }
 
@@ -338,11 +345,12 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
               </div>
 
               <SortableContext items={cars.map(c => c.id)} strategy={horizontalListSortingStrategy}>
-                {cars.map(car => (
+                {cars.map((car, idx) => (
                   <TrainCar
                     key={car.id}
                     car={car}
                     isCorrect={gameState === 'correct'}
+                    isInPlace={showHints && car.originalIdx === idx}
                     isDragging={activeCar?.id === car.id}
                   />
                 ))}
