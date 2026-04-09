@@ -516,14 +516,7 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">
-            Grammar Bank
-            {!loading && (
-              <span className="ml-2 text-xs font-normal text-gray-400">
-                {entries.length} point{entries.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </CardTitle>
+          <CardTitle className="text-base">Grammar Bank</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -588,52 +581,6 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
             )}
           </div>
 
-          {/* Entry list grouped by deck */}
-          {loading ? (
-            <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}</div>
-          ) : entries.length === 0 ? (
-            <p className="text-sm text-gray-400">No grammar points assigned yet. Create a deck, add points, then assign it to this student.</p>
-          ) : (
-            <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
-              {deckGroups.map(({ deckId, deckName, items }) => (
-                <div key={deckId ?? '__ungrouped__'}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {deckName} <span className="font-normal">({items.length})</span>
-                    </span>
-                    {deckId && (
-                      <button onClick={() => handleRemoveDeck(deckId, deckName)} disabled={removingDeck === deckId} className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
-                        {removingDeck === deckId ? '…' : 'Remove deck'}
-                      </button>
-                    )}
-                  </div>
-                  {items.map(e => (
-                    <div key={e.id} className="flex items-start gap-2 py-2 border-b border-gray-100 last:border-0">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-sm text-gray-900">
-                            <SentenceWithBlank sentence={e.sentence_with_blank ?? e.point} />
-                          </span>
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${MASTERY_COLORS[e.mastery_level]}`}>
-                            {MASTERY_LABELS[e.mastery_level]}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
-                            ✓ {e.answer ?? e.explanation}
-                          </span>
-                          {e.hint_ja && <span className="text-xs text-gray-400">{e.hint_ja}</span>}
-                        </div>
-                      </div>
-                      <button onClick={() => handleDeleteEntry(e.id)} disabled={deletingEntry === e.id} className="text-xs text-gray-300 hover:text-red-500 transition-colors shrink-0 disabled:opacity-50">
-                        {deletingEntry === e.id ? '…' : 'Remove'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
     </>
