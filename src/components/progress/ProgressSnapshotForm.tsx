@@ -116,7 +116,7 @@ export function ProgressSnapshotForm({
         ] as const).map(({ key, color }) => (
           <div key={key} className="space-y-1">
             <div className="flex justify-between">
-              <Label className="text-xs capitalize">{key}</Label>
+              <Label className="text-xs capitalize" style={{ color }}>{key}</Label>
               <span className="text-xs font-medium" style={{ color }}>{scores[key]}/10</span>
             </div>
             <input
@@ -125,8 +125,11 @@ export function ProgressSnapshotForm({
               max={10}
               value={scores[key]}
               onChange={e => setScores(prev => ({ ...prev, [key]: Number(e.target.value) }))}
-              className="w-full"
-              style={{ accentColor: color }}
+              className="w-full skill-slider"
+              style={{
+                '--slider-color': color,
+                '--slider-pct': `${scores[key] * 10}%`,
+              } as React.CSSProperties}
             />
           </div>
         ))}
