@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['NaruBase_B_IndigoTeal.svg'],
+      includeAssets: ['narubase_logo.svg', 'icons/*.png'],
       manifest: {
         name: 'NaruBase',
         short_name: 'NaruBase',
