@@ -274,7 +274,9 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
   function checkAnswer() {
     const newAttempts = attempts + 1
     setAttempts(newAttempts)
-    const isCorrect = cars.every((car, idx) => car.originalIdx === idx)
+    const isCorrect = cars.every((car, idx) =>
+      car.part.text === puzzle.parts[idx].text && car.part.label === puzzle.parts[idx].label
+    )
 
     if (isCorrect) {
       setGameState('correct')
@@ -350,7 +352,7 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
                     key={car.id}
                     car={car}
                     isCorrect={gameState === 'correct'}
-                    isInPlace={showHints && car.originalIdx === idx}
+                    isInPlace={showHints && car.part.text === puzzle.parts[idx].text && car.part.label === puzzle.parts[idx].label}
                     isDragging={activeCar?.id === car.id}
                   />
                 ))}
@@ -369,12 +371,6 @@ export function TrainPuzzle({ puzzle, onNext, onClose, isLast, puzzleNumber, tot
           Drag cars along the track to reorder them
         </p>
 
-        {/* Hint after wrong */}
-        {gameState === 'wrong' && puzzle.hint && (
-          <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-xl px-4 py-3 text-center">
-            <p className="text-sm text-yellow-300">💡 {puzzle.hint}</p>
-          </div>
-        )}
 
         {/* Success */}
         {showCorrect && (
