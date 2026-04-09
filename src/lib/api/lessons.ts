@@ -435,7 +435,8 @@ export async function listDecks(): Promise<{ decks?: Deck[]; error?: string }> {
   const { data, error } = await supabase
     .from('vocabulary_decks')
     .select('*, vocabulary_deck_words(count)')
-    .order('created_at', { ascending: false })
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
 
   if (error) return { error: error.message }
 
@@ -598,4 +599,15 @@ export async function removeDeckFromStudent(
     .eq('student_id', studentId)
 
   return error ? { error: error.message } : {}
+}
+
+export async function reorderVocabDecks(
+  ids: string[],
+): Promise<{ error?: string }> {
+  const updates = ids.map((id, i) =>
+    supabase.from('vocabulary_decks').update({ sort_order: i }).eq('id', id)
+  )
+  const results = await Promise.all(updates)
+  const err = results.find(r => r.error)
+  return err?.error ? { error: err.error.message } : {}
 }

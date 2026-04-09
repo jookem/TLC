@@ -13,10 +13,12 @@ import {
   removePointFromDeck,
   assignGrammarDeckToStudent,
   removeGrammarDeckFromStudent,
+  reorderGrammarDecks,
   type GrammarBankEntry,
   type GrammarDeck,
   type GrammarDeckPoint,
 } from '@/lib/api/grammar'
+import { SortableDeckList, type DeckRow } from '@/components/shared/SortableDeckList'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -549,33 +551,40 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
             ) : decks.length === 0 ? (
               <p className="text-xs text-gray-400">No decks yet. Create one to get started.</p>
             ) : (
-              <div className="space-y-2">
-                {decks.map(deck => {
-                  const isAssigned = assignedDeckIds.has(deck.id)
+              <SortableDeckList
+                decks={decks.map(d => ({
+                  id: d.id,
+                  name: d.name,
+                  meta: `${d.point_count ?? 0} points`,
+                  badge: assignedDeckIds.has(d.id) ? 'Assigned' : undefined,
+                }))}
+                onReorder={rows => {
+                  const newOrder = rows.map(r => decks.find(d => d.id === r.id)!)
+                  setDecks(newOrder)
+                  reorderGrammarDecks(newOrder.map(d => d.id))
+                }}
+                renderActions={row => {
+                  const deck = decks.find(d => d.id === row.id)!
+                  const isAssigned = assignedDeckIds.has(row.id)
                   return (
-                    <div key={deck.id} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-gray-200">
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-gray-900">{deck.name}</span>
-                        <span className="text-xs text-gray-400 ml-2">{deck.point_count ?? 0} points</span>
-                        {isAssigned && <span className="ml-2 text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full">Assigned</span>}
-                      </div>
+                    <>
                       <button onClick={() => setEditingDeck(deck)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
                       {isAssigned ? (
-                        <button onClick={() => handleRemoveDeck(deck.id, deck.name)} disabled={removingDeck === deck.id} className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50">
-                          {removingDeck === deck.id ? '…' : 'Remove'}
+                        <button onClick={() => handleRemoveDeck(row.id, row.name)} disabled={removingDeck === row.id} className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50">
+                          {removingDeck === row.id ? '…' : 'Remove'}
                         </button>
                       ) : (
-                        <button onClick={() => handleAssign(deck.id)} disabled={assigning === deck.id} className="text-xs text-brand hover:text-brand/80 transition-colors disabled:opacity-50">
-                          {assigning === deck.id ? '…' : 'Assign'}
+                        <button onClick={() => handleAssign(row.id)} disabled={assigning === row.id} className="text-xs text-brand hover:text-brand/80 transition-colors disabled:opacity-50">
+                          {assigning === row.id ? '…' : 'Assign'}
                         </button>
                       )}
-                      <button onClick={() => handleDeleteDeck(deck.id, deck.name)} disabled={deletingDeck === deck.id} className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
-                        {deletingDeck === deck.id ? '…' : 'Delete'}
+                      <button onClick={() => handleDeleteDeck(row.id, row.name)} disabled={deletingDeck === row.id} className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
+                        {deletingDeck === row.id ? '…' : 'Delete'}
                       </button>
-                    </div>
+                    </>
                   )
-                })}
-              </div>
+                }}
+              />
             )}
           </div>
 

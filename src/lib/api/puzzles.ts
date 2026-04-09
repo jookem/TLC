@@ -35,7 +35,8 @@ export async function listPuzzleDecks(): Promise<{ decks?: PuzzleDeck[]; error?:
   const { data, error } = await supabase
     .from('puzzle_decks')
     .select('*, puzzles(count)')
-    .order('created_at', { ascending: false })
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
 
   if (error) return { error: error.message }
 
@@ -264,4 +265,15 @@ export async function getAssignedDecksWithPuzzles(
 
   if (error) return { error: error.message }
   return { decks: data as (PuzzleDeck & { puzzles: Puzzle[] })[] }
+}
+
+export async function reorderPuzzleDecks(
+  ids: string[],
+): Promise<{ error?: string }> {
+  const updates = ids.map((id, i) =>
+    supabase.from('puzzle_decks').update({ sort_order: i }).eq('id', id)
+  )
+  const results = await Promise.all(updates)
+  const err = results.find(r => r.error)
+  return err?.error ? { error: err.error.message } : {}
 }

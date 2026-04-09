@@ -121,7 +121,8 @@ export async function listGrammarDecks(): Promise<{ decks?: GrammarDeck[]; error
   const { data, error } = await supabase
     .from('grammar_decks')
     .select('*, grammar_deck_points(count)')
-    .order('created_at', { ascending: false })
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
 
   if (error) return { error: error.message }
 
@@ -297,4 +298,15 @@ export async function removeGrammarDeckFromStudent(
     .eq('student_id', studentId)
 
   return error ? { error: error.message } : {}
+}
+
+export async function reorderGrammarDecks(
+  ids: string[],
+): Promise<{ error?: string }> {
+  const updates = ids.map((id, i) =>
+    supabase.from('grammar_decks').update({ sort_order: i }).eq('id', id)
+  )
+  const results = await Promise.all(updates)
+  const err = results.find(r => r.error)
+  return err?.error ? { error: err.error.message } : {}
 }
