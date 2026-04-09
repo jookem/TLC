@@ -145,14 +145,14 @@ export function GamePage() {
                           onClick={() => startDeck(deck, true)}
                           className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors"
                         >
-                          続ける ({incomplete})
+                          復習 ({incomplete})
                         </button>
                       )}
                       <button
                         onClick={() => startDeck(deck, false)}
                         className="px-4 py-2 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand/90 transition-colors"
                       >
-                        {completed === totalPuzzles && totalPuzzles > 0 ? 'もう一度' : '開始'}
+                        全部学習
                       </button>
                     </div>
                   </div>
