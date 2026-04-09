@@ -51,6 +51,9 @@ export function GrammarPage() {
     return new Date(e.next_review) <= new Date()
   })
 
+  const sessionLimit = parseInt(localStorage.getItem('study_size') ?? '20', 10)
+  const reviewCount = sessionLimit === 0 ? due.length : Math.min(sessionLimit, due.length)
+
   const byMastery = [0, 1, 2, 3].map(level => ({
     level,
     items: entries.filter(e => e.mastery_level === level),
@@ -72,7 +75,7 @@ export function GrammarPage() {
           <div>
             <h1 className="text-2xl font-semibold">文法 / Grammar</h1>
             <p className="text-gray-500 text-sm mt-1">
-              {entries.length}点 collected · {due.length} due for review
+              {entries.length}点 collected · {due.length} due for review{sessionLimit > 0 && due.length > sessionLimit ? ` (${sessionLimit} per session)` : ''}
             </p>
           </div>
           {entries.length > 0 && (
@@ -82,7 +85,7 @@ export function GrammarPage() {
                   onClick={() => setStudyCards(getStudyBatch(due))}
                   className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors"
                 >
-                  復習 ({due.length})
+                  復習 ({reviewCount})
                 </button>
               )}
               <button

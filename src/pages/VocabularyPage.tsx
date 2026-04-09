@@ -83,6 +83,9 @@ export function VocabularyPage() {
     return new Date(v.next_review) <= new Date()
   })
 
+  const sessionLimit = parseInt(localStorage.getItem('study_size') ?? '20', 10)
+  const reviewCount = sessionLimit === 0 ? dueForReview.length : Math.min(sessionLimit, dueForReview.length)
+
   // Build deck groups
   const deckGroupMap = new Map<string | null, DeckGroup>()
   for (const v of filtered) {
@@ -116,7 +119,7 @@ export function VocabularyPage() {
           <div>
             <h1 className="text-2xl font-semibold">単語 / Vocabulary</h1>
             <p className="text-gray-500 text-sm mt-1">
-              {vocab.length}語 collected · {dueForReview.length} due for review
+              {vocab.length}語 collected · {dueForReview.length} due for review{sessionLimit > 0 && dueForReview.length > sessionLimit ? ` (${sessionLimit} per session)` : ''}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -125,7 +128,7 @@ export function VocabularyPage() {
                 onClick={() => setStudyCards(getStudyBatch(dueForReview))}
                 className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors"
               >
-                復習 ({dueForReview.length})
+                復習 ({reviewCount})
               </button>
             )}
             {vocab.length > 0 && (

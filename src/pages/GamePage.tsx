@@ -130,6 +130,8 @@ export function GamePage() {
             const completed = deck.puzzles.filter(p => progressMap[p.id]?.completed).length
             const incomplete = totalPuzzles - completed
             const pct = totalPuzzles > 0 ? Math.round((completed / totalPuzzles) * 100) : 0
+            const sessionLimit = parseInt(localStorage.getItem('study_size') ?? '20', 10)
+            const reviewCount = sessionLimit === 0 ? incomplete : Math.min(sessionLimit, incomplete)
 
             return (
               <Card key={deck.id}>
@@ -145,7 +147,7 @@ export function GamePage() {
                           onClick={() => startDeck(deck, true)}
                           className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors"
                         >
-                          復習 ({incomplete})
+                          復習 ({reviewCount})
                         </button>
                       )}
                       <button
