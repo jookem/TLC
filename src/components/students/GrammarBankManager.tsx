@@ -258,12 +258,6 @@ function DeckEditor({
             </button>
           )}
           <div className="flex items-center gap-3 ml-4">
-            <button
-              onClick={() => setShowImport(v => !v)}
-              className="text-xs text-brand hover:text-brand/80 transition-colors"
-            >
-              {showImport ? 'Cancel import' : '↓ Import JSON'}
-            </button>
             <button onClick={async () => { await onDelete(deck.id, name); onClose() }} className="text-xs text-gray-300 hover:text-red-500 transition-colors">Delete deck</button>
             <button aria-label="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
           </div>
@@ -332,9 +326,14 @@ function DeckEditor({
             onChange={e => setAddDistractors(e.target.value)}
             placeholder="Wrong choices (comma-separated) e.g. am, are, were"
           />
-          <button type="submit" disabled={saving || !addSentence.trim() || !addAnswer.trim()} className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
-            {saving ? 'Adding…' : '+ Add Question'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button type="submit" disabled={saving || !addSentence.trim() || !addAnswer.trim()} className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+              {saving ? 'Adding…' : '+ Add Question'}
+            </button>
+            <button type="button" onClick={() => setShowImport(v => !v)} className="px-4 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-600">
+              {showImport ? 'Cancel import' : '↓ Import JSON'}
+            </button>
+          </div>
         </form>
 
         {/* Point list */}
