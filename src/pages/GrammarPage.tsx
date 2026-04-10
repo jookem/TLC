@@ -20,25 +20,7 @@ const MASTERY_COLORS = [
   'bg-green-100 text-green-700',
 ]
 
-type View = 'az' | 'mastery'
-
-// ── Letter index bar ──────────────────────────────────────────────
-
-function LetterIndex({ letters, onJump }: { letters: string[]; onJump: (l: string) => void }) {
-  return (
-    <div className="flex flex-wrap gap-1 py-2">
-      {letters.map(l => (
-        <button
-          key={l}
-          onClick={() => onJump(l)}
-          className="w-7 h-7 text-xs font-bold rounded-md bg-gray-100 hover:bg-brand hover:text-white transition-colors"
-        >
-          {l}
-        </button>
-      ))}
-    </div>
-  )
-}
+type View = 'category' | 'mastery'
 
 export function GrammarPage() {
   const { user } = useAuth()
@@ -47,7 +29,7 @@ export function GrammarPage() {
   const [error, setError] = useState<string | null>(null)
   const [studyCards, setStudyCards] = useState<GrammarBankEntry[] | null>(null)
   const [search, setSearch] = useState('')
-  const [view, setView] = useState<View>('az')
+  const [view, setView] = useState<View>('category')
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
 
   async function load() {
@@ -73,7 +55,8 @@ export function GrammarPage() {
   const filtered = q
     ? entries.filter(e =>
         e.point?.toLowerCase().includes(q) ||
-        e.explanation?.toLowerCase().includes(q)
+        e.explanation?.toLowerCase().includes(q) ||
+        e.category?.toLowerCase().includes(q)
       )
     : entries
 
@@ -85,21 +68,24 @@ export function GrammarPage() {
   const sessionLimit = parseInt(localStorage.getItem('study_size') ?? '20', 10)
   const reviewCount = sessionLimit === 0 ? due.length : Math.min(sessionLimit, due.length)
 
-  // ── A-Z grouping ───────────────────────────────────────────────
-  const sorted = [...filtered].sort((a, b) => a.point.localeCompare(b.point))
-  const letterMap: Record<string, GrammarBankEntry[]> = {}
-  for (const e of sorted) {
-    const letter = e.point[0]?.toUpperCase().match(/[A-Z]/) ? e.point[0].toUpperCase() : '#'
-    if (!letterMap[letter]) letterMap[letter] = []
-    letterMap[letter].push(e)
+  // ── By Category grouping ───────────────────────────────────────
+  const categoryMap = new Map<string, GrammarBankEntry[]>()
+  const uncategorized: GrammarBankEntry[] = []
+  for (const e of filtered) {
+    if (e.category) {
+      if (!categoryMap.has(e.category)) categoryMap.set(e.category, [])
+      categoryMap.get(e.category)!.push(e)
+    } else {
+      uncategorized.push(e)
+    }
   }
-  const letters = Object.keys(letterMap).sort((a, b) => a === '#' ? 1 : b === '#' ? -1 : a.localeCompare(b))
+  const categories = [...categoryMap.keys()].sort((a, b) => a.localeCompare(b))
 
-  function jumpTo(letter: string) {
-    sectionRefs.current[letter]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  function jumpTo(cat: string) {
+    sectionRefs.current[cat]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  // ── By mastery grouping ────────────────────────────────────────
+  // ── By Mastery grouping ────────────────────────────────────────
   const byMastery = [0, 1, 2, 3].map(level => ({
     level,
     items: filtered.filter(e => e.mastery_level === level),
@@ -156,10 +142,10 @@ export function GrammarPage() {
             />
             <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
               <button
-                onClick={() => setView('az')}
-                className={`px-3 py-2 font-medium transition-colors ${view === 'az' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                onClick={() => setView('category')}
+                className={`px-3 py-2 font-medium transition-colors ${view === 'category' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
               >
-                A–Z
+                By Topic
               </button>
               <button
                 onClick={() => setView('mastery')}
@@ -171,12 +157,33 @@ export function GrammarPage() {
           </div>
         )}
 
-        {/* ── A-Z view ── */}
-        {view === 'az' && entries.length > 0 && (
+        {/* ── By Category view ── */}
+        {view === 'category' && entries.length > 0 && (
           <>
-            {!q && <LetterIndex letters={letters} onJump={jumpTo} />}
+            {/* Category pill nav */}
+            {!q && categories.length > 1 && (
+              <div className="flex flex-wrap gap-1.5 py-1">
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => jumpTo(cat)}
+                    className="px-3 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
+                  >
+                    {cat}
+                  </button>
+                ))}
+                {uncategorized.length > 0 && (
+                  <button
+                    onClick={() => jumpTo('__other__')}
+                    className="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                  >
+                    Other
+                  </button>
+                )}
+              </div>
+            )}
 
-            {letters.length === 0 && q && (
+            {filtered.length === 0 && q && (
               <Card>
                 <CardContent className="py-8 text-center">
                   <p className="text-gray-500">No grammar points match "{search}"</p>
@@ -185,24 +192,63 @@ export function GrammarPage() {
             )}
 
             <div className="space-y-6">
-              {letters.map(letter => (
+              {categories.map(cat => (
                 <section
-                  key={letter}
-                  ref={el => { sectionRefs.current[letter] = el }}
-                  className="scroll-mt-20"
+                  key={cat}
+                  ref={el => { sectionRefs.current[cat] = el }}
+                  className="scroll-mt-20 space-y-3"
                 >
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-lg font-bold text-brand w-7">{letter}</span>
-                    <div className="flex-1 h-px bg-gray-200" />
-                    <span className="text-xs text-gray-400">{letterMap[letter].length}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-sm font-semibold text-purple-700 uppercase tracking-wide">{cat}</h2>
+                      <span className="text-xs text-gray-400">{categoryMap.get(cat)!.length}</span>
+                    </div>
+                    <button
+                      onClick={() => setStudyCards(getStudyBatch(categoryMap.get(cat)!))}
+                      className="text-xs text-gray-400 hover:text-brand transition-colors"
+                    >
+                      Study this topic →
+                    </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {letterMap[letter].map(e => (
+                    {categoryMap.get(cat)!.map(e => (
                       <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} />
                     ))}
                   </div>
                 </section>
               ))}
+
+              {uncategorized.length > 0 && (
+                <section
+                  ref={el => { sectionRefs.current['__other__'] = el }}
+                  className="scroll-mt-20 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Other</h2>
+                      <span className="text-xs text-gray-400">{uncategorized.length}</span>
+                    </div>
+                    <button
+                      onClick={() => setStudyCards(getStudyBatch(uncategorized))}
+                      className="text-xs text-gray-400 hover:text-brand transition-colors"
+                    >
+                      Study this topic →
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {uncategorized.map(e => (
+                      <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* If everything is uncategorized, just show them all without "Other" header */}
+              {categories.length === 0 && uncategorized.length > 0 && filtered.length > 0 && !q && (
+                <p className="text-xs text-gray-400 text-center py-2">
+                  No categories set yet — your teacher can add them from the lesson or student page.
+                </p>
+              )}
             </div>
           </>
         )}

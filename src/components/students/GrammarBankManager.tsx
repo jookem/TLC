@@ -66,6 +66,7 @@ function DeckEditor({
   const [addAnswer, setAddAnswer] = useState('')
   const [addHint, setAddHint] = useState('')
   const [addDistractors, setAddDistractors] = useState('')
+  const [addCategory, setAddCategory] = useState('')
   const [saving, setSaving] = useState(false)
   const addSentenceRef = useRef<HTMLInputElement>(null)
   const editSentenceRef = useRef<HTMLInputElement>(null)
@@ -90,7 +91,7 @@ function DeckEditor({
 
   // Inline edit
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editFields, setEditFields] = useState({ sentence: '', answer: '', hint: '', distractors: '' })
+  const [editFields, setEditFields] = useState({ sentence: '', answer: '', hint: '', distractors: '', category: '' })
   const [savingEdit, setSavingEdit] = useState(false)
   const [removing, setRemoving] = useState<string | null>(null)
 
@@ -184,12 +185,13 @@ function DeckEditor({
       answer,
       hint_ja: addHint.trim() || undefined,
       distractors,
+      category: addCategory.trim() || undefined,
     })
     setSaving(false)
     if (error) { toast.error(error); return }
     const { deck: refreshed } = await getGrammarDeckWithPoints(deck.id)
     setPoints(refreshed?.points ?? points)
-    setAddSentence(''); setAddAnswer(''); setAddHint(''); setAddDistractors('')
+    setAddSentence(''); setAddAnswer(''); setAddHint(''); setAddDistractors(''); setAddCategory('')
     onUpdated()
   }
 
@@ -200,6 +202,7 @@ function DeckEditor({
       answer: p.answer ?? p.explanation,
       hint: p.hint_ja ?? '',
       distractors: (p.distractors ?? []).join(', '),
+      category: p.category ?? '',
     })
   }
 
@@ -209,6 +212,7 @@ function DeckEditor({
     const answer = editFields.answer.trim()
     if (!sentence || !answer) return
     const distractors = editFields.distractors.split(',').map(s => s.trim()).filter(Boolean)
+    const category = editFields.category.trim() || undefined
     setSavingEdit(true)
     const { error } = await updateGrammarDeckPoint(editingId, {
       point: sentence,
@@ -217,6 +221,7 @@ function DeckEditor({
       answer,
       hint_ja: editFields.hint.trim() || undefined,
       distractors,
+      category,
     })
     setSavingEdit(false)
     if (error) { toast.error(error); return }
@@ -228,6 +233,7 @@ function DeckEditor({
       answer,
       hint_ja: editFields.hint.trim() || null,
       distractors,
+      category: category ?? null,
     } : p))
     setEditingId(null)
     onUpdated()
@@ -323,11 +329,18 @@ function DeckEditor({
             <Input value={addAnswer} onChange={e => setAddAnswer(e.target.value)} placeholder="Answer * e.g. is" required />
             <Input value={addHint} onChange={e => setAddHint(e.target.value)} placeholder="Japanese hint e.g. 「単数」です" />
           </div>
-          <Input
-            value={addDistractors}
-            onChange={e => setAddDistractors(e.target.value)}
-            placeholder="Wrong choices (comma-separated) e.g. am, are, were"
-          />
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              value={addDistractors}
+              onChange={e => setAddDistractors(e.target.value)}
+              placeholder="Wrong choices (comma-separated) e.g. am, are, were"
+            />
+            <Input
+              value={addCategory}
+              onChange={e => setAddCategory(e.target.value)}
+              placeholder="Category e.g. Present Continuous"
+            />
+          </div>
           <div className="flex items-center gap-2">
             <button type="submit" disabled={saving || !addSentence.trim() || !addAnswer.trim()} className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
               {saving ? 'Adding…' : '+ Add Question'}
@@ -358,7 +371,10 @@ function DeckEditor({
                         <Input value={editFields.answer} onChange={e => setEditFields(f => ({ ...f, answer: e.target.value }))} placeholder="Answer *" className="h-7 text-xs" />
                         <Input value={editFields.hint} onChange={e => setEditFields(f => ({ ...f, hint: e.target.value }))} placeholder="Japanese hint" className="h-7 text-xs" />
                       </div>
-                      <Input value={editFields.distractors} onChange={e => setEditFields(f => ({ ...f, distractors: e.target.value }))} placeholder="Wrong choices, comma-separated" className="h-7 text-xs" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input value={editFields.distractors} onChange={e => setEditFields(f => ({ ...f, distractors: e.target.value }))} placeholder="Wrong choices, comma-separated" className="h-7 text-xs" />
+                        <Input value={editFields.category} onChange={e => setEditFields(f => ({ ...f, category: e.target.value }))} placeholder="Category e.g. Present Continuous" className="h-7 text-xs" />
+                      </div>
                       <div className="flex gap-2">
                         <button onClick={handleEditSave} disabled={savingEdit} className="px-3 py-1 bg-brand text-white text-xs rounded-md disabled:opacity-50">{savingEdit ? 'Saving…' : 'Save'}</button>
                         <button onClick={() => setEditingId(null)} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
@@ -374,6 +390,7 @@ function DeckEditor({
                           <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
                             ✓ {p.answer ?? p.explanation}
                           </span>
+                          {p.category && <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">{p.category}</span>}
                           {p.hint_ja && <span className="text-xs text-gray-500">{p.hint_ja}</span>}
                           {(p.distractors ?? []).length > 0 && (
                             <span className="text-xs text-gray-400">

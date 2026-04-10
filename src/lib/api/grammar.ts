@@ -16,6 +16,7 @@ export interface GrammarBankEntry {
   answer: string | null
   hint_ja: string | null
   distractors: string[]
+  category: string | null
   mastery_level: MasteryLevel
   next_review: string | null
   created_at: string
@@ -32,6 +33,7 @@ export interface GrammarDeckPoint {
   answer: string | null
   hint_ja: string | null
   distractors: string[]
+  category: string | null
   created_at: string
 }
 
@@ -203,6 +205,7 @@ export type GrammarPointFields = {
   answer?: string
   hint_ja?: string
   distractors?: string[]
+  category?: string
 }
 
 export async function addPointToDeck(
@@ -277,6 +280,7 @@ export async function assignGrammarDeckToStudent(
     answer: p.answer,
     hint_ja: p.hint_ja,
     distractors: p.distractors ?? [],
+    category: p.category ?? null,
   }))
 
   const { error } = await supabase
