@@ -1,7 +1,7 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Calendar, Clock, BookOpen,
-  Home, CalendarPlus, Target, Languages, GraduationCap, Train, Keyboard,
+  Home, CalendarPlus, Target, Languages, GraduationCap, Gamepad2,
 } from 'lucide-react'
 import { AvatarMenu } from '@/components/shared/AvatarMenu'
 import { useAuth } from '@/contexts/AuthContext'
@@ -22,8 +22,7 @@ const studentNav = [
   { href: '/goals', label: '目標', sub: 'Goals', icon: Target },
   { href: '/vocabulary', label: '単語', sub: 'Vocab', icon: Languages },
   { href: '/grammar', label: '文法', sub: 'Grammar', icon: GraduationCap },
-  { href: '/game', label: 'ゲーム', sub: 'Game', icon: Train },
-  { href: '/spelling', label: 'スペル', sub: 'Spell', icon: Keyboard },
+  { href: '/games', label: 'ゲーム', sub: 'Games', icon: Gamepad2 },
 ]
 
 export function AppLayout() {
@@ -84,7 +83,7 @@ export function AppLayout() {
       </main>
 
       <nav aria-label="Mobile navigation" className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
-        <div className={`grid h-16 ${isTeacher ? 'grid-cols-5' : 'grid-cols-8'}`}>
+        <div className={`grid h-16 ${isTeacher ? 'grid-cols-5' : 'grid-cols-7'}`}>
           {nav.map(item => (
             <NavLink
               key={item.href}
