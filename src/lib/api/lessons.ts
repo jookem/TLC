@@ -569,23 +569,50 @@ export async function assignDeckToStudent(
   if (fetchErr) return { error: fetchErr.message }
   if (!words?.length) return { count: 0 }
 
-  const entries = words.map(w => ({
-    student_id: studentId,
-    teacher_id: session.user.id,
-    deck_id: deckId,
-    word: w.word,
-    reading: w.reading ?? null,
-    definition_ja: w.definition_ja ?? null,
-    definition_en: w.definition_en ?? null,
-    example: w.example ?? null,
-  }))
+  const wordTexts = words.map(w => w.word)
 
-  const { error } = await supabase
+  // Find words already in the student's bank so we can update their deck_id
+  // without touching mastery/progress fields
+  const { data: existing } = await supabase
     .from('vocabulary_bank')
-    .upsert(entries, { onConflict: 'student_id,word', ignoreDuplicates: true })
+    .select('id, word')
+    .eq('student_id', studentId)
+    .in('word', wordTexts)
 
-  if (error) return { error: error.message }
-  return { count: entries.length }
+  const existingByWord = new Map((existing ?? []).map(e => [e.word, e.id]))
+
+  // Update deck_id for words already in bank (preserves mastery/next_review)
+  const existingIds = [...existingByWord.values()]
+  if (existingIds.length > 0) {
+    const { error: updateErr } = await supabase
+      .from('vocabulary_bank')
+      .update({ deck_id: deckId })
+      .in('id', existingIds)
+    if (updateErr) return { error: updateErr.message }
+  }
+
+  // Insert only words not yet in the bank
+  const newEntries = words
+    .filter(w => !existingByWord.has(w.word))
+    .map(w => ({
+      student_id: studentId,
+      teacher_id: session.user.id,
+      deck_id: deckId,
+      word: w.word,
+      reading: w.reading ?? null,
+      definition_ja: w.definition_ja ?? null,
+      definition_en: w.definition_en ?? null,
+      example: w.example ?? null,
+    }))
+
+  if (newEntries.length > 0) {
+    const { error } = await supabase
+      .from('vocabulary_bank')
+      .insert(newEntries)
+    if (error) return { error: error.message }
+  }
+
+  return { count: words.length }
 }
 
 export async function removeDeckFromStudent(
