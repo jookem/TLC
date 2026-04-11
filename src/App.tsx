@@ -21,7 +21,6 @@ import { GamePage } from '@/pages/GamePage'
 import { SpellingPage } from '@/pages/SpellingPage'
 import { GamesPage } from '@/pages/GamesPage'
 import { SettingsPage } from '@/pages/SettingsPage'
-import { InstallBanner } from '@/components/shared/IOSInstallBanner'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -74,7 +73,6 @@ export function App() {
         <NotificationsProvider>
           <AppRoutes />
           <Toaster />
-          <InstallBanner />
         </NotificationsProvider>
       </AuthProvider>
     </BrowserRouter>
