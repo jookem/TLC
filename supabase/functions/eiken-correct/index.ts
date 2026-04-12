@@ -17,7 +17,7 @@ function buildPrompt(body: Record<string, any>): string {
     passage_title, passage_text, starter_sentence, questions } = body
 
   const base = `You are a helpful English teacher assisting Japanese ESL students practicing for the ${level} exam.`
-  const correction = `\nYour task:\n1. Fix any grammar or spelling mistakes in the student's response, keeping their meaning and vocabulary close to the original\n2. Write a short, encouraging feedback message (1-2 sentences)\n3. Be lenient — partial correct answers are acceptable\n\nRespond ONLY with valid JSON: {"corrected":"corrected version","feedback":"encouraging message"}`
+  const correction = `\nYour task:\n1. Fix any grammar or spelling mistakes in the student's response, keeping their meaning and vocabulary close to the original\n2. Write a short feedback message (2-3 sentences) that is encouraging and explains the key mistake in both English and Japanese so the student understands why it was corrected. For example: "Great try! You need to use 'goes' instead of 'go' with 'she' — 三人称単数現在形なので動詞に's'をつけます。" If the answer was correct, praise them briefly in English and Japanese.\n3. Be lenient — partial correct answers are acceptable\n\nRespond ONLY with valid JSON: {"corrected":"corrected version","feedback":"feedback message with Japanese explanation"}`
 
   if (format === 'passage' || format === 'passage-qa') {
     const passageContext = passage_text
