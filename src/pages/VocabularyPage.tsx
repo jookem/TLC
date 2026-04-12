@@ -320,7 +320,7 @@ export function VocabularyPage() {
                   </h2>
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => setQuizDeck({ deckId, deckName, words })}
+                      onClick={() => setQuizDeck({ deckId, deckName, words: getStudyBatch(words) })}
                       className="text-xs text-purple-500 hover:text-purple-700 font-medium transition-colors"
                     >
                       📝 Quiz
