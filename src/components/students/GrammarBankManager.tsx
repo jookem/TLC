@@ -75,32 +75,33 @@ function LessonSlidesTab({ deckId, points }: { deckId: string; points: GrammarDe
   }, [deckId])
 
   async function handleAutoGenerate() {
-    const byCategory = new Map<string, GrammarDeckPoint[]>()
-    for (const p of points) {
-      if (!p.category) continue
-      if (!byCategory.has(p.category)) byCategory.set(p.category, [])
-      byCategory.get(p.category)!.push(p)
-    }
-    if (byCategory.size === 0) {
-      toast.error('No categories found. Add categories to quiz questions first.')
+    if (points.length === 0) {
+      toast.error('No quiz questions found in this deck.')
       return
     }
     setAutoGenerating(true)
     let created = 0
-    for (const [category, pts] of byCategory) {
-      // Skip if a slide with this title already exists
-      if (slides.some(s => s.title === category)) continue
-      const examples = pts
-        .map(p => (p.sentence_with_blank ?? p.point).replace('_____', p.answer ?? p.explanation))
-        .filter(Boolean)
-      const { error } = await addLessonSlide(deckId, { title: category, explanation: '', examples })
+    for (const p of points) {
+      const sentence = p.sentence_with_blank ?? p.point
+      const answer = p.answer ?? p.explanation
+      // Build a readable title: use category if set, otherwise derive from answer
+      const title = p.category ? `${p.category} — ${answer}` : answer
+      // Skip if a slide with this exact title already exists
+      if (slides.some(s => s.title === title)) continue
+      const example = sentence.replace('_____', answer)
+      const { error } = await addLessonSlide(deckId, {
+        title,
+        explanation: '',
+        examples: example ? [example] : [],
+        hint_ja: p.hint_ja ?? undefined,
+      })
       if (!error) created++
     }
     const { slides: updated } = await listLessonSlides(deckId)
     setSlides(updated ?? [])
     setAutoGenerating(false)
     if (created > 0) toast.success(`Generated ${created} slide${created !== 1 ? 's' : ''} — add explanations to each`)
-    else toast.info('All category slides already exist')
+    else toast.info('All slides already exist')
   }
 
   function parseExamples(text: string) {
