@@ -41,11 +41,13 @@ interface Props {
 // ── Deck Editor Modal ─────────────────────────────────────────
 function DeckEditor({
   deck,
+  studentId,
   onClose,
   onUpdated,
   onDelete,
 }: {
   deck: Deck
+  studentId: string
   onClose: () => void
   onUpdated: () => void
   onDelete: (deckId: string, deckName: string) => Promise<void>
@@ -63,6 +65,108 @@ function DeckEditor({
   const [savingEdit, setSavingEdit] = useState(false)
   const [name, setName] = useState(deck.name)
   const [renamingName, setRenamingName] = useState(false)
+  const [tab, setTab] = useState<'words' | 'quiz'>('words')
+
+  // ── Quiz tab state ────────────────────────────────────────────
+  const [quizEntries, setQuizEntries] = useState<VocabularyBankEntry[]>([])
+  const [quizLoading, setQuizLoading] = useState(false)
+  const [quizLoaded, setQuizLoaded] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [savingQuizId, setSavingQuizId] = useState<string | null>(null)
+  const [regenId, setRegenId] = useState<string | null>(null)
+  const [quizEdits, setQuizEdits] = useState<Record<string, { sentence: string; d0: string; d1: string; d2: string }>>({})
+
+  async function loadQuizEntries() {
+    setQuizLoading(true)
+    const { data } = await supabase
+      .from('vocabulary_bank')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('deck_id', deck.id)
+      .order('word', { ascending: true })
+    const rows = data ?? []
+    setQuizEntries(rows)
+    const init: typeof quizEdits = {}
+    for (const r of rows) {
+      init[r.id] = {
+        sentence: r.quiz_sentence ?? '',
+        d0: r.quiz_distractors?.[0] ?? '',
+        d1: r.quiz_distractors?.[1] ?? '',
+        d2: r.quiz_distractors?.[2] ?? '',
+      }
+    }
+    setQuizEdits(init)
+    setQuizLoading(false)
+    setQuizLoaded(true)
+  }
+
+  useEffect(() => {
+    if (tab === 'quiz' && !quizLoaded) loadQuizEntries()
+  }, [tab])
+
+  async function invokeQuiz(body: object) {
+    const { data, error } = await supabase.functions.invoke('vocab-quiz-generate', { body })
+    if (error) {
+      let msg = error.message
+      try { const b = await (error as any).context?.json?.(); if (b?.error) msg = b.error } catch {}
+      throw new Error(msg)
+    }
+    return data
+  }
+
+  async function generateAll(targets: VocabularyBankEntry[]) {
+    if (!targets.length) return
+    setGenerating(true)
+    try {
+      const data = await invokeQuiz({
+        words: targets.map(w => ({ word: w.word, definition_en: w.definition_en })),
+        level: deck.name,
+        wordPool: quizEntries.map(w => ({ word: w.word })),
+      })
+      const raw: { word: string; sentence: string; distractors: string[] }[] = data.questions ?? []
+      await Promise.all(raw.map(q => {
+        const entry = targets.find(w => w.word === q.word)
+        if (!entry) return
+        return supabase.from('vocabulary_bank').update({ quiz_sentence: q.sentence, quiz_distractors: q.distractors }).eq('id', entry.id)
+      }))
+      await loadQuizEntries()
+    } catch (e: any) {
+      toast.error(`Generation failed: ${e?.message ?? String(e)}`)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  async function regenOne(entry: VocabularyBankEntry) {
+    setRegenId(entry.id)
+    try {
+      const data = await invokeQuiz({
+        words: [{ word: entry.word, definition_en: entry.definition_en }],
+        level: deck.name,
+        wordPool: quizEntries.map(w => ({ word: w.word })),
+      })
+      const q = (data.questions ?? [])[0]
+      if (!q) throw new Error('No question returned')
+      await supabase.from('vocabulary_bank').update({ quiz_sentence: q.sentence, quiz_distractors: q.distractors }).eq('id', entry.id)
+      setQuizEdits(prev => ({ ...prev, [entry.id]: { sentence: q.sentence, d0: q.distractors[0] ?? '', d1: q.distractors[1] ?? '', d2: q.distractors[2] ?? '' } }))
+    } catch (e: any) {
+      toast.error(`Regeneration failed: ${e?.message ?? String(e)}`)
+    } finally {
+      setRegenId(null)
+    }
+  }
+
+  async function saveQuizOne(entry: VocabularyBankEntry) {
+    const e = quizEdits[entry.id]
+    if (!e) return
+    setSavingQuizId(entry.id)
+    await supabase.from('vocabulary_bank').update({
+      quiz_sentence: e.sentence || null,
+      quiz_distractors: [e.d0, e.d1, e.d2].filter(Boolean),
+    }).eq('id', entry.id)
+    setSavingQuizId(null)
+    toast.success('Saved')
+  }
 
   useEffect(() => {
     if (!deck.words) {
@@ -183,6 +287,91 @@ function DeckEditor({
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="flex border-b shrink-0">
+          <button
+            onClick={() => setTab('words')}
+            className={`px-5 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === 'words' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Words
+          </button>
+          <button
+            onClick={() => setTab('quiz')}
+            className={`px-5 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === 'quiz' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Quiz Questions
+          </button>
+        </div>
+
+        {tab === 'quiz' ? (
+          /* ── Quiz Tab ── */
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-3 border-b shrink-0">
+              <p className="text-xs text-gray-400">{quizEntries.length} words · {quizEntries.filter(e => !e.quiz_sentence).length} without questions</p>
+              <div className="flex gap-2">
+                {quizEntries.some(e => !e.quiz_sentence) && (
+                  <button onClick={() => generateAll(quizEntries.filter(e => !e.quiz_sentence))} disabled={generating} className="px-3 py-1.5 bg-brand text-white text-xs rounded-lg disabled:opacity-50">
+                    {generating ? 'Generating…' : `Generate ${quizEntries.filter(e => !e.quiz_sentence).length} missing`}
+                  </button>
+                )}
+                {quizEntries.length > 0 && !quizEntries.some(e => !e.quiz_sentence) && (
+                  <button onClick={() => generateAll(quizEntries)} disabled={generating} className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 disabled:opacity-50">
+                    {generating ? 'Generating…' : 'Regenerate all'}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+              {quizLoading ? (
+                <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+              ) : quizEntries.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">No words in this deck for this student.</p>
+              ) : quizEntries.map(entry => {
+                const e = quizEdits[entry.id] ?? { sentence: '', d0: '', d1: '', d2: '' }
+                return (
+                  <div key={entry.id} className={`border rounded-xl p-4 space-y-2 ${e.sentence ? 'border-gray-200' : 'border-orange-200 bg-orange-50'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-sm text-gray-900">{entry.word}</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => regenOne(entry)} disabled={regenId === entry.id || generating} className="text-xs text-gray-400 hover:text-brand disabled:opacity-40">
+                          {regenId === entry.id ? 'Generating…' : 'Regenerate'}
+                        </button>
+                        <button onClick={() => saveQuizOne(entry)} disabled={savingQuizId === entry.id} className="text-xs px-2 py-0.5 bg-brand text-white rounded-md disabled:opacity-40">
+                          {savingQuizId === entry.id ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Sentence (use _____ for blank)</label>
+                      <input
+                        value={e.sentence}
+                        onChange={ev => setQuizEdits(prev => ({ ...prev, [entry.id]: { ...prev[entry.id], sentence: ev.target.value } }))}
+                        placeholder="e.g. She _____ to school every day."
+                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['d0', 'd1', 'd2'] as const).map((k, i) => (
+                        <div key={k}>
+                          <label className="text-xs text-gray-400 mb-1 block">Distractor {i + 1}</label>
+                          <input
+                            value={e[k]}
+                            onChange={ev => setQuizEdits(prev => ({ ...prev, [entry.id]: { ...prev[entry.id], [k]: ev.target.value } }))}
+                            placeholder="wrong word"
+                            className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="px-6 py-3 border-t text-xs text-gray-400 shrink-0">Orange = no question yet · Edit any field then click Save</div>
+          </div>
+        ) : (
+        /* ── Words Tab ── */
+        <>
         {/* Add word form */}
         <form onSubmit={handleAddWord} className="px-6 py-4 border-b space-y-2 shrink-0">
           <div className="grid grid-cols-2 gap-2">
@@ -268,9 +457,11 @@ function DeckEditor({
           )}
         </div>
 
-        <div className="px-6 py-3 border-t text-xs text-gray-400">
+        <div className="px-6 py-3 border-t text-xs text-gray-400 shrink-0">
           {words.length} word{words.length !== 1 ? 's' : ''} in this deck
         </div>
+        </>
+        )}
       </div>
     </div>
   )
@@ -511,7 +702,6 @@ export function StudentVocabManager({ studentId }: Props) {
   const [removingImage, setRemovingImage] = useState<string | null>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [imageTargetId, setImageTargetId] = useState<string | null>(null)
-  const [quizDeck, setQuizDeck] = useState<Deck | null>(null)
   const [deckSyncStatus, setDeckSyncStatus] = useState<Record<string, number>>({}) // deckId → missing word count
   const [syncing, setSyncing] = useState<string | null>(null)
   const [syncingAll, setSyncingAll] = useState<string | null>(null)
@@ -753,16 +943,10 @@ export function StudentVocabManager({ studentId }: Props) {
       {editingDeck && (
         <DeckEditor
           deck={editingDeck}
+          studentId={studentId}
           onClose={() => setEditingDeck(null)}
           onUpdated={() => { loadDecks(); loadVocab() }}
           onDelete={async (id, name) => { await handleDeleteDeck(id, name); setEditingDeck(null) }}
-        />
-      )}
-      {quizDeck && (
-        <QuizEditorModal
-          deck={quizDeck}
-          studentId={studentId}
-          onClose={() => setQuizDeck(null)}
         />
       )}
 
@@ -835,9 +1019,6 @@ export function StudentVocabManager({ studentId }: Props) {
                   return (
                     <>
                       <button onClick={() => setEditingDeck(deck)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
-                      {isAssigned && (
-                        <button onClick={() => setQuizDeck(deck)} className="text-xs text-purple-400 hover:text-purple-600 transition-colors">Quiz</button>
-                      )}
                       {isAssigned && missing > 0 && (
                         <button
                           onClick={() => handleSync(row.id, row.name)}

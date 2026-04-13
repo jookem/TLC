@@ -51,7 +51,7 @@ function SentenceWithBlank({ sentence }: { sentence: string }) {
 }
 
 // ── Lesson Slides Tab ─────────────────────────────────────────
-function LessonSlidesTab({ deckId }: { deckId: string }) {
+function LessonSlidesTab({ deckId, points }: { deckId: string; points: GrammarDeckPoint[] }) {
   const [slides, setSlides] = useState<GrammarLessonSlide[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -65,6 +65,7 @@ function LessonSlidesTab({ deckId }: { deckId: string }) {
   const [addExamples, setAddExamples] = useState('')
   const [addHint, setAddHint] = useState('')
   const [saving, setSaving] = useState(false)
+  const [autoGenerating, setAutoGenerating] = useState(false)
 
   useEffect(() => {
     listLessonSlides(deckId).then(({ slides: s }) => {
@@ -72,6 +73,35 @@ function LessonSlidesTab({ deckId }: { deckId: string }) {
       setLoading(false)
     })
   }, [deckId])
+
+  async function handleAutoGenerate() {
+    const byCategory = new Map<string, GrammarDeckPoint[]>()
+    for (const p of points) {
+      if (!p.category) continue
+      if (!byCategory.has(p.category)) byCategory.set(p.category, [])
+      byCategory.get(p.category)!.push(p)
+    }
+    if (byCategory.size === 0) {
+      toast.error('No categories found. Add categories to quiz questions first.')
+      return
+    }
+    setAutoGenerating(true)
+    let created = 0
+    for (const [category, pts] of byCategory) {
+      // Skip if a slide with this title already exists
+      if (slides.some(s => s.title === category)) continue
+      const examples = pts
+        .map(p => (p.sentence_with_blank ?? p.point).replace('_____', p.answer ?? p.explanation))
+        .filter(Boolean)
+      const { error } = await addLessonSlide(deckId, { title: category, explanation: '', examples })
+      if (!error) created++
+    }
+    const { slides: updated } = await listLessonSlides(deckId)
+    setSlides(updated ?? [])
+    setAutoGenerating(false)
+    if (created > 0) toast.success(`Generated ${created} slide${created !== 1 ? 's' : ''} — add explanations to each`)
+    else toast.info('All category slides already exist')
+  }
 
   function parseExamples(text: string) {
     return text.split('\n').map(s => s.trim()).filter(Boolean)
@@ -147,6 +177,20 @@ function LessonSlidesTab({ deckId }: { deckId: string }) {
 
   return (
     <div className="space-y-4">
+      {/* Auto-generate from categories */}
+      {points.length > 0 && (
+        <div className="flex items-center justify-between bg-purple-50 border border-purple-100 rounded-xl px-4 py-3">
+          <p className="text-xs text-purple-700">Auto-generate one slide per quiz category</p>
+          <button
+            onClick={handleAutoGenerate}
+            disabled={autoGenerating}
+            className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+          >
+            {autoGenerating ? 'Generating…' : 'Auto-generate from categories'}
+          </button>
+        </div>
+      )}
+
       {/* Add slide form */}
       <form onSubmit={handleAdd} className="space-y-2 bg-gray-50 rounded-xl p-4 border">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Add Slide</p>
@@ -492,7 +536,7 @@ function DeckEditor({
         {/* Tab content */}
         <div className="overflow-y-auto flex-1 px-6 py-4">
           {tab === 'lesson' ? (
-            <LessonSlidesTab deckId={deck.id} />
+            <LessonSlidesTab deckId={deck.id} points={points} />
           ) : (
             <>
               {/* JSON Import */}
