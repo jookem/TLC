@@ -275,6 +275,216 @@ function DeckEditor({
   )
 }
 
+// ── Quiz Editor Modal ─────────────────────────────────────────
+function QuizEditorModal({
+  deck,
+  studentId,
+  onClose,
+}: {
+  deck: Deck
+  studentId: string
+  onClose: () => void
+}) {
+  const [entries, setEntries] = useState<VocabularyBankEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [savingId, setSavingId] = useState<string | null>(null)
+  const [regenId, setRegenId] = useState<string | null>(null)
+  const [edits, setEdits] = useState<Record<string, { sentence: string; d0: string; d1: string; d2: string }>>({})
+
+  async function loadEntries() {
+    const { data } = await supabase
+      .from('vocabulary_bank')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('deck_id', deck.id)
+      .order('word', { ascending: true })
+    const rows = data ?? []
+    setEntries(rows)
+    const init: typeof edits = {}
+    for (const r of rows) {
+      init[r.id] = {
+        sentence: r.quiz_sentence ?? '',
+        d0: r.quiz_distractors?.[0] ?? '',
+        d1: r.quiz_distractors?.[1] ?? '',
+        d2: r.quiz_distractors?.[2] ?? '',
+      }
+    }
+    setEdits(init)
+    setLoading(false)
+  }
+
+  useEffect(() => { loadEntries() }, [deck.id, studentId])
+
+  async function generateAll(targets: VocabularyBankEntry[]) {
+    if (!targets.length) return
+    setGenerating(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('vocab-quiz-generate', {
+        body: {
+          words: targets.map(w => ({ word: w.word, definition_en: w.definition_en })),
+          level: deck.name,
+        },
+      })
+      if (error) throw error
+      const raw: { word: string; sentence: string; distractors: string[] }[] = data.questions ?? []
+      await Promise.all(raw.map(q => {
+        const entry = targets.find(w => w.word === q.word)
+        if (!entry) return
+        return supabase.from('vocabulary_bank').update({
+          quiz_sentence: q.sentence,
+          quiz_distractors: q.distractors,
+        }).eq('id', entry.id)
+      }))
+      await loadEntries()
+    } catch (e) {
+      toast.error('Generation failed. Try again.')
+      console.error(e)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  async function regenOne(entry: VocabularyBankEntry) {
+    setRegenId(entry.id)
+    try {
+      const { data, error } = await supabase.functions.invoke('vocab-quiz-generate', {
+        body: {
+          words: [{ word: entry.word, definition_en: entry.definition_en }],
+          level: deck.name,
+        },
+      })
+      if (error) throw error
+      const q = (data.questions ?? [])[0]
+      if (!q) throw new Error('No question returned')
+      await supabase.from('vocabulary_bank').update({
+        quiz_sentence: q.sentence,
+        quiz_distractors: q.distractors,
+      }).eq('id', entry.id)
+      setEdits(prev => ({
+        ...prev,
+        [entry.id]: { sentence: q.sentence, d0: q.distractors[0] ?? '', d1: q.distractors[1] ?? '', d2: q.distractors[2] ?? '' },
+      }))
+    } catch (e) {
+      toast.error('Regeneration failed.')
+      console.error(e)
+    } finally {
+      setRegenId(null)
+    }
+  }
+
+  async function saveOne(entry: VocabularyBankEntry) {
+    const e = edits[entry.id]
+    if (!e) return
+    setSavingId(entry.id)
+    const distractors = [e.d0, e.d1, e.d2].filter(Boolean)
+    await supabase.from('vocabulary_bank').update({
+      quiz_sentence: e.sentence || null,
+      quiz_distractors: distractors,
+    }).eq('id', entry.id)
+    setSavingId(null)
+    toast.success('Saved')
+  }
+
+  const uncached = entries.filter(e => !e.quiz_sentence)
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div>
+            <h2 className="font-semibold text-gray-900">Quiz Questions — {deck.name}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{entries.length} words · {uncached.length} without questions</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {uncached.length > 0 && (
+              <button
+                onClick={() => generateAll(uncached)}
+                disabled={generating}
+                className="px-3 py-1.5 bg-brand text-white text-sm rounded-lg disabled:opacity-50"
+              >
+                {generating ? 'Generating…' : `Generate ${uncached.length} missing`}
+              </button>
+            )}
+            {uncached.length === 0 && entries.length > 0 && (
+              <button
+                onClick={() => generateAll(entries)}
+                disabled={generating}
+                className="px-3 py-1.5 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50"
+              >
+                {generating ? 'Generating…' : 'Regenerate all'}
+              </button>
+            )}
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+          {loading ? (
+            <div className="space-y-3">
+              {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
+            </div>
+          ) : entries.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">No words in this deck for this student.</p>
+          ) : entries.map(entry => {
+            const e = edits[entry.id] ?? { sentence: '', d0: '', d1: '', d2: '' }
+            const hasSentence = !!e.sentence
+            return (
+              <div key={entry.id} className={`border rounded-xl p-4 space-y-2 ${hasSentence ? 'border-gray-200' : 'border-orange-200 bg-orange-50'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-sm text-gray-900">{entry.word}</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => regenOne(entry)}
+                      disabled={regenId === entry.id || generating}
+                      className="text-xs text-gray-400 hover:text-brand disabled:opacity-40"
+                    >
+                      {regenId === entry.id ? 'Generating…' : 'Regenerate'}
+                    </button>
+                    <button
+                      onClick={() => saveOne(entry)}
+                      disabled={savingId === entry.id}
+                      className="text-xs px-2 py-0.5 bg-brand text-white rounded-md disabled:opacity-40"
+                    >
+                      {savingId === entry.id ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Sentence (use _____ for blank)</label>
+                  <input
+                    value={e.sentence}
+                    onChange={ev => setEdits(prev => ({ ...prev, [entry.id]: { ...prev[entry.id], sentence: ev.target.value } }))}
+                    placeholder="e.g. She _____ to school every day."
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['d0', 'd1', 'd2'] as const).map((k, i) => (
+                    <div key={k}>
+                      <label className="text-xs text-gray-400 mb-1 block">Distractor {i + 1}</label>
+                      <input
+                        value={e[k]}
+                        onChange={ev => setEdits(prev => ({ ...prev, [entry.id]: { ...prev[entry.id], [k]: ev.target.value } }))}
+                        placeholder="wrong word"
+                        className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="px-6 py-3 border-t text-xs text-gray-400">
+          Orange = no question yet · Edit any field then click Save
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────
 export function StudentVocabManager({ studentId }: Props) {
   const [vocab, setVocab] = useState<VocabularyBankEntry[]>([])
@@ -292,6 +502,7 @@ export function StudentVocabManager({ studentId }: Props) {
   const [removingImage, setRemovingImage] = useState<string | null>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [imageTargetId, setImageTargetId] = useState<string | null>(null)
+  const [quizDeck, setQuizDeck] = useState<Deck | null>(null)
 
   async function loadVocab() {
     const { data, error } = await supabase
@@ -462,6 +673,13 @@ export function StudentVocabManager({ studentId }: Props) {
           onDelete={async (id, name) => { await handleDeleteDeck(id, name); setEditingDeck(null) }}
         />
       )}
+      {quizDeck && (
+        <QuizEditorModal
+          deck={quizDeck}
+          studentId={studentId}
+          onClose={() => setQuizDeck(null)}
+        />
+      )}
 
       <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
 
@@ -531,6 +749,9 @@ export function StudentVocabManager({ studentId }: Props) {
                   return (
                     <>
                       <button onClick={() => setEditingDeck(deck)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
+                      {isAssigned && (
+                        <button onClick={() => setQuizDeck(deck)} className="text-xs text-purple-400 hover:text-purple-600 transition-colors">Quiz</button>
+                      )}
                       {isAssigned ? (
                         <button onClick={() => handleRemoveDeck(row.id, row.name)} disabled={removing === row.id} className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50">
                           {removing === row.id ? '…' : 'Remove'}

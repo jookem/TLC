@@ -29,18 +29,32 @@ Deno.serve(async (req) => {
     const prompt = `You are creating ${level ?? 'Eiken 5'} level fill-in-the-blank vocabulary questions for Japanese ESL students (A1 level).
 
 For each word below, create:
-1. A natural English sentence at A1 level where the target word is replaced with _____
-   - Keep grammar simple (present simple, present continuous, basic past)
-   - Use everyday topics (family, school, weather, food, hobbies)
-   - Sometimes use short dialogue format like "A: ... B: It is _____ today."
-   - The sentence should make the correct answer obvious from context
-2. Exactly 3 distractor words that are the same part of speech but wrong in this context
+1. A natural English sentence at A1 level where the target word fills the blank (_____).
+
+CRITICAL RULES for the sentence:
+- The blank must use the EXACT inflected form that fits the sentence grammar.
+  If subject is she/he/it and tense is present simple, use the -s form (e.g. "makes" not "make").
+  The "word" key in your JSON must also use this exact form.
+- The sentence must contain a SPECIFIC context clue that makes ONLY ONE word logically correct.
+  After writing the sentence, mentally test EVERY distractor in the blank. If any distractor also makes sense, rewrite the sentence with a stronger clue.
+  BAD: "My grandfather stayed at the _____ for three days." (hospital AND hotel both work)
+  GOOD: "My grandfather stayed at the _____ for three days after his operation." (only hospital)
+  BAD: "There is a big _____ near my house." (tree/building/bridge all work)
+  GOOD: "She paid a toll and drove across the _____ over the river." (only bridge)
+- Keep grammar simple (present simple, present continuous, basic past).
+- Use everyday topics (family, school, weather, food, hobbies).
+- Sentence length: 8–14 words.
+
+2. Exactly 3 distractor words that are:
+   - The same part of speech and grammatical form as the answer
+   - Clearly wrong given the specific context clue in the sentence
+   - Similar difficulty level
 
 Words:
 ${wordList}
 
 Respond ONLY with a valid JSON array, no extra text:
-[{"word":"example","sentence":"She likes to _____ books every evening.","distractors":["cook","swim","sing"]}]`
+[{"word":"makes","sentence":"My mother _____ delicious food for dinner every night.","distractors":["buys","orders","sells"]}]`
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

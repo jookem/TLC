@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { CelebrationScreen } from '@/components/shared/CelebrationScreen'
 import type { VocabularyBankEntry } from '@/lib/types/database'
+import { toast } from 'sonner'
 
 type QuizQuestion = {
   word: string
@@ -51,21 +52,51 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
     setGenerating(true)
     setError(null)
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('vocab-quiz-generate', {
-        body: {
-          words: words.map(w => ({ word: w.word, definition_en: w.definition_en })),
-          level: deckName,
-        },
-      })
-      if (fnError) throw fnError
-      const raw: { word: string; sentence: string; distractors: string[] }[] = data.questions ?? []
-      const built: QuizQuestion[] = raw.map(q => ({
-        word: q.word,
-        sentence: q.sentence,
-        answer: q.word,
-        choices: shuffle([q.word, ...q.distractors.slice(0, 3)]),
+      // Use cached questions where available
+      const cached = words.filter(w => w.quiz_sentence && w.quiz_distractors?.length >= 1)
+      const uncached = words.filter(w => !w.quiz_sentence || !w.quiz_distractors?.length)
+
+      const cachedQuestions: QuizQuestion[] = cached.map(w => ({
+        word: w.word,
+        sentence: w.quiz_sentence!,
+        answer: w.word,
+        choices: shuffle([w.word, ...(w.quiz_distractors ?? []).slice(0, 3)]),
       }))
-      setQuestions(shuffle(built))
+
+      let newQuestions: QuizQuestion[] = []
+      if (uncached.length > 0) {
+        const { data, error: fnError } = await supabase.functions.invoke('vocab-quiz-generate', {
+          body: {
+            words: uncached.map(w => ({ word: w.word, definition_en: w.definition_en })),
+            level: deckName,
+          },
+        })
+        if (fnError) throw fnError
+        const raw: { word: string; sentence: string; distractors: string[] }[] = data.questions ?? []
+
+        // Save generated questions to DB for next time
+        await Promise.all(raw.map(q => {
+          const entry = uncached.find(w => w.word === q.word)
+          if (!entry) return
+          return supabase.from('vocabulary_bank').update({
+            quiz_sentence: q.sentence,
+            quiz_distractors: q.distractors,
+          }).eq('id', entry.id)
+        }))
+
+        newQuestions = raw.map(q => ({
+          word: q.word,
+          sentence: q.sentence,
+          answer: q.word,
+          choices: shuffle([q.word, ...q.distractors.slice(0, 3)]),
+        }))
+
+        if (cached.length > 0) {
+          toast.success(`${cached.length} cached · ${raw.length} newly generated`)
+        }
+      }
+
+      setQuestions(shuffle([...cachedQuestions, ...newQuestions]))
     } catch (e: any) {
       setError('Could not generate questions. Please try again.')
       console.error(e)
