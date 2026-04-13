@@ -81,19 +81,18 @@ function LessonSlidesTab({ deckId, points }: { deckId: string; points: GrammarDe
     }
     setAutoGenerating(true)
     let created = 0
+    const existingExamples = new Set(slides.flatMap(s => s.examples))
     for (const p of points) {
       const sentence = p.sentence_with_blank ?? p.point
       const answer = p.answer ?? p.explanation
-      // Build a readable title: use category if set, otherwise derive from answer
-      const title = p.category ? `${p.category} — ${answer}` : answer
-      // Skip if a slide with this exact title already exists
-      if (slides.some(s => s.title === title)) continue
+      const title = p.category ?? answer
       const example = sentence.replace('_____', answer)
+      // Skip if this exact example sentence already exists in any slide
+      if (existingExamples.has(example)) continue
       const { error } = await addLessonSlide(deckId, {
         title,
-        explanation: '',
+        explanation: p.hint_ja ?? '',
         examples: example ? [example] : [],
-        hint_ja: p.hint_ja ?? undefined,
       })
       if (!error) created++
     }
