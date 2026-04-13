@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { rateVocabCard } from '@/lib/api/lessons'
 import { speak } from '@/lib/tts'
+import { supabase } from '@/lib/supabase'
 import type { VocabularyBankEntry, MasteryLevel } from '@/lib/types/database'
 import { CelebrationScreen } from '@/components/shared/CelebrationScreen'
 
@@ -13,10 +14,20 @@ interface Stats {
   easy: number
 }
 
+interface SavedVocabSession {
+  queueIds: string[]
+  againQueueIds: string[]
+  stats: Stats
+}
+
 interface Props {
   cards: VocabularyBankEntry[]
   onClose: () => void
   onComplete: () => void
+}
+
+function sessionKey(userId: string) {
+  return `narubase_session_vocab_${userId}`
 }
 
 export function StudySession({ cards, onClose, onComplete }: Props) {
@@ -27,6 +38,9 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
   const [rating, setRating] = useState(false)
   const [stats, setStats] = useState<Stats>({ again: 0, hard: 0, good: 0, easy: 0 })
   const [done, setDone] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [showResumePrompt, setShowResumePrompt] = useState(false)
+  const [resumeData, setResumeData] = useState<SavedVocabSession | null>(null)
   const total = cards.length
 
   // Auto-play word when card changes (respects user setting)
@@ -36,8 +50,43 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
     }
   }, [current, done])
 
+  // Load user ID and check for saved session
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return
+      setUserId(data.user.id)
+      const saved = localStorage.getItem(sessionKey(data.user.id))
+      if (saved) {
+        try {
+          const parsed: SavedVocabSession = JSON.parse(saved)
+          if (parsed.queueIds?.length > 0) {
+            setResumeData(parsed)
+            setShowResumePrompt(true)
+          }
+        } catch {}
+      }
+    })
+  }, [])
+
+  function handleResume() {
+    if (!resumeData) return
+    const cardById = new Map(cards.map(c => [c.id, c]))
+    const restoredQueue = resumeData.queueIds.map(id => cardById.get(id)).filter(Boolean) as VocabularyBankEntry[]
+    const restoredAgain = resumeData.againQueueIds.map(id => cardById.get(id)).filter(Boolean) as VocabularyBankEntry[]
+    if (restoredQueue.length === 0) { setShowResumePrompt(false); return }
+    setQueue(restoredQueue)
+    setAgainQueue(restoredAgain)
+    setCurrent(restoredQueue[0])
+    setStats(resumeData.stats)
+    setShowResumePrompt(false)
+  }
+
+  function handleStartFresh() {
+    if (userId) localStorage.removeItem(sessionKey(userId))
+    setShowResumePrompt(false)
+  }
+
   const remaining = queue.length + againQueue.length
-  const reviewed = total - remaining + (done ? 0 : 0)
   const progress = total > 0 ? Math.round(((total - queue.length) / total) * 100) : 100
 
   async function handleRate(r: Rating) {
@@ -46,7 +95,8 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
 
     await rateVocabCard(current.id, current.mastery_level as MasteryLevel, r)
 
-    setStats(prev => ({ ...prev, [r]: prev[r] + 1 }))
+    const newStats = { ...stats, [r]: stats[r] + 1 }
+    setStats(newStats)
 
     const nextQueue = queue.slice(1)
     const newAgainQueue = r === 'again' ? [...againQueue, current] : againQueue
@@ -56,14 +106,28 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
       setAgainQueue(newAgainQueue)
       setCurrent(nextQueue[0])
       setFlipped(false)
+      if (userId) {
+        localStorage.setItem(sessionKey(userId), JSON.stringify({
+          queueIds: nextQueue.map(c => c.id),
+          againQueueIds: newAgainQueue.map(c => c.id),
+          stats: newStats,
+        }))
+      }
     } else if (newAgainQueue.length > 0) {
-      // Main queue exhausted — loop through "again" cards
       setQueue(newAgainQueue)
       setAgainQueue([])
       setCurrent(newAgainQueue[0])
       setFlipped(false)
+      if (userId) {
+        localStorage.setItem(sessionKey(userId), JSON.stringify({
+          queueIds: newAgainQueue.map(c => c.id),
+          againQueueIds: [],
+          stats: newStats,
+        }))
+      }
     } else {
       setDone(true)
+      if (userId) localStorage.removeItem(sessionKey(userId))
     }
 
     setRating(false)
@@ -78,6 +142,33 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Vocabulary study session" className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4">
+
+      {/* Resume prompt overlay */}
+      {showResumePrompt && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
+            <p className="text-white font-semibold text-lg">Resume session?</p>
+            <p className="text-gray-400 text-sm">
+              You have {resumeData?.queueIds.length ?? 0} card{resumeData?.queueIds.length !== 1 ? 's' : ''} remaining from your last session.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleResume}
+                className="w-full py-2.5 bg-brand text-white rounded-xl text-sm font-semibold"
+              >
+                Resume
+              </button>
+              <button
+                onClick={handleStartFresh}
+                className="w-full py-2.5 bg-gray-800 text-gray-300 rounded-xl text-sm"
+              >
+                Start fresh
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="w-full max-w-lg flex items-center justify-between mb-6">
         <div className="text-sm text-gray-400">

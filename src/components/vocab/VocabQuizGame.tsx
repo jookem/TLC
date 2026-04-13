@@ -11,6 +11,12 @@ type QuizQuestion = {
   answer: string
 }
 
+interface SavedQuizSession {
+  questions: QuizQuestion[]
+  index: number
+  score: number
+}
+
 interface Props {
   words: VocabularyBankEntry[]
   deckName: string
@@ -19,6 +25,10 @@ interface Props {
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
+}
+
+function quizSessionKey(userId: string, deckName: string) {
+  return `narubase_session_quiz_${userId}_${deckName.replace(/[^a-z0-9]/gi, '_')}`
 }
 
 function SentenceDisplay({ sentence }: { sentence: string }) {
@@ -43,12 +53,48 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
   const [score, setScore] = useState(0)
   const [done, setDone] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [showResumePrompt, setShowResumePrompt] = useState(false)
+  const [resumeData, setResumeData] = useState<SavedQuizSession | null>(null)
 
   useEffect(() => {
-    generate()
+    supabase.auth.getUser().then(({ data }) => {
+      const uid = data.user?.id ?? null
+      setUserId(uid)
+      if (uid) {
+        const saved = localStorage.getItem(quizSessionKey(uid, deckName))
+        if (saved) {
+          try {
+            const parsed: SavedQuizSession = JSON.parse(saved)
+            if (parsed.questions?.length > 0 && typeof parsed.index === 'number') {
+              setResumeData(parsed)
+              setShowResumePrompt(true)
+              setGenerating(false)
+              return
+            }
+          } catch {}
+        }
+      }
+      generate(uid)
+    })
   }, [])
 
-  async function generate() {
+  function handleResume() {
+    if (!resumeData) return
+    setQuestions(resumeData.questions)
+    setIndex(resumeData.index)
+    setScore(resumeData.score)
+    setShowResumePrompt(false)
+  }
+
+  function handleStartFresh() {
+    if (userId) localStorage.removeItem(quizSessionKey(userId, deckName))
+    setShowResumePrompt(false)
+    setGenerating(true)
+    generate(userId)
+  }
+
+  async function generate(uid: string | null = userId) {
     setGenerating(true)
     setError(null)
     try {
@@ -101,7 +147,19 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
         }
       }
 
-      setQuestions(shuffle([...cachedQuestions, ...newQuestions]))
+      const allQuestions = shuffle([...cachedQuestions, ...newQuestions])
+      setQuestions(allQuestions)
+      setIndex(0)
+      setScore(0)
+
+      // Save initial state so session is tracked from the start
+      if (uid && allQuestions.length > 0) {
+        localStorage.setItem(quizSessionKey(uid, deckName), JSON.stringify({
+          questions: allQuestions,
+          index: 0,
+          score: 0,
+        }))
+      }
     } catch (e: any) {
       const msg = e?.message ?? e?.context?.message ?? String(e)
       setError(`Could not generate questions: ${msg}`)
@@ -118,11 +176,21 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
   }
 
   function handleNext() {
-    if (index + 1 >= questions.length) {
+    const nextIndex = index + 1
+    if (nextIndex >= questions.length) {
       setDone(true)
+      if (userId) localStorage.removeItem(quizSessionKey(userId, deckName))
     } else {
-      setIndex(i => i + 1)
+      setIndex(nextIndex)
       setSelected(null)
+      // score is already updated by handleSelect (separate click), use it directly
+      if (userId) {
+        localStorage.setItem(quizSessionKey(userId, deckName), JSON.stringify({
+          questions,
+          index: nextIndex,
+          score,
+        }))
+      }
     }
   }
 
@@ -138,13 +206,44 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
     )
   }
 
+  // ── Resume prompt ────────────────────────────────────────────────
+
+  if (showResumePrompt && resumeData) {
+    const remaining = resumeData.questions.length - resumeData.index
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center p-4">
+        <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
+          <p className="text-white font-semibold text-lg">Resume quiz?</p>
+          <p className="text-gray-400 text-sm">
+            {remaining} question{remaining !== 1 ? 's' : ''} remaining · {resumeData.score} correct so far
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleResume}
+              className="w-full py-2.5 bg-brand text-white rounded-xl text-sm font-semibold"
+            >
+              Resume
+            </button>
+            <button
+              onClick={handleStartFresh}
+              className="w-full py-2.5 bg-gray-800 text-gray-300 rounded-xl text-sm"
+            >
+              Start fresh
+            </button>
+            <button onClick={onClose} className="text-white/40 text-sm mt-1">Back</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ── Error ────────────────────────────────────────────────────────
 
   if (error) {
     return (
       <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center gap-4 p-6">
         <p className="text-white">{error}</p>
-        <button onClick={generate} className="px-6 py-2 bg-white text-slate-900 rounded-lg font-medium text-sm">Try Again</button>
+        <button onClick={() => generate()} className="px-6 py-2 bg-white text-slate-900 rounded-lg font-medium text-sm">Try Again</button>
         <button onClick={onClose} className="text-white/50 text-sm">Back</button>
       </div>
     )

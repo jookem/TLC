@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { rateGrammarCard, type GrammarBankEntry, type GrammarRating } from '@/lib/api/grammar'
+import { supabase } from '@/lib/supabase'
 import { CelebrationScreen } from '@/components/shared/CelebrationScreen'
 
 interface Props {
@@ -9,6 +10,12 @@ interface Props {
 }
 
 type Phase = 'question' | 'revealed'
+
+interface SavedGrammarSession {
+  queueIds: string[]
+  againQueueIds: string[]
+  stats: { correct: number; incorrect: number }
+}
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
@@ -61,6 +68,10 @@ function SentenceDisplay({
   )
 }
 
+function sessionKey(userId: string) {
+  return `narubase_session_grammar_${userId}`
+}
+
 export function GrammarSession({ cards, onClose, onComplete }: Props) {
   const [queue, setQueue] = useState<GrammarBankEntry[]>([...cards])
   const [againQueue, setAgainQueue] = useState<GrammarBankEntry[]>([])
@@ -71,6 +82,9 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
   const [rating, setRating] = useState(false)
   const [done, setDone] = useState(false)
   const [stats, setStats] = useState({ correct: 0, incorrect: 0 })
+  const [userId, setUserId] = useState<string | null>(null)
+  const [showResumePrompt, setShowResumePrompt] = useState(false)
+  const [resumeData, setResumeData] = useState<SavedGrammarSession | null>(null)
   const total = cards.length
 
   useEffect(() => {
@@ -80,6 +94,42 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
       setPhase('question')
     }
   }, [current, done])
+
+  // Load user ID and check for saved session
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return
+      setUserId(data.user.id)
+      const saved = localStorage.getItem(sessionKey(data.user.id))
+      if (saved) {
+        try {
+          const parsed: SavedGrammarSession = JSON.parse(saved)
+          if (parsed.queueIds?.length > 0) {
+            setResumeData(parsed)
+            setShowResumePrompt(true)
+          }
+        } catch {}
+      }
+    })
+  }, [])
+
+  function handleResume() {
+    if (!resumeData) return
+    const cardById = new Map(cards.map(c => [c.id, c]))
+    const restoredQueue = resumeData.queueIds.map(id => cardById.get(id)).filter(Boolean) as GrammarBankEntry[]
+    const restoredAgain = resumeData.againQueueIds.map(id => cardById.get(id)).filter(Boolean) as GrammarBankEntry[]
+    if (restoredQueue.length === 0) { setShowResumePrompt(false); return }
+    setQueue(restoredQueue)
+    setAgainQueue(restoredAgain)
+    setCurrent(restoredQueue[0])
+    setStats(resumeData.stats)
+    setShowResumePrompt(false)
+  }
+
+  function handleStartFresh() {
+    if (userId) localStorage.removeItem(sessionKey(userId))
+    setShowResumePrompt(false)
+  }
 
   const progress = total > 0 ? Math.round(((total - queue.length) / total) * 100) : 100
 
@@ -103,16 +153,43 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
     const nextQueue = queue.slice(1)
     const newAgainQueue = r === 'again' ? [...againQueue, current] : againQueue
 
+    // Compute new stats (may have been updated by handleSelect above)
+    // We capture by reading current state ref after the answer was processed
+    const answer = current.answer ?? current.explanation
+    const wasCorrect = selected === answer
+
     if (nextQueue.length > 0) {
       setQueue(nextQueue)
       setAgainQueue(newAgainQueue)
       setCurrent(nextQueue[0])
+      if (userId) {
+        // stats state may not have updated yet, so use functional update reference
+        setStats(s => {
+          localStorage.setItem(sessionKey(userId), JSON.stringify({
+            queueIds: nextQueue.map(c => c.id),
+            againQueueIds: newAgainQueue.map(c => c.id),
+            stats: s,
+          }))
+          return s
+        })
+      }
     } else if (newAgainQueue.length > 0) {
       setQueue(newAgainQueue)
       setAgainQueue([])
       setCurrent(newAgainQueue[0])
+      if (userId) {
+        setStats(s => {
+          localStorage.setItem(sessionKey(userId), JSON.stringify({
+            queueIds: newAgainQueue.map(c => c.id),
+            againQueueIds: [],
+            stats: s,
+          }))
+          return s
+        })
+      }
     } else {
       setDone(true)
+      if (userId) localStorage.removeItem(sessionKey(userId))
     }
     setRating(false)
   }
@@ -130,6 +207,33 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Grammar study session" className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center p-4">
+
+      {/* Resume prompt overlay */}
+      {showResumePrompt && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
+            <p className="text-white font-semibold text-lg">Resume session?</p>
+            <p className="text-gray-400 text-sm">
+              You have {resumeData?.queueIds.length ?? 0} question{resumeData?.queueIds.length !== 1 ? 's' : ''} remaining from your last session.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleResume}
+                className="w-full py-2.5 bg-brand text-white rounded-xl text-sm font-semibold"
+              >
+                Resume
+              </button>
+              <button
+                onClick={handleStartFresh}
+                className="w-full py-2.5 bg-gray-800 text-gray-300 rounded-xl text-sm"
+              >
+                Start fresh
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="w-full max-w-lg flex items-center justify-between mb-4">
         <span className="text-sm text-gray-400">
