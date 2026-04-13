@@ -98,7 +98,8 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
 
       setQuestions(shuffle([...cachedQuestions, ...newQuestions]))
     } catch (e: any) {
-      setError('Could not generate questions. Please try again.')
+      const msg = e?.message ?? e?.context?.message ?? String(e)
+      setError(`Could not generate questions: ${msg}`)
       console.error(e)
     } finally {
       setGenerating(false)

@@ -337,8 +337,9 @@ function QuizEditorModal({
         }).eq('id', entry.id)
       }))
       await loadEntries()
-    } catch (e) {
-      toast.error('Generation failed. Try again.')
+    } catch (e: any) {
+      const msg = e?.message ?? e?.context?.message ?? String(e)
+      toast.error(`Generation failed: ${msg}`)
       console.error(e)
     } finally {
       setGenerating(false)
@@ -365,8 +366,9 @@ function QuizEditorModal({
         ...prev,
         [entry.id]: { sentence: q.sentence, d0: q.distractors[0] ?? '', d1: q.distractors[1] ?? '', d2: q.distractors[2] ?? '' },
       }))
-    } catch (e) {
-      toast.error('Regeneration failed.')
+    } catch (e: any) {
+      const msg = e?.message ?? e?.context?.message ?? String(e)
+      toast.error(`Regeneration failed: ${msg}`)
       console.error(e)
     } finally {
       setRegenId(null)
