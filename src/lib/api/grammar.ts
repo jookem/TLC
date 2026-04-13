@@ -37,6 +37,17 @@ export interface GrammarDeckPoint {
   created_at: string
 }
 
+export interface GrammarLessonSlide {
+  id: string
+  deck_id: string
+  sort_order: number
+  title: string
+  explanation: string
+  examples: string[]
+  hint_ja: string | null
+  created_at: string
+}
+
 export interface GrammarDeck {
   id: string
   teacher_id: string
@@ -44,6 +55,7 @@ export interface GrammarDeck {
   created_at: string
   point_count?: number
   points?: GrammarDeckPoint[]
+  slides?: GrammarLessonSlide[]
 }
 
 const INTERVALS = [1, 3, 7, 14]
@@ -309,6 +321,78 @@ export async function reorderGrammarDecks(
 ): Promise<{ error?: string }> {
   const updates = ids.map((id, i) =>
     supabase.from('grammar_decks').update({ sort_order: i }).eq('id', id)
+  )
+  const results = await Promise.all(updates)
+  const err = results.find(r => r.error)
+  return err?.error ? { error: err.error.message } : {}
+}
+
+// ── Grammar Lesson Slides ──────────────────────────────────────
+
+export async function listLessonSlides(
+  deckId: string,
+): Promise<{ slides?: GrammarLessonSlide[]; error?: string }> {
+  const { data, error } = await supabase
+    .from('grammar_lesson_slides')
+    .select('*')
+    .eq('deck_id', deckId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+
+  return error ? { error: error.message } : { slides: data as GrammarLessonSlide[] }
+}
+
+export async function addLessonSlide(
+  deckId: string,
+  fields: { title: string; explanation: string; examples: string[]; hint_ja?: string },
+): Promise<{ slide?: GrammarLessonSlide; error?: string }> {
+  // Place at end of current list
+  const { data: existing } = await supabase
+    .from('grammar_lesson_slides')
+    .select('sort_order')
+    .eq('deck_id', deckId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+
+  const sort_order = (existing?.[0]?.sort_order ?? -1) + 1
+
+  const { data, error } = await supabase
+    .from('grammar_lesson_slides')
+    .insert({ deck_id: deckId, sort_order, ...fields, hint_ja: fields.hint_ja ?? null })
+    .select()
+    .single()
+
+  return error ? { error: error.message } : { slide: data as GrammarLessonSlide }
+}
+
+export async function updateLessonSlide(
+  slideId: string,
+  fields: { title: string; explanation: string; examples: string[]; hint_ja?: string },
+): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from('grammar_lesson_slides')
+    .update({ ...fields, hint_ja: fields.hint_ja ?? null })
+    .eq('id', slideId)
+
+  return error ? { error: error.message } : {}
+}
+
+export async function removeLessonSlide(
+  slideId: string,
+): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from('grammar_lesson_slides')
+    .delete()
+    .eq('id', slideId)
+
+  return error ? { error: error.message } : {}
+}
+
+export async function reorderLessonSlides(
+  slideIds: string[],
+): Promise<{ error?: string }> {
+  const updates = slideIds.map((id, i) =>
+    supabase.from('grammar_lesson_slides').update({ sort_order: i }).eq('id', id)
   )
   const results = await Promise.all(updates)
   const err = results.find(r => r.error)

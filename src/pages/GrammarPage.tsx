@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { listGrammar, type GrammarBankEntry } from '@/lib/api/grammar'
+import { listGrammar, listLessonSlides, type GrammarBankEntry, type GrammarLessonSlide } from '@/lib/api/grammar'
 import { Card, CardContent } from '@/components/ui/card'
 import { GrammarSession } from '@/components/grammar/GrammarSession'
+import { GrammarLesson } from '@/components/grammar/GrammarLesson'
 import { PageError } from '@/components/shared/PageError'
 
 function getStudyBatch<T>(arr: T[]): T[] {
@@ -28,6 +29,7 @@ export function GrammarPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [studyCards, setStudyCards] = useState<GrammarBankEntry[] | null>(null)
+  const [lessonState, setLessonState] = useState<{ slides: GrammarLessonSlide[]; cards: GrammarBankEntry[]; deckName: string } | null>(null)
   const [search, setSearch] = useState('')
   const [view, setView] = useState<View>('category')
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
@@ -47,6 +49,24 @@ export function GrammarPage() {
   }
 
   useEffect(() => { load() }, [user])
+
+  // Start a study session — checks for lesson slides first (unless skipLesson)
+  async function startStudy(cards: GrammarBankEntry[], skipLesson = false) {
+    if (skipLesson) { setStudyCards(cards); return }
+
+    // Find the single deck shared by all cards (if any)
+    const deckIds = [...new Set(cards.map(c => c.deck_id).filter(Boolean))]
+    if (deckIds.length === 1) {
+      const deckId = deckIds[0]!
+      const { slides } = await listLessonSlides(deckId)
+      if (slides && slides.length > 0) {
+        const deckName = entries.find(e => e.deck_id === deckId)?.category ?? 'Grammar'
+        setLessonState({ slides, cards, deckName })
+        return
+      }
+    }
+    setStudyCards(cards)
+  }
 
   if (error) return <PageError message={error} onRetry={load} />
   if (loading) return <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />
@@ -93,6 +113,15 @@ export function GrammarPage() {
 
   return (
     <>
+      {lessonState && (
+        <GrammarLesson
+          slides={lessonState.slides}
+          deckName={lessonState.deckName}
+          onComplete={() => { setStudyCards(lessonState.cards); setLessonState(null) }}
+          onClose={() => setLessonState(null)}
+        />
+      )}
+
       {studyCards && (
         <GrammarSession
           cards={studyCards}
@@ -121,7 +150,7 @@ export function GrammarPage() {
                 </button>
               )}
               <button
-                onClick={() => setStudyCards(getStudyBatch(entries))}
+                onClick={() => startStudy(getStudyBatch(entries))}
                 className="px-4 py-2 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand/90 transition-colors"
               >
                 全部学習
@@ -204,7 +233,7 @@ export function GrammarPage() {
                       <span className="text-xs text-gray-400">{categoryMap.get(cat)!.length}</span>
                     </div>
                     <button
-                      onClick={() => setStudyCards(getStudyBatch(categoryMap.get(cat)!))}
+                      onClick={() => startStudy(getStudyBatch(categoryMap.get(cat)!))}
                       className="text-xs text-gray-400 hover:text-brand transition-colors"
                     >
                       Study this topic →
@@ -212,7 +241,7 @@ export function GrammarPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {categoryMap.get(cat)!.map(e => (
-                      <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} />
+                      <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy([e])} />
                     ))}
                   </div>
                 </section>
@@ -229,7 +258,7 @@ export function GrammarPage() {
                       <span className="text-xs text-gray-400">{uncategorized.length}</span>
                     </div>
                     <button
-                      onClick={() => setStudyCards(getStudyBatch(uncategorized))}
+                      onClick={() => startStudy(getStudyBatch(uncategorized))}
                       className="text-xs text-gray-400 hover:text-brand transition-colors"
                     >
                       Study this topic →
@@ -237,7 +266,7 @@ export function GrammarPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {uncategorized.map(e => (
-                      <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} />
+                      <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy([e])} />
                     ))}
                   </div>
                 </section>
@@ -262,7 +291,7 @@ export function GrammarPage() {
                   復習が必要 / Review Due ({due.length})
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {due.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} />)}
+                  {due.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy([e])} />)}
                 </div>
               </section>
             )}
@@ -275,14 +304,14 @@ export function GrammarPage() {
                       {MASTERY_LABELS[level]} / {MASTERY_LABELS_EN[level]} ({items.length})
                     </h2>
                     <button
-                      onClick={() => setStudyCards(getStudyBatch(items))}
+                      onClick={() => startStudy(getStudyBatch(items))}
                       className="text-xs text-gray-400 hover:text-brand transition-colors"
                     >
                       Study this group →
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {items.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} />)}
+                    {items.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy([e])} />)}
                   </div>
                 </section>
               )
@@ -312,7 +341,7 @@ export function GrammarPage() {
   )
 }
 
-function GrammarCard({ entry, onStudy }: { entry: GrammarBankEntry; onStudy: () => void }) {
+function GrammarCard({ entry, onStudy, onLesson }: { entry: GrammarBankEntry; onStudy: () => void; onLesson: () => void }) {
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="pt-4 pb-3 space-y-2">
@@ -326,12 +355,14 @@ function GrammarCard({ entry, onStudy }: { entry: GrammarBankEntry; onStudy: () 
         {entry.examples.length > 0 && (
           <p className="text-xs text-gray-400 italic">"{entry.examples[0]}"</p>
         )}
-        <button
-          onClick={onStudy}
-          className="text-xs text-brand hover:text-brand/80 transition-colors mt-1"
-        >
-          Practice →
-        </button>
+        <div className="flex items-center gap-3 mt-1">
+          <button onClick={onLesson} className="text-xs text-brand hover:text-brand/80 transition-colors">
+            Learn →
+          </button>
+          <button onClick={onStudy} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+            Practice
+          </button>
+        </div>
       </CardContent>
     </Card>
   )

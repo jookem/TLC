@@ -14,9 +14,15 @@ import {
   assignGrammarDeckToStudent,
   removeGrammarDeckFromStudent,
   reorderGrammarDecks,
+  listLessonSlides,
+  addLessonSlide,
+  updateLessonSlide,
+  removeLessonSlide,
+  reorderLessonSlides,
   type GrammarBankEntry,
   type GrammarDeck,
   type GrammarDeckPoint,
+  type GrammarLessonSlide,
 } from '@/lib/api/grammar'
 import { SortableDeckList, type DeckRow } from '@/components/shared/SortableDeckList'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -44,6 +50,202 @@ function SentenceWithBlank({ sentence }: { sentence: string }) {
   )
 }
 
+// ── Lesson Slides Tab ─────────────────────────────────────────
+function LessonSlidesTab({ deckId }: { deckId: string }) {
+  const [slides, setSlides] = useState<GrammarLessonSlide[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editFields, setEditFields] = useState({ title: '', explanation: '', examples: '', hint_ja: '' })
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [removing, setRemoving] = useState<string | null>(null)
+
+  // Add form
+  const [addTitle, setAddTitle] = useState('')
+  const [addExplanation, setAddExplanation] = useState('')
+  const [addExamples, setAddExamples] = useState('')
+  const [addHint, setAddHint] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    listLessonSlides(deckId).then(({ slides: s }) => {
+      setSlides(s ?? [])
+      setLoading(false)
+    })
+  }, [deckId])
+
+  function parseExamples(text: string) {
+    return text.split('\n').map(s => s.trim()).filter(Boolean)
+  }
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault()
+    if (!addTitle.trim()) return
+    setSaving(true)
+    const { slide, error } = await addLessonSlide(deckId, {
+      title: addTitle.trim(),
+      explanation: addExplanation.trim(),
+      examples: parseExamples(addExamples),
+      hint_ja: addHint.trim() || undefined,
+    })
+    setSaving(false)
+    if (error) { toast.error(error); return }
+    setSlides(prev => [...prev, slide!])
+    setAddTitle(''); setAddExplanation(''); setAddExamples(''); setAddHint('')
+  }
+
+  function startEdit(s: GrammarLessonSlide) {
+    setEditingId(s.id)
+    setEditFields({
+      title: s.title,
+      explanation: s.explanation,
+      examples: s.examples.join('\n'),
+      hint_ja: s.hint_ja ?? '',
+    })
+  }
+
+  async function handleEditSave() {
+    if (!editingId) return
+    setSavingEdit(true)
+    const { error } = await updateLessonSlide(editingId, {
+      title: editFields.title.trim(),
+      explanation: editFields.explanation.trim(),
+      examples: parseExamples(editFields.examples),
+      hint_ja: editFields.hint_ja.trim() || undefined,
+    })
+    setSavingEdit(false)
+    if (error) { toast.error(error); return }
+    setSlides(prev => prev.map(s => s.id === editingId ? {
+      ...s,
+      title: editFields.title.trim(),
+      explanation: editFields.explanation.trim(),
+      examples: parseExamples(editFields.examples),
+      hint_ja: editFields.hint_ja.trim() || null,
+    } : s))
+    setEditingId(null)
+  }
+
+  async function handleRemove(slideId: string) {
+    setRemoving(slideId)
+    const { error } = await removeLessonSlide(slideId)
+    setRemoving(null)
+    if (error) toast.error(error)
+    else setSlides(prev => prev.filter(s => s.id !== slideId))
+  }
+
+  async function handleMove(slideId: string, dir: -1 | 1) {
+    const idx = slides.findIndex(s => s.id === slideId)
+    if (idx < 0) return
+    const next = idx + dir
+    if (next < 0 || next >= slides.length) return
+    const reordered = [...slides]
+    ;[reordered[idx], reordered[next]] = [reordered[next], reordered[idx]]
+    setSlides(reordered)
+    await reorderLessonSlides(reordered.map(s => s.id))
+  }
+
+  if (loading) return <div className="py-4 space-y-2">{[...Array(2)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}</div>
+
+  return (
+    <div className="space-y-4">
+      {/* Add slide form */}
+      <form onSubmit={handleAdd} className="space-y-2 bg-gray-50 rounded-xl p-4 border">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Add Slide</p>
+        <Input
+          value={addTitle}
+          onChange={e => setAddTitle(e.target.value)}
+          placeholder="Grammar point title * e.g. Present Perfect"
+          required
+        />
+        <textarea
+          value={addExplanation}
+          onChange={e => setAddExplanation(e.target.value)}
+          placeholder="Explanation — how the grammar rule works"
+          rows={3}
+          className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+        />
+        <textarea
+          value={addExamples}
+          onChange={e => setAddExamples(e.target.value)}
+          placeholder="Examples — one per line&#10;e.g. I have eaten lunch.&#10;She has lived here for 3 years."
+          rows={3}
+          className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+        />
+        <Input
+          value={addHint}
+          onChange={e => setAddHint(e.target.value)}
+          placeholder="Japanese note (optional) e.g. 「have + 過去分詞」の形です"
+        />
+        <button
+          type="submit"
+          disabled={saving || !addTitle.trim()}
+          className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
+        >
+          {saving ? 'Adding…' : '+ Add Slide'}
+        </button>
+      </form>
+
+      {/* Slide list */}
+      {slides.length === 0 ? (
+        <p className="text-sm text-gray-400 py-2">No lesson slides yet. Add one above to teach this grammar point before practice.</p>
+      ) : (
+        <div className="space-y-2">
+          {slides.map((s, i) => (
+            <div key={s.id} className="border border-gray-200 rounded-xl overflow-hidden">
+              {editingId === s.id ? (
+                <div className="p-3 space-y-2 bg-gray-50">
+                  <Input value={editFields.title} onChange={e => setEditFields(f => ({ ...f, title: e.target.value }))} placeholder="Title *" className="h-7 text-xs" />
+                  <textarea
+                    value={editFields.explanation}
+                    onChange={e => setEditFields(f => ({ ...f, explanation: e.target.value }))}
+                    placeholder="Explanation"
+                    rows={3}
+                    className="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+                  />
+                  <textarea
+                    value={editFields.examples}
+                    onChange={e => setEditFields(f => ({ ...f, examples: e.target.value }))}
+                    placeholder="Examples (one per line)"
+                    rows={3}
+                    className="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+                  />
+                  <Input value={editFields.hint_ja} onChange={e => setEditFields(f => ({ ...f, hint_ja: e.target.value }))} placeholder="Japanese note" className="h-7 text-xs" />
+                  <div className="flex gap-2">
+                    <button onClick={handleEditSave} disabled={savingEdit} className="px-3 py-1 bg-brand text-white text-xs rounded-md disabled:opacity-50">{savingEdit ? 'Saving…' : 'Save'}</button>
+                    <button onClick={() => setEditingId(null)} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 p-3">
+                  <div className="flex flex-col gap-0.5 shrink-0">
+                    <button onClick={() => handleMove(s.id, -1)} disabled={i === 0} className="text-gray-300 hover:text-gray-500 disabled:opacity-20 text-xs leading-none">▲</button>
+                    <button onClick={() => handleMove(s.id, 1)} disabled={i === slides.length - 1} className="text-gray-300 hover:text-gray-500 disabled:opacity-20 text-xs leading-none">▼</button>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{s.title}</p>
+                    {s.explanation && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{s.explanation}</p>}
+                    {s.examples.length > 0 && (
+                      <p className="text-xs text-gray-400 italic mt-0.5">
+                        {s.examples.length} example{s.examples.length !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                    {s.hint_ja && <p className="text-xs text-purple-500 mt-0.5">{s.hint_ja}</p>}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => startEdit(s)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
+                    <button onClick={() => handleRemove(s.id)} disabled={removing === s.id} className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
+                      {removing === s.id ? '…' : 'Remove'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Deck Editor Modal ─────────────────────────────────────────
 function DeckEditor({
   deck,
@@ -60,6 +262,7 @@ function DeckEditor({
   const [loading, setLoading] = useState(!deck.points)
   const [name, setName] = useState(deck.name)
   const [renamingName, setRenamingName] = useState(false)
+  const [tab, setTab] = useState<'lesson' | 'quiz'>('lesson')
 
   // Add form
   const [addSentence, setAddSentence] = useState('')
@@ -82,7 +285,6 @@ function DeckEditor({
     const end = el.selectionEnd ?? value.length
     const next = value.slice(0, start) + '_____' + value.slice(end)
     setter(next)
-    // Restore cursor after the inserted blank
     requestAnimationFrame(() => {
       el.focus()
       el.setSelectionRange(start + 5, start + 5)
@@ -179,7 +381,7 @@ function DeckEditor({
     const distractors = addDistractors.split(',').map(s => s.trim()).filter(Boolean)
     setSaving(true)
     const { error } = await addPointToDeck(deck.id, {
-      point: sentence, // sentence acts as the unique key
+      point: sentence,
       explanation: answer,
       sentence_with_blank: sentence,
       answer,
@@ -271,150 +473,161 @@ function DeckEditor({
           </div>
         </div>
 
-        {/* JSON Import */}
-        {showImport ? (
-          <div className="px-6 py-4 border-b space-y-3 shrink-0 bg-amber-50">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Paste JSON to bulk import</p>
-              <button onClick={() => { setShowImport(false); setImportJson('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
-            </div>
-            <p className="text-xs text-amber-700 font-mono bg-amber-100 rounded p-2 leading-relaxed">
-              {'[{ "sentence": "She _____ every day.", "answer": "runs", "hint": "動詞", "distractors": ["run","ran","running"] }, ...]'}
-            </p>
-            <textarea
-              autoFocus
-              value={importJson}
-              onChange={e => setImportJson(e.target.value)}
-              placeholder="Paste JSON array here…"
-              rows={6}
-              className="w-full text-xs font-mono border border-amber-200 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-            />
-            {importJson.trim() && (() => {
-              const { rows, error } = parseImport()
-              return error
-                ? <p className="text-xs text-red-500">{error}</p>
-                : <p className="text-xs text-green-700">{rows.length} question{rows.length !== 1 ? 's' : ''} ready to import</p>
-            })()}
-            <button
-              onClick={handleImport}
-              disabled={importing || !importJson.trim()}
-              className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
-            >
-              {importing ? 'Importing…' : 'Import All'}
-            </button>
-          </div>
-        ) : null}
-
-        {/* Add form */}
-        <form onSubmit={handleAdd} className="px-6 py-4 border-b space-y-2 shrink-0 bg-gray-50">
-          <div className="flex items-center gap-2">
-            <Input
-              ref={addSentenceRef}
-              value={addSentence}
-              onChange={e => setAddSentence(e.target.value)}
-              placeholder='Sentence * e.g. "There _____ a park."'
-              className="flex-1"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => insertBlank(addSentenceRef, addSentence, setAddSentence)}
-              title="Insert blank (_____)"
-              className="shrink-0 px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors font-mono text-gray-600 hover:text-brand"
-            >
-              _____
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Input value={addAnswer} onChange={e => setAddAnswer(e.target.value)} placeholder="Answer * e.g. is" required />
-            <Input value={addHint} onChange={e => setAddHint(e.target.value)} placeholder="Japanese hint e.g. 「単数」です" />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              value={addDistractors}
-              onChange={e => setAddDistractors(e.target.value)}
-              placeholder="Wrong choices (comma-separated) e.g. am, are, were"
-            />
-            <Input
-              value={addCategory}
-              onChange={e => setAddCategory(e.target.value)}
-              placeholder="Category e.g. Present Continuous"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <button type="submit" disabled={saving || !addSentence.trim() || !addAnswer.trim()} className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
-              {saving ? 'Adding…' : '+ Add Question'}
-            </button>
-            <button type="button" onClick={() => setShowImport(v => !v)} className="px-4 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-600">
-              {showImport ? 'Cancel import' : '↓ Import JSON'}
-            </button>
-          </div>
-        </form>
-
-        {/* Point list */}
-        <div className="overflow-y-auto flex-1 px-6 py-3">
-          {loading ? (
-            <div className="space-y-2 py-4">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}</div>
-          ) : points.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4">No questions yet. Add some above.</p>
-          ) : (
-            <div className="space-y-1">
-              {points.map(p => (
-                <div key={p.id} className="border-b border-gray-100 last:border-0">
-                  {editingId === p.id ? (
-                    <div className="py-2 space-y-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <Input ref={editSentenceRef} value={editFields.sentence} onChange={e => setEditFields(f => ({ ...f, sentence: e.target.value }))} placeholder='Sentence with blank *' className="h-7 text-xs flex-1" />
-                        <button type="button" onClick={() => insertBlank(editSentenceRef, editFields.sentence, v => setEditFields(f => ({ ...f, sentence: v })))} title="Insert blank" className="shrink-0 px-2 h-7 text-xs border border-gray-300 rounded hover:bg-gray-100 font-mono text-gray-500 hover:text-brand transition-colors">_____</button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input value={editFields.answer} onChange={e => setEditFields(f => ({ ...f, answer: e.target.value }))} placeholder="Answer *" className="h-7 text-xs" />
-                        <Input value={editFields.hint} onChange={e => setEditFields(f => ({ ...f, hint: e.target.value }))} placeholder="Japanese hint" className="h-7 text-xs" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input value={editFields.distractors} onChange={e => setEditFields(f => ({ ...f, distractors: e.target.value }))} placeholder="Wrong choices, comma-separated" className="h-7 text-xs" />
-                        <Input value={editFields.category} onChange={e => setEditFields(f => ({ ...f, category: e.target.value }))} placeholder="Category e.g. Present Continuous" className="h-7 text-xs" />
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={handleEditSave} disabled={savingEdit} className="px-3 py-1 bg-brand text-white text-xs rounded-md disabled:opacity-50">{savingEdit ? 'Saving…' : 'Save'}</button>
-                        <button onClick={() => setEditingId(null)} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-2 py-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-900">
-                          <SentenceWithBlank sentence={p.sentence_with_blank ?? p.point} />
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
-                            ✓ {p.answer ?? p.explanation}
-                          </span>
-                          {p.category && <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">{p.category}</span>}
-                          {p.hint_ja && <span className="text-xs text-gray-500">{p.hint_ja}</span>}
-                          {(p.distractors ?? []).length > 0 && (
-                            <span className="text-xs text-gray-400">
-                              wrong: {p.distractors!.join(' | ')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button onClick={() => startEdit(p)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
-                        <button onClick={() => handleRemove(p.id)} disabled={removing === p.id} className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
-                          {removing === p.id ? '…' : 'Remove'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Tabs */}
+        <div className="flex border-b shrink-0">
+          <button
+            onClick={() => setTab('lesson')}
+            className={`px-5 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === 'lesson' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Lesson Slides
+          </button>
+          <button
+            onClick={() => setTab('quiz')}
+            className={`px-5 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === 'quiz' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Quiz Questions
+          </button>
         </div>
 
-        <div className="px-6 py-3 border-t text-xs text-gray-400 shrink-0">
-          {points.length} question{points.length !== 1 ? 's' : ''} in this deck
+        {/* Tab content */}
+        <div className="overflow-y-auto flex-1 px-6 py-4">
+          {tab === 'lesson' ? (
+            <LessonSlidesTab deckId={deck.id} />
+          ) : (
+            <>
+              {/* JSON Import */}
+              {showImport ? (
+                <div className="mb-4 space-y-3 bg-amber-50 rounded-xl p-4 border border-amber-200">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Paste JSON to bulk import</p>
+                    <button onClick={() => { setShowImport(false); setImportJson('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                  </div>
+                  <p className="text-xs text-amber-700 font-mono bg-amber-100 rounded p-2 leading-relaxed">
+                    {'[{ "sentence": "She _____ every day.", "answer": "runs", "hint": "動詞", "distractors": ["run","ran","running"] }, ...]'}
+                  </p>
+                  <textarea
+                    autoFocus
+                    value={importJson}
+                    onChange={e => setImportJson(e.target.value)}
+                    placeholder="Paste JSON array here…"
+                    rows={6}
+                    className="w-full text-xs font-mono border border-amber-200 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+                  />
+                  {importJson.trim() && (() => {
+                    const { rows, error } = parseImport()
+                    return error
+                      ? <p className="text-xs text-red-500">{error}</p>
+                      : <p className="text-xs text-green-700">{rows.length} question{rows.length !== 1 ? 's' : ''} ready to import</p>
+                  })()}
+                  <button
+                    onClick={handleImport}
+                    disabled={importing || !importJson.trim()}
+                    className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50"
+                  >
+                    {importing ? 'Importing…' : 'Import All'}
+                  </button>
+                </div>
+              ) : null}
+
+              {/* Add form */}
+              <form onSubmit={handleAdd} className="space-y-2 mb-4 bg-gray-50 rounded-xl p-4 border">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Add Question</p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    ref={addSentenceRef}
+                    value={addSentence}
+                    onChange={e => setAddSentence(e.target.value)}
+                    placeholder='Sentence * e.g. "There _____ a park."'
+                    className="flex-1"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => insertBlank(addSentenceRef, addSentence, setAddSentence)}
+                    title="Insert blank (_____)"
+                    className="shrink-0 px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors font-mono text-gray-600 hover:text-brand"
+                  >
+                    _____
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input value={addAnswer} onChange={e => setAddAnswer(e.target.value)} placeholder="Answer * e.g. is" required />
+                  <Input value={addHint} onChange={e => setAddHint(e.target.value)} placeholder="Japanese hint e.g. 「単数」です" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input value={addDistractors} onChange={e => setAddDistractors(e.target.value)} placeholder="Wrong choices (comma-separated)" />
+                  <Input value={addCategory} onChange={e => setAddCategory(e.target.value)} placeholder="Category e.g. Present Continuous" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button type="submit" disabled={saving || !addSentence.trim() || !addAnswer.trim()} className="px-4 py-1.5 bg-brand text-white text-sm rounded-md hover:bg-brand/90 transition-colors disabled:opacity-50">
+                    {saving ? 'Adding…' : '+ Add Question'}
+                  </button>
+                  <button type="button" onClick={() => setShowImport(v => !v)} className="px-4 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-600">
+                    {showImport ? 'Cancel import' : '↓ Import JSON'}
+                  </button>
+                </div>
+              </form>
+
+              {/* Point list */}
+              {loading ? (
+                <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}</div>
+              ) : points.length === 0 ? (
+                <p className="text-sm text-gray-400">No questions yet. Add some above.</p>
+              ) : (
+                <div className="space-y-1">
+                  {points.map(p => (
+                    <div key={p.id} className="border-b border-gray-100 last:border-0">
+                      {editingId === p.id ? (
+                        <div className="py-2 space-y-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <Input ref={editSentenceRef} value={editFields.sentence} onChange={e => setEditFields(f => ({ ...f, sentence: e.target.value }))} placeholder='Sentence with blank *' className="h-7 text-xs flex-1" />
+                            <button type="button" onClick={() => insertBlank(editSentenceRef, editFields.sentence, v => setEditFields(f => ({ ...f, sentence: v })))} title="Insert blank" className="shrink-0 px-2 h-7 text-xs border border-gray-300 rounded hover:bg-gray-100 font-mono text-gray-500 hover:text-brand transition-colors">_____</button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input value={editFields.answer} onChange={e => setEditFields(f => ({ ...f, answer: e.target.value }))} placeholder="Answer *" className="h-7 text-xs" />
+                            <Input value={editFields.hint} onChange={e => setEditFields(f => ({ ...f, hint: e.target.value }))} placeholder="Japanese hint" className="h-7 text-xs" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input value={editFields.distractors} onChange={e => setEditFields(f => ({ ...f, distractors: e.target.value }))} placeholder="Wrong choices, comma-separated" className="h-7 text-xs" />
+                            <Input value={editFields.category} onChange={e => setEditFields(f => ({ ...f, category: e.target.value }))} placeholder="Category" className="h-7 text-xs" />
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={handleEditSave} disabled={savingEdit} className="px-3 py-1 bg-brand text-white text-xs rounded-md disabled:opacity-50">{savingEdit ? 'Saving…' : 'Save'}</button>
+                            <button onClick={() => setEditingId(null)} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start gap-2 py-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-900">
+                              <SentenceWithBlank sentence={p.sentence_with_blank ?? p.point} />
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
+                                ✓ {p.answer ?? p.explanation}
+                              </span>
+                              {p.category && <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">{p.category}</span>}
+                              {p.hint_ja && <span className="text-xs text-gray-500">{p.hint_ja}</span>}
+                              {(p.distractors ?? []).length > 0 && (
+                                <span className="text-xs text-gray-400">wrong: {p.distractors!.join(' | ')}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <button onClick={() => startEdit(p)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
+                            <button onClick={() => handleRemove(p.id)} disabled={removing === p.id} className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
+                              {removing === p.id ? '…' : 'Remove'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-3">{points.length} question{points.length !== 1 ? 's' : ''} in this deck</p>
+            </>
+          )}
         </div>
       </div>
     </div>
