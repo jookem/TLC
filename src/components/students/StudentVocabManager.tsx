@@ -13,6 +13,7 @@ import {
   removeWordFromDeck,
   updateDeckWord,
   assignDeckToStudent,
+  syncDeckToAllStudents,
   removeDeckFromStudent,
   reorderVocabDecks,
   type Deck,
@@ -513,6 +514,7 @@ export function StudentVocabManager({ studentId }: Props) {
   const [quizDeck, setQuizDeck] = useState<Deck | null>(null)
   const [deckSyncStatus, setDeckSyncStatus] = useState<Record<string, number>>({}) // deckId → missing word count
   const [syncing, setSyncing] = useState<string | null>(null)
+  const [syncingAll, setSyncingAll] = useState<string | null>(null)
 
   async function loadVocab() {
     const { data, error } = await supabase
@@ -619,6 +621,15 @@ export function StudentVocabManager({ studentId }: Props) {
     const added = deckSyncStatus[deckId] ?? 0
     setDeckSyncStatus(prev => { const n = { ...prev }; delete n[deckId]; return n })
     toast.success(`Synced "${deckName}" — ${added} word${added !== 1 ? 's' : ''} added`)
+    loadVocab()
+  }
+
+  async function handleSyncAll(deckId: string, deckName: string) {
+    setSyncingAll(deckId)
+    const { synced, error } = await syncDeckToAllStudents(deckId)
+    setSyncingAll(null)
+    if (error) { toast.error(error); return }
+    toast.success(`"${deckName}" synced to ${synced} student${synced !== 1 ? 's' : ''}`)
     loadVocab()
   }
 
@@ -823,6 +834,16 @@ export function StudentVocabManager({ studentId }: Props) {
                           title={`${missing} word${missing !== 1 ? 's' : ''} in deck not yet assigned to this student`}
                         >
                           {syncing === row.id ? 'Syncing…' : `⚠ Sync (${missing})`}
+                        </button>
+                      )}
+                      {isAssigned && (
+                        <button
+                          onClick={() => handleSyncAll(row.id, row.name)}
+                          disabled={syncingAll === row.id}
+                          className="text-xs text-gray-400 hover:text-brand transition-colors disabled:opacity-50"
+                          title="Push latest deck words to all students who have this deck assigned"
+                        >
+                          {syncingAll === row.id ? 'Syncing…' : 'Sync all'}
                         </button>
                       )}
                       {isAssigned ? (

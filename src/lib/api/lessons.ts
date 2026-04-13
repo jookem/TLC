@@ -615,6 +615,31 @@ export async function assignDeckToStudent(
   return { count: words.length }
 }
 
+export async function syncDeckToAllStudents(
+  deckId: string,
+): Promise<{ synced?: number; error?: string }> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return { error: 'Not authenticated.' }
+
+  // Find all students who have this deck assigned
+  const { data: rows, error: fetchErr } = await supabase
+    .from('vocabulary_bank')
+    .select('student_id')
+    .eq('deck_id', deckId)
+    .eq('teacher_id', session.user.id)
+
+  if (fetchErr) return { error: fetchErr.message }
+
+  const studentIds = [...new Set((rows ?? []).map(r => r.student_id))]
+  if (!studentIds.length) return { synced: 0 }
+
+  const results = await Promise.all(studentIds.map(sid => assignDeckToStudent(deckId, sid)))
+  const err = results.find(r => r.error)
+  if (err?.error) return { error: err.error }
+
+  return { synced: studentIds.length }
+}
+
 export async function removeDeckFromStudent(
   deckId: string,
   studentId: string,
