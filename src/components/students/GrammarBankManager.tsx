@@ -374,7 +374,7 @@ function DeckEditor({
   const [importJson, setImportJson] = useState('')
   const [importing, setImporting] = useState(false)
 
-  type ImportRow = { sentence: string; answer: string; hint?: string; distractors?: string[] }
+  type ImportRow = { sentence: string; answer: string; hint?: string; distractors?: string[]; category?: string }
 
   function parseImport(): { rows: ImportRow[]; error: string | null } {
     try {
@@ -390,6 +390,7 @@ function DeckEditor({
           answer: String(r.answer),
           hint: r.hint ? String(r.hint) : undefined,
           distractors: Array.isArray(r.distractors) ? r.distractors.map(String) : [],
+          category: r.category ? String(r.category) : undefined,
         })
       }
       return { rows, error: null }
@@ -412,6 +413,7 @@ function DeckEditor({
         answer: r.answer,
         hint_ja: r.hint,
         distractors: r.distractors ?? [],
+        category: r.category,
       })
       if (!err) added++
     }
@@ -775,7 +777,29 @@ function DeckEditor({
                   ))}
                 </div>
               )}
-              <p className="text-xs text-gray-400 mt-3">{points.length} question{points.length !== 1 ? 's' : ''} in this deck</p>
+              <div className="flex items-center justify-between mt-3">
+                <p className="text-xs text-gray-400">{points.length} question{points.length !== 1 ? 's' : ''} in this deck</p>
+                {points.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    {points.some(p => p.category) && (
+                      <button
+                        onClick={handleSyncCategoriesToStudents}
+                        disabled={syncingCategories}
+                        className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                      >
+                        {syncingCategories ? 'Syncing…' : 'Sync to students'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleSuggestCategories(true)}
+                      disabled={suggestingCategories}
+                      className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                    >
+                      {suggestingCategories ? 'Categorizing…' : '✦ Auto-categorize all'}
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
