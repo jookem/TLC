@@ -37,32 +37,35 @@ Deno.serve(async (req) => {
       .map(q => `- ${q.sentence_with_blank.replace('_____', `[${q.answer}]`)}`)
       .join('\n')
 
-    const prompt = `You are writing an English grammar lesson slide for Japanese students preparing for the Eiken exam.
+    const prompt = `You are writing a grammar lesson slide for Japanese students studying for the Eiken exam (levels 5, 4, and 3). These are young learners, so keep all English simple and easy to understand.
 
 Grammar point: "${category}"
 
 Sample sentences from this grammar category:
 ${sampleList || '(none provided)'}
 
-OUTPUT: Return ONLY a JSON object. No explanation before or after. No markdown. Just the raw JSON.
+OUTPUT: Return ONLY a valid JSON object. No text before or after. No markdown fences.
 
+Field instructions:
+
+"title": Use exactly "${category}"
+
+"explanation": Write in simple English mixed with Japanese where it helps. Show the grammar formula using English + Japanese notation, e.g. "There is + 名詞 (noun)." or "主語 + can + 動詞の原形." Then add 1-2 short simple sentences explaining when to use it. Keep it very easy — imagine explaining to a 12-year-old.
+
+"examples": An array of exactly 4 strings. Each string is TWO lines separated by \\n:
+  Line 1: A simple English example sentence.
+  Line 2: The Japanese translation of that sentence.
+  Format each string exactly like: "There is a cat on the roof.\\nネコが屋根の上にいます。"
+
+"hint_ja": 2 sentences in Japanese only. Explain the grammar structure and when to use it. Include the formula in Japanese (e.g.「There is ＋ 名詞」の形で、〜があります・います、という意味を表します。).
+
+Return this exact structure:
 {
   "title": "${category}",
-  "explanation": "ENGLISH ONLY. 2-3 sentences explaining: (1) the grammar formula/structure written out (e.g. Subject + verb + object), (2) when and why to use this form, (3) any key rules to remember. Write entirely in English. Do NOT write Japanese here.",
-  "examples": [
-    "A natural English sentence showing this grammar.",
-    "Another natural English sentence showing this grammar.",
-    "A third natural English sentence showing this grammar.",
-    "A fourth natural English sentence showing this grammar."
-  ],
-  "hint_ja": "JAPANESE ONLY. 2-3 sentences in Japanese explaining the grammar structure and usage. Include the formula written in Japanese style (e.g.「主語 ＋ 動詞の原形」の形で使います). Do NOT write English here."
-}
-
-IMPORTANT:
-- "explanation" must be written entirely in ENGLISH — this is the English grammar rule explanation
-- "examples" must be exactly 4 English sentences — simple vocabulary suitable for Eiken 5 to 3 level students
-- "hint_ja" must be written entirely in JAPANESE — this is the Japanese translation/explanation for students
-- Do not swap these fields`
+  "explanation": "...",
+  "examples": ["English 1.\\n日本語1。", "English 2.\\n日本語2。", "English 3.\\n日本語3。", "English 4.\\n日本語4。"],
+  "hint_ja": "..."
+}`
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -73,7 +76,7 @@ IMPORTANT:
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
+        max_tokens: 1200,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
@@ -97,7 +100,6 @@ IMPORTANT:
       return jsonResponse({ error: 'Failed to parse slide response' }, 500)
     }
 
-    // Ensure examples is always an array of at least 4
     if (!Array.isArray(slide.examples)) slide.examples = []
 
     return jsonResponse({ slide })

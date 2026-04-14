@@ -67,13 +67,19 @@ export function GrammarLesson({ slides, deckName, onComplete, onClose }: Props) 
           {slide.examples.length > 0 && (
             <div className="space-y-2">
               <p className="text-white/40 text-xs font-semibold uppercase tracking-wide">Examples</p>
-              <div className="space-y-2">
-                {slide.examples.map((ex, i) => (
-                  <div key={i} className="flex gap-3 items-start">
-                    <span className="text-brand text-xs font-bold mt-1 shrink-0">{i + 1}.</span>
-                    <p className="text-white/80 text-base leading-relaxed">{ex}</p>
-                  </div>
-                ))}
+              <div className="space-y-3">
+                {slide.examples.map((ex, i) => {
+                  const [english, japanese] = ex.includes('\n') ? ex.split('\n') : [ex, null]
+                  return (
+                    <div key={i} className="flex gap-3 items-start">
+                      <span className="text-brand text-xs font-bold mt-1 shrink-0">{i + 1}.</span>
+                      <div>
+                        <p className="text-white/85 text-base leading-relaxed">{english}</p>
+                        {japanese && <p className="text-white/45 text-sm leading-relaxed mt-0.5">{japanese}</p>}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
