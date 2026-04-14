@@ -97,6 +97,12 @@ export function GrammarPage() {
   const sessionLimit = parseInt(localStorage.getItem('study_size') ?? '20', 10)
   const reviewCount = sessionLimit === 0 ? due.length : Math.min(sessionLimit, due.length)
 
+  // All entries sharing the same category as a given card (for lesson → quiz flow)
+  function categoryCards(e: GrammarBankEntry): GrammarBankEntry[] {
+    if (!e.category) return [e]
+    return entries.filter(c => c.category === e.category)
+  }
+
   // ── By Category grouping ───────────────────────────────────────
   const categoryMap = new Map<string, GrammarBankEntry[]>()
   const uncategorized: GrammarBankEntry[] = []
@@ -243,7 +249,7 @@ export function GrammarPage() {
                       <span className="text-xs text-gray-400">{categoryMap.get(cat)!.length}</span>
                     </div>
                     <button
-                      onClick={() => startStudy(getStudyBatch(categoryMap.get(cat)!))}
+                      onClick={() => startStudy(categoryMap.get(cat)!)}
                       className="text-xs text-gray-400 hover:text-brand transition-colors"
                     >
                       Study this topic →
@@ -251,7 +257,7 @@ export function GrammarPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {categoryMap.get(cat)!.map(e => (
-                      <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy([e])} />
+                      <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy(categoryMap.get(cat)!)} />
                     ))}
                   </div>
                 </section>
@@ -268,7 +274,7 @@ export function GrammarPage() {
                       <span className="text-xs text-gray-400">{uncategorized.length}</span>
                     </div>
                     <button
-                      onClick={() => startStudy(getStudyBatch(uncategorized))}
+                      onClick={() => startStudy(uncategorized)}
                       className="text-xs text-gray-400 hover:text-brand transition-colors"
                     >
                       Study this topic →
@@ -276,7 +282,7 @@ export function GrammarPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {uncategorized.map(e => (
-                      <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy([e])} />
+                      <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy(uncategorized)} />
                     ))}
                   </div>
                 </section>
@@ -301,7 +307,7 @@ export function GrammarPage() {
                   復習が必要 / Review Due ({due.length})
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {due.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy([e])} />)}
+                  {due.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy(categoryCards(e))} />)}
                 </div>
               </section>
             )}
@@ -321,7 +327,7 @@ export function GrammarPage() {
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {items.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy([e])} />)}
+                    {items.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy(categoryCards(e))} />)}
                   </div>
                 </section>
               )
