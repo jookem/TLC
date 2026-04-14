@@ -62,15 +62,18 @@ export function GrammarPage() {
       if (slides && slides.length > 0) {
         const deckName = entries.find(e => e.deck_id === deckId)?.category ?? 'Grammar'
 
-        // If all cards share one category, jump to the matching slide
+        // If all cards share one category, show only that one slide → then quiz
+        // If mixed categories (Study all), show all slides in order
         const cardCategories = [...new Set(cards.map(c => c.category).filter(Boolean))]
-        let startIndex = 0
         if (cardCategories.length === 1) {
-          const match = slides.findIndex(s => s.title.toLowerCase() === cardCategories[0]!.toLowerCase())
-          if (match >= 0) startIndex = match
+          const match = slides.find(s => s.title.toLowerCase() === cardCategories[0]!.toLowerCase())
+          if (match) {
+            setLessonState({ slides: [match], cards, deckName: cardCategories[0]!, startIndex: 0 })
+            return
+          }
         }
 
-        setLessonState({ slides, cards, deckName, startIndex })
+        setLessonState({ slides, cards, deckName, startIndex: 0 })
         return
       }
     }
