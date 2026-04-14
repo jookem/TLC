@@ -66,6 +66,7 @@ function DeckEditor({
   const [name, setName] = useState(deck.name)
   const [renamingName, setRenamingName] = useState(false)
   const [tab, setTab] = useState<'words' | 'quiz'>('words')
+  const [suggestingCategories, setSuggestingCategories] = useState(false)
 
   // ── Quiz tab state ────────────────────────────────────────────
   const [quizEntries, setQuizEntries] = useState<VocabularyBankEntry[]>([])
@@ -185,6 +186,55 @@ function DeckEditor({
     setRenamingName(false)
   }
 
+  async function handleSuggestCategories() {
+    if (!words.length) { toast.info('No words to categorize'); return }
+    setSuggestingCategories(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('vocab-categorize', {
+        body: {
+          words: words.map(w => ({
+            id: w.id,
+            word: w.word,
+            definition_en: w.definition_en,
+            definition_ja: w.definition_ja,
+            example: w.example,
+          })),
+        },
+      })
+      if (error) {
+        let msg = error.message
+        try { const b = await (error as any).context?.json?.(); if (b?.error) msg = b.error } catch {}
+        throw new Error(msg)
+      }
+      const categories: { id: string; category: string }[] = data.categories ?? []
+
+      // Update vocabulary_deck_words (the source template)
+      await Promise.all(categories.map(({ id, category }) =>
+        supabase.from('vocabulary_deck_words').update({ category }).eq('id', id)
+      ))
+
+      // Sync to all students' vocabulary_bank entries for this deck
+      const wordsById = new Map(words.map(w => [w.id, w]))
+      await Promise.all(categories.map(({ id, category }) => {
+        const w = wordsById.get(id)
+        if (!w) return Promise.resolve()
+        return supabase.from('vocabulary_bank').update({ category }).eq('deck_id', deck.id).eq('word', w.word)
+      }))
+
+      // Update local state
+      setWords(prev => prev.map(w => {
+        const match = categories.find(c => c.id === w.id)
+        return match ? { ...w, category: match.category } : w
+      }))
+
+      toast.success(`Categorized ${categories.length} word${categories.length !== 1 ? 's' : ''}`)
+    } catch (e: any) {
+      toast.error(`Failed: ${e?.message ?? String(e)}`)
+    } finally {
+      setSuggestingCategories(false)
+    }
+  }
+
   async function handleAddWord(e: React.FormEvent) {
     e.preventDefault()
     if (!word.trim() || !defJa.trim()) return
@@ -275,7 +325,16 @@ function DeckEditor({
               <span className="ml-2 text-xs text-gray-400 font-normal">✏️</span>
             </button>
           )}
-          <div className="flex items-center gap-3 ml-4">
+          <div className="flex items-center gap-2 ml-4">
+            {words.length > 0 && (
+              <button
+                onClick={handleSuggestCategories}
+                disabled={suggestingCategories}
+                className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 shrink-0"
+              >
+                {suggestingCategories ? 'Categorizing…' : '✦ Auto-categorize'}
+              </button>
+            )}
             <button
               onClick={async () => { await onDelete(deck.id, name); onClose() }}
               className="text-xs text-gray-300 hover:text-red-500 transition-colors"
@@ -431,8 +490,13 @@ function DeckEditor({
                   ) : (
                     <div className="flex items-start gap-2 py-2">
                       <div className="flex-1 min-w-0">
-                        <span className="font-medium text-sm text-gray-900">{w.word}</span>
-                        {w.reading && <span className="text-xs text-gray-400 ml-2">{w.reading}</span>}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm text-gray-900">{w.word}</span>
+                          {w.reading && <span className="text-xs text-gray-400">{w.reading}</span>}
+                          {w.category && (
+                            <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">{w.category}</span>
+                          )}
+                        </div>
                         {w.definition_ja && <p className="text-xs text-gray-700 mt-0.5" dangerouslySetInnerHTML={{ __html: w.definition_ja }} />}
                         {w.definition_en && <p className="text-xs text-gray-400" dangerouslySetInnerHTML={{ __html: w.definition_en }} />}
                         {w.example && <p className="text-xs text-gray-400 italic" dangerouslySetInnerHTML={{ __html: `"${w.example}"` }} />}

@@ -419,6 +419,7 @@ export interface DeckWord {
   definition_ja: string | null
   definition_en: string | null
   example: string | null
+  category: string | null
   created_at: string
 }
 

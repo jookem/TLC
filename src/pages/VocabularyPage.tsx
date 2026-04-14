@@ -28,7 +28,7 @@ const MASTERY_COLORS = [
 const MASTERY_LABELS_EN = ['New', 'Seen', 'Familiar', 'Mastered']
 
 type DeckGroup = { deckId: string | null; deckName: string; words: VocabularyBankEntry[] }
-type View = 'category' | 'az'
+type View = 'category' | 'deck' | 'az'
 
 // ── Compact A-Z row ───────────────────────────────────────────────
 
@@ -259,6 +259,12 @@ export function VocabularyPage() {
                 By Category
               </button>
               <button
+                onClick={() => setView('deck')}
+                className={`px-3 py-2 font-medium transition-colors ${view === 'deck' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              >
+                By Deck
+              </button>
+              <button
                 onClick={() => setView('az')}
                 className={`px-3 py-2 font-medium transition-colors ${view === 'az' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
               >
@@ -306,13 +312,85 @@ export function VocabularyPage() {
           </>
         )}
 
-        {/* ── Category view ── */}
-        {view === 'category' && (
-          <>
-            {deckGroups.map(({ deckId, deckName, words }) => (
+        {/* ── Category view (grouped by semantic category) ── */}
+        {view === 'category' && (() => {
+          const catMap = new Map<string, VocabularyBankEntry[]>()
+          for (const v of filtered) {
+            const key = v.category ?? 'その他 / Other'
+            if (!catMap.has(key)) catMap.set(key, [])
+            catMap.get(key)!.push(v)
+          }
+          const catGroups = [...catMap.entries()]
+            .sort(([a], [b]) => {
+              if (a === 'その他 / Other') return 1
+              if (b === 'その他 / Other') return -1
+              return a.localeCompare(b)
+            })
+
+          if (catGroups.length === 0) return (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <p className="text-gray-500">{q ? `No words match "${search}"` : 'No categories yet — open a deck and click ✦ Auto-categorize.'}</p>
+              </CardContent>
+            </Card>
+          )
+
+          return (
+            <div className="space-y-3">
+              {catGroups.map(([category, words]) => (
+                <Card key={category}>
+                  <CardContent className="py-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h2 className="font-semibold text-gray-900">{category}</h2>
+                        <p className="text-sm text-gray-500">{words.length}語</p>
+                      </div>
+                      <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+                        <button
+                          onClick={() => setStudyCards(getStudyBatch(words))}
+                          className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                          フラッシュカード
+                        </button>
+                        <button
+                          onClick={() => setLessonDeck({ deckId: null, deckName: category, words: getStudyBatch(words) })}
+                          className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand/90 transition-colors"
+                        >
+                          📖 学習 + クイズ →
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {words.map(word => (
+                        <button
+                          key={word.id}
+                          onClick={() => speak(word.word)}
+                          className="text-xs px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-full text-gray-700 hover:border-brand hover:text-brand transition-colors"
+                          title={word.definition_en ?? word.definition_ja ?? ''}
+                        >
+                          {word.word}
+                        </button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )
+        })()}
+
+        {/* ── By Deck view ── */}
+        {view === 'deck' && (
+          <div className="space-y-3">
+            {deckGroups.length === 0 ? (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <p className="text-gray-500">{q ? `No words match "${search}"` : '単語がまだありません。'}</p>
+                </CardContent>
+              </Card>
+            ) : deckGroups.map(({ deckId, deckName, words }) => (
               <Card key={deckId ?? '__other__'}>
                 <CardContent className="py-4 space-y-3">
-                  {/* Category header */}
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <h2 className="font-semibold text-gray-900">{deckName}</h2>
@@ -335,7 +413,6 @@ export function VocabularyPage() {
                       )}
                     </div>
                   </div>
-                  {/* Word chips */}
                   <div className="flex flex-wrap gap-1.5">
                     {words.map(word => (
                       <button
@@ -351,15 +428,7 @@ export function VocabularyPage() {
                 </CardContent>
               </Card>
             ))}
-
-            {filtered.length === 0 && q && (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <p className="text-gray-500">No words match "{search}"</p>
-                </CardContent>
-              </Card>
-            )}
-          </>
+          </div>
         )}
 
         {vocab.length === 0 && (

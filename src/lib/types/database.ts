@@ -162,6 +162,7 @@ export interface VocabularyBankEntry {
   next_review: string | null
   quiz_sentence: string | null
   quiz_distractors: string[]
+  category: string | null
   created_at: string
   updated_at: string
 }
