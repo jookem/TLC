@@ -338,7 +338,7 @@ export function AnkiImporter({
       </Button>
 
       {open && (
-        <div role="dialog" aria-modal="true" aria-label="Import Anki Deck" className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" aria-label="Import Anki Deck" className="fixed z-[60] bg-black/60 flex items-center justify-center p-4" style={{ top: 0, left: 0, width: '100vw', height: '100vh', minHeight: '-webkit-fill-available' }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
               <span className="text-base font-semibold">Import Anki Deck</span>

@@ -250,7 +250,7 @@ function DeckEditor({
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Edit vocabulary deck" className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" aria-label="Edit vocabulary deck" className="fixed z-50 bg-black/60 flex items-center justify-center p-4" style={{ top: 0, left: 0, width: '100vw', height: '100vh', minHeight: '-webkit-fill-available' }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
@@ -589,7 +589,7 @@ function QuizEditorModal({
   const uncached = entries.filter(e => !e.quiz_sentence)
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+    <div className="fixed z-50 bg-black/60 flex items-center justify-center p-4" style={{ top: 0, left: 0, width: '100vw', height: '100vh', minHeight: '-webkit-fill-available' }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div>
