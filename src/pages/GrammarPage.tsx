@@ -29,7 +29,7 @@ export function GrammarPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [studyCards, setStudyCards] = useState<GrammarBankEntry[] | null>(null)
-  const [lessonState, setLessonState] = useState<{ slides: GrammarLessonSlide[]; cards: GrammarBankEntry[]; deckName: string } | null>(null)
+  const [lessonState, setLessonState] = useState<{ slides: GrammarLessonSlide[]; cards: GrammarBankEntry[]; deckName: string; startIndex: number } | null>(null)
   const [search, setSearch] = useState('')
   const [view, setView] = useState<View>('category')
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
@@ -61,7 +61,16 @@ export function GrammarPage() {
       const { slides } = await listLessonSlides(deckId)
       if (slides && slides.length > 0) {
         const deckName = entries.find(e => e.deck_id === deckId)?.category ?? 'Grammar'
-        setLessonState({ slides, cards, deckName })
+
+        // If all cards share one category, jump to the matching slide
+        const cardCategories = [...new Set(cards.map(c => c.category).filter(Boolean))]
+        let startIndex = 0
+        if (cardCategories.length === 1) {
+          const match = slides.findIndex(s => s.title.toLowerCase() === cardCategories[0]!.toLowerCase())
+          if (match >= 0) startIndex = match
+        }
+
+        setLessonState({ slides, cards, deckName, startIndex })
         return
       }
     }
@@ -117,6 +126,7 @@ export function GrammarPage() {
         <GrammarLesson
           slides={lessonState.slides}
           deckName={lessonState.deckName}
+          initialIndex={lessonState.startIndex}
           onComplete={() => { setStudyCards(lessonState.cards); setLessonState(null) }}
           onClose={() => setLessonState(null)}
         />

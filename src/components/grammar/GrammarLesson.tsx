@@ -4,12 +4,13 @@ import type { GrammarLessonSlide } from '@/lib/api/grammar'
 interface Props {
   slides: GrammarLessonSlide[]
   deckName: string
+  initialIndex?: number
   onComplete: () => void   // proceed to practice
   onClose: () => void      // exit entirely
 }
 
-export function GrammarLesson({ slides, deckName, onComplete, onClose }: Props) {
-  const [index, setIndex] = useState(0)
+export function GrammarLesson({ slides, deckName, initialIndex = 0, onComplete, onClose }: Props) {
+  const [index, setIndex] = useState(initialIndex)
   const slide = slides[index]
   const isLast = index === slides.length - 1
   const pct = slides.length > 1 ? Math.round((index / (slides.length - 1)) * 100) : 100
