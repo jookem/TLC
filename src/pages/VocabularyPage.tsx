@@ -28,7 +28,7 @@ const MASTERY_COLORS = [
 const MASTERY_LABELS_EN = ['New', 'Seen', 'Familiar', 'Mastered']
 
 type DeckGroup = { deckId: string | null; deckName: string; words: VocabularyBankEntry[] }
-type View = 'deck' | 'az'
+type View = 'category' | 'az'
 
 // ── Compact A-Z row ───────────────────────────────────────────────
 
@@ -99,7 +99,7 @@ export function VocabularyPage() {
   const [lessonDeck, setLessonDeck] = useState<DeckGroup | null>(null)
   const [quizDeck, setQuizDeck] = useState<DeckGroup | null>(null)
   const [search, setSearch] = useState('')
-  const [view, setView] = useState<View>('az')
+  const [view, setView] = useState<View>('category')
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
 
   async function loadVocab() {
@@ -238,24 +238,6 @@ export function VocabularyPage() {
                 全部学習
               </button>
             )}
-            {deckGroups.filter(d => d.deckId).length > 0 && (
-              <div className="relative">
-                <select
-                  className="px-4 py-2 bg-purple-500 text-white text-sm font-medium rounded-lg appearance-none cursor-pointer pr-8"
-                  defaultValue=""
-                  onChange={e => {
-                    const deck = deckGroups.find(d => d.deckId === e.target.value)
-                    if (deck) setLessonDeck({ ...deck, words: getStudyBatch(deck.words) })
-                    e.target.value = ''
-                  }}
-                >
-                  <option value="" disabled>📖 Study a deck…</option>
-                  {deckGroups.filter(d => d.deckId).map(d => (
-                    <option key={d.deckId} value={d.deckId!}>{d.deckName}</option>
-                  ))}
-                </select>
-              </div>
-            )}
           </div>
         </div>
 
@@ -271,23 +253,23 @@ export function VocabularyPage() {
             />
             <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
               <button
+                onClick={() => setView('category')}
+                className={`px-3 py-2 font-medium transition-colors ${view === 'category' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              >
+                By Category
+              </button>
+              <button
                 onClick={() => setView('az')}
                 className={`px-3 py-2 font-medium transition-colors ${view === 'az' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
               >
                 A–Z
-              </button>
-              <button
-                onClick={() => setView('deck')}
-                className={`px-3 py-2 font-medium transition-colors ${view === 'deck' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-              >
-                By Deck
               </button>
             </div>
           </div>
         )}
 
         {/* ── A-Z view ── */}
-        {view === 'az' && vocab.length > 0 && (
+        {view === 'az' && (
           <>
             {!q && <LetterIndex letters={letters} onJump={jumpTo} />}
 
@@ -324,51 +306,50 @@ export function VocabularyPage() {
           </>
         )}
 
-        {/* ── Deck view ── */}
-        {view === 'deck' && (
+        {/* ── Category view ── */}
+        {view === 'category' && (
           <>
-            {dueForReview.length > 0 && (
-              <section className="space-y-3">
-                <h2 className="text-sm font-medium text-orange-600 uppercase tracking-wide">
-                  復習が必要 / Review Due ({dueForReview.length})
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {dueForReview.map(word => (
-                    <VocabularyFlashcard key={word.id} entry={word} onMasteryChanged={loadVocab} />
-                  ))}
-                </div>
-              </section>
-            )}
-
             {deckGroups.map(({ deckId, deckName, words }) => (
-              <section key={deckId ?? '__other__'} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-medium text-gray-600 uppercase tracking-wide">
-                    {deckName} ({words.length})
-                  </h2>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setStudyCards(getStudyBatch(words))}
-                      className="text-xs text-gray-400 hover:text-brand transition-colors"
-                    >
-                      フラッシュカード →
-                    </button>
-                    {deckId && (
+              <Card key={deckId ?? '__other__'}>
+                <CardContent className="py-4 space-y-3">
+                  {/* Category header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h2 className="font-semibold text-gray-900">{deckName}</h2>
+                      <p className="text-sm text-gray-500">{words.length}語</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0 flex-wrap justify-end">
                       <button
-                        onClick={() => setLessonDeck({ deckId, deckName, words: getStudyBatch(words) })}
-                        className="text-xs text-purple-500 hover:text-purple-700 font-medium transition-colors"
+                        onClick={() => setStudyCards(getStudyBatch(words))}
+                        className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                       >
-                        📖 学習 + クイズ →
+                        フラッシュカード
                       </button>
-                    )}
+                      {deckId && (
+                        <button
+                          onClick={() => setLessonDeck({ deckId, deckName, words: getStudyBatch(words) })}
+                          className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand/90 transition-colors"
+                        >
+                          📖 学習 + クイズ →
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {words.map(word => (
-                    <VocabularyFlashcard key={word.id} entry={word} onMasteryChanged={loadVocab} />
-                  ))}
-                </div>
-              </section>
+                  {/* Word chips */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {words.map(word => (
+                      <button
+                        key={word.id}
+                        onClick={() => speak(word.word)}
+                        className="text-xs px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-full text-gray-700 hover:border-brand hover:text-brand transition-colors"
+                        title={word.definition_en ?? word.definition_ja ?? ''}
+                      >
+                        {word.word}
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             ))}
 
             {filtered.length === 0 && q && (

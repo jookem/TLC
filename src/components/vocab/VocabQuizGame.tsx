@@ -98,9 +98,13 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
     setGenerating(true)
     setError(null)
     try {
-      // Use cached questions where available
-      const cached = words.filter(w => w.quiz_sentence && w.quiz_distractors?.length >= 1)
-      const uncached = words.filter(w => !w.quiz_sentence || !w.quiz_distractors?.length)
+      // Use cached questions where available — require _____ in sentence (reject bad cached data)
+      const cached = words.filter(w =>
+        w.quiz_sentence && w.quiz_sentence.includes('_____') && w.quiz_distractors?.length >= 1
+      )
+      const uncached = words.filter(w =>
+        !w.quiz_sentence || !w.quiz_sentence.includes('_____') || !w.quiz_distractors?.length
+      )
 
       const cachedQuestions: QuizQuestion[] = cached.map(w => ({
         word: w.word,

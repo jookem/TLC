@@ -65,9 +65,15 @@ Deno.serve(async (req) => {
     const prompt = `You are creating fill-in-the-blank vocabulary quiz questions for Japanese ESL students studying for ${level ?? 'Eiken 5'}.
 
 For each target word below, write:
-1. One simple English sentence where the target word fills the blank (_____).
+1. One simple English sentence with exactly "_____" (five underscores) replacing the target word.
 2. Exactly 3 distractor words (wrong answers).
 ${poolSection}
+CRITICAL — THE BLANK:
+- The sentence field MUST contain the literal string "_____" (five underscores).
+- The target word must NOT appear anywhere in the sentence — it is replaced by "_____".
+- Wrong example: {"word":"runs","sentence":"She runs to school."} ← WRONG, word appears in sentence
+- Correct example: {"word":"runs","sentence":"She _____ to school every day."} ← CORRECT
+
 SENTENCE RULES:
 - Keep sentences very short and simple (6-10 words). This is Eiken 5 / elementary level.
 - Use only basic vocabulary and grammar (present simple, past simple).
@@ -84,7 +90,7 @@ Target words:
 ${wordList}
 
 Respond ONLY with a JSON array, no markdown, no extra text:
-[{"word":"runs","sentence":"She _____ to school every morning.","distractors":["walks","swims","reads"]}]`
+[{"word":"runs","sentence":"She _____ to school every day.","distractors":["walks","swims","reads"]}]`
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -110,12 +116,21 @@ Respond ONLY with a JSON array, no markdown, no extra text:
     const text: string = ai.content?.[0]?.text ?? ''
     const questions = extractQuestions(text)
 
-    if (!questions.length) {
-      console.error('No questions extracted from:', text.slice(0, 500))
+    // Validate that every sentence contains _____ — reject any that don't
+    const validQuestions = questions.filter(q => {
+      if (!q.sentence.includes('_____')) {
+        console.error(`Question for "${q.word}" missing blank: ${q.sentence}`)
+        return false
+      }
+      return true
+    })
+
+    if (!validQuestions.length) {
+      console.error('No valid questions extracted from:', text.slice(0, 500))
       return jsonResponse({ error: 'Could not parse questions from AI response' }, 500)
     }
 
-    return jsonResponse({ questions })
+    return jsonResponse({ questions: validQuestions })
   } catch (err) {
     console.error(err)
     return jsonResponse({ error: `Internal error: ${String(err)}` }, 500)
