@@ -189,7 +189,11 @@ export function GrammarSession({ cards, onClose, onComplete }: Props) {
       }
     } else {
       setDone(true)
-      if (userId) localStorage.removeItem(sessionKey(userId))
+      if (userId) {
+        localStorage.removeItem(sessionKey(userId))
+        // Log study activity for streak tracking
+        supabase.from('study_logs').upsert({ student_id: userId, studied_date: new Date().toISOString().split('T')[0] }, { onConflict: 'student_id,studied_date', ignoreDuplicates: true }).then(() => {})
+      }
     }
     setRating(false)
   }
