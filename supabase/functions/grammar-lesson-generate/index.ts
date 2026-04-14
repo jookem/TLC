@@ -52,10 +52,15 @@ Field instructions:
 
 "explanation": Write in simple English mixed with Japanese where it helps. Show the grammar formula using English + Japanese notation, e.g. "There is + 名詞 (noun)." or "主語 + can + 動詞の原形." Then add 1-2 short simple sentences explaining when to use it. Keep it very easy — imagine explaining to a 12-year-old.
 
-"examples": An array of exactly 4 strings. Each string is TWO lines separated by \\n:
+"examples": An array of strings. Each string is TWO lines separated by \\n:
   Line 1: A simple English example sentence.
   Line 2: The Japanese translation of that sentence.
   Format each string exactly like: "There is a cat on the roof.\\nネコが屋根の上にいます。"
+
+  IMPORTANT — you must cover every form and variation of this grammar point.
+  - If the grammar has multiple words/forms (e.g. possessive adjectives: my/your/his/her/its/our/their, or articles: a/an/the, or demonstratives: this/that/these/those), include at least one example sentence per form.
+  - If the grammar has only one form, write 4 varied example sentences.
+  - Do NOT repeat the same form twice. Cover the full set.
 
 "hint_ja": 2 sentences in Japanese only. Explain the grammar structure and when to use it. Include the formula in Japanese (e.g.「There is ＋ 名詞」の形で、〜があります・います、という意味を表します。).
 
@@ -63,7 +68,7 @@ Return this exact structure:
 {
   "title": "${category}",
   "explanation": "...",
-  "examples": ["English 1.\\n日本語1。", "English 2.\\n日本語2。", "English 3.\\n日本語3。", "English 4.\\n日本語4。"],
+  "examples": ["English 1.\\n日本語1。", "English 2.\\n日本語2。", "...one per form..."],
   "hint_ja": "..."
 }`
 
@@ -76,7 +81,7 @@ Return this exact structure:
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1200,
+        max_tokens: 2048,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
