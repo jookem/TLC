@@ -1,4 +1,4 @@
-const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!
+const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -72,7 +72,7 @@ ${list}`
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'x-api-key': ANTHROPIC_API_KEY,
+      'x-api-key': ANTHROPIC_API_KEY!,
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
@@ -85,24 +85,38 @@ ${list}`
 
   if (!res.ok) {
     const err = await res.text()
-    console.error('Anthropic error:', err)
-    throw new Error(`Anthropic API error: ${res.status}`)
+    console.error('Anthropic error:', res.status, err)
+    throw new Error(`Anthropic API error ${res.status}: ${err.slice(0, 200)}`)
   }
 
   const data = await res.json()
   const text: string = data.content?.[0]?.text?.trim() ?? ''
+  console.log('AI response preview:', text.slice(0, 100))
 
   const match = text.match(/\[[\s\S]*\]/)
   if (!match) throw new Error(`No JSON array in response. Raw: ${text.slice(0, 200)}`)
-  return JSON.parse(match[0])
+
+  try {
+    return JSON.parse(match[0])
+  } catch (e) {
+    throw new Error(`JSON parse failed: ${String(e)}. Raw: ${match[0].slice(0, 200)}`)
+  }
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { words }: { words: Word[] } = await req.json()
-    if (!words?.length) return jsonResponse({ categories: [] })
+    if (!ANTHROPIC_API_KEY) {
+      return jsonResponse({ error: 'ANTHROPIC_API_KEY secret is not set on this project' }, 500)
+    }
+
+    const body = await req.json()
+    const words: Word[] = body?.words ?? []
+
+    console.log(`vocab-categorize: received ${words.length} words`)
+
+    if (!words.length) return jsonResponse({ categories: [] })
 
     const allCategories: { id: string; category: string }[] = []
     for (let i = 0; i < words.length; i += BATCH_SIZE) {
@@ -116,9 +130,10 @@ Deno.serve(async (req) => {
       }
     }
 
+    console.log(`vocab-categorize: returning ${allCategories.length} categories`)
     return jsonResponse({ categories: allCategories })
   } catch (err) {
     console.error('Unexpected error:', err)
-    return jsonResponse({ error: String(err) }, 500)
+    return jsonResponse({ error: `Unexpected error: ${String(err)}` }, 500)
   }
 })

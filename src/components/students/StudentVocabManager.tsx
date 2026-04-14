@@ -115,14 +115,15 @@ function DeckEditor({
     return data
   }
 
-  async function generateAll(targets: VocabularyBankEntry[]) {
+  async function generateAll(targets: VocabularyBankEntry[], wordPool?: VocabularyBankEntry[]) {
     if (!targets.length) return
     setGenerating(true)
     try {
+      const pool = wordPool ?? quizEntries
       const data = await invokeQuiz({
         words: targets.map(w => ({ word: w.word, definition_en: w.definition_en })),
         level: deck.name,
-        wordPool: quizEntries.map(w => ({ word: w.word })),
+        wordPool: pool.map(w => ({ word: w.word })),
       })
       const raw: { word: string; sentence: string; distractors: string[] }[] = data.questions ?? []
       await Promise.all(raw.map(q => {
@@ -365,68 +366,114 @@ function DeckEditor({
         {tab === 'quiz' ? (
           /* ── Quiz Tab ── */
           <div className="flex flex-col flex-1 overflow-hidden">
+            {/* Global header */}
             <div className="flex items-center justify-between px-6 py-3 border-b shrink-0">
-              <p className="text-xs text-gray-400">{quizEntries.length} words · {quizEntries.filter(e => !e.quiz_sentence).length} without questions</p>
+              <p className="text-xs text-gray-400">
+                {quizEntries.length} words · {quizEntries.filter(e => e.quiz_sentence?.includes('_____')).length} ready · {quizEntries.filter(e => !e.quiz_sentence?.includes('_____')).length} missing
+              </p>
               <div className="flex gap-2">
-                {quizEntries.some(e => !e.quiz_sentence) && (
-                  <button onClick={() => generateAll(quizEntries.filter(e => !e.quiz_sentence))} disabled={generating} className="px-3 py-1.5 bg-brand text-white text-xs rounded-lg disabled:opacity-50">
-                    {generating ? 'Generating…' : `Generate ${quizEntries.filter(e => !e.quiz_sentence).length} missing`}
+                {quizEntries.some(e => !e.quiz_sentence?.includes('_____')) && (
+                  <button onClick={() => generateAll(quizEntries.filter(e => !e.quiz_sentence?.includes('_____')))} disabled={generating} className="px-3 py-1.5 bg-brand text-white text-xs rounded-lg disabled:opacity-50">
+                    {generating ? 'Generating…' : `Generate all missing`}
                   </button>
                 )}
-                {quizEntries.length > 0 && !quizEntries.some(e => !e.quiz_sentence) && (
+                {quizEntries.length > 0 && !quizEntries.some(e => !e.quiz_sentence?.includes('_____')) && (
                   <button onClick={() => generateAll(quizEntries)} disabled={generating} className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 disabled:opacity-50">
                     {generating ? 'Generating…' : 'Regenerate all'}
                   </button>
                 )}
               </div>
             </div>
-            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-6">
               {quizLoading ? (
                 <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}</div>
               ) : quizEntries.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-8">No words in this deck for this student.</p>
-              ) : quizEntries.map(entry => {
-                const e = quizEdits[entry.id] ?? { sentence: '', d0: '', d1: '', d2: '' }
-                return (
-                  <div key={entry.id} className={`border rounded-xl p-4 space-y-2 ${e.sentence ? 'border-gray-200' : 'border-orange-200 bg-orange-50'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm text-gray-900">{entry.word}</span>
-                      <div className="flex gap-2">
-                        <button onClick={() => regenOne(entry)} disabled={regenId === entry.id || generating} className="text-xs text-gray-400 hover:text-brand disabled:opacity-40">
-                          {regenId === entry.id ? 'Generating…' : 'Regenerate'}
-                        </button>
-                        <button onClick={() => saveQuizOne(entry)} disabled={savingQuizId === entry.id} className="text-xs px-2 py-0.5 bg-brand text-white rounded-md disabled:opacity-40">
-                          {savingQuizId === entry.id ? 'Saving…' : 'Save'}
+              ) : (() => {
+                // Group entries by category
+                const catMap = new Map<string, VocabularyBankEntry[]>()
+                for (const entry of quizEntries) {
+                  const key = entry.category ?? 'その他 / Other'
+                  if (!catMap.has(key)) catMap.set(key, [])
+                  catMap.get(key)!.push(entry)
+                }
+                const catGroups = [...catMap.entries()].sort(([a], [b]) => {
+                  if (a === 'その他 / Other') return 1
+                  if (b === 'その他 / Other') return -1
+                  return a.localeCompare(b)
+                })
+
+                return catGroups.map(([category, entries]) => {
+                  const missing = entries.filter(e => !e.quiz_sentence?.includes('_____'))
+                  return (
+                    <div key={category} className="space-y-2">
+                      {/* Category header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{category}</h3>
+                          <span className="text-xs text-gray-400">{entries.length} words</span>
+                          {missing.length > 0 && (
+                            <span className="text-xs text-orange-500">{missing.length} missing</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => generateAll(missing.length > 0 ? missing : entries, entries)}
+                          disabled={generating}
+                          className="px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50"
+                        >
+                          {generating ? '…' : missing.length > 0 ? `Generate ${missing.length} missing` : 'Regenerate category'}
                         </button>
                       </div>
+
+                      {/* Word cards */}
+                      {entries.map(entry => {
+                        const e = quizEdits[entry.id] ?? { sentence: '', d0: '', d1: '', d2: '' }
+                        const hasQuestion = e.sentence?.includes('_____')
+                        return (
+                          <div key={entry.id} className={`border rounded-xl p-4 space-y-2 ${hasQuestion ? 'border-gray-200' : 'border-orange-200 bg-orange-50'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-sm text-gray-900">{entry.word}</span>
+                              <div className="flex gap-2">
+                                <button onClick={() => regenOne(entry)} disabled={regenId === entry.id || generating} className="text-xs text-gray-400 hover:text-brand disabled:opacity-40">
+                                  {regenId === entry.id ? 'Generating…' : 'Regenerate'}
+                                </button>
+                                <button onClick={() => saveQuizOne(entry)} disabled={savingQuizId === entry.id} className="text-xs px-2 py-0.5 bg-brand text-white rounded-md disabled:opacity-40">
+                                  {savingQuizId === entry.id ? 'Saving…' : 'Save'}
+                                </button>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-500 mb-1 block">Sentence (use _____ for blank)</label>
+                              <input
+                                value={e.sentence}
+                                onChange={ev => setQuizEdits(prev => ({ ...prev, [entry.id]: { ...prev[entry.id], sentence: ev.target.value } }))}
+                                placeholder="e.g. She _____ to school every day."
+                                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                              />
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                              {(['d0', 'd1', 'd2'] as const).map((k, i) => (
+                                <div key={k}>
+                                  <label className="text-xs text-gray-400 mb-1 block">Distractor {i + 1}</label>
+                                  <input
+                                    value={e[k]}
+                                    onChange={ev => setQuizEdits(prev => ({ ...prev, [entry.id]: { ...prev[entry.id], [k]: ev.target.value } }))}
+                                    placeholder="wrong word"
+                                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Sentence (use _____ for blank)</label>
-                      <input
-                        value={e.sentence}
-                        onChange={ev => setQuizEdits(prev => ({ ...prev, [entry.id]: { ...prev[entry.id], sentence: ev.target.value } }))}
-                        placeholder="e.g. She _____ to school every day."
-                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand"
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['d0', 'd1', 'd2'] as const).map((k, i) => (
-                        <div key={k}>
-                          <label className="text-xs text-gray-400 mb-1 block">Distractor {i + 1}</label>
-                          <input
-                            value={e[k]}
-                            onChange={ev => setQuizEdits(prev => ({ ...prev, [entry.id]: { ...prev[entry.id], [k]: ev.target.value } }))}
-                            placeholder="wrong word"
-                            className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })
+              })()}
             </div>
-            <div className="px-6 py-3 border-t text-xs text-gray-400 shrink-0">Orange = no question yet · Edit any field then click Save</div>
+            <div className="px-6 py-3 border-t text-xs text-gray-400 shrink-0">Orange = no question yet · Category buttons use same-category distractors for harder quizzes</div>
           </div>
         ) : (
         /* ── Words Tab ── */
