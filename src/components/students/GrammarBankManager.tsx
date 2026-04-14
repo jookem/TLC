@@ -777,29 +777,7 @@ function DeckEditor({
                   ))}
                 </div>
               )}
-              <div className="flex items-center justify-between mt-3">
-                <p className="text-xs text-gray-400">{points.length} question{points.length !== 1 ? 's' : ''} in this deck</p>
-                {points.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    {points.some(p => p.category) && (
-                      <button
-                        onClick={handleSyncCategoriesToStudents}
-                        disabled={syncingCategories}
-                        className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-                      >
-                        {syncingCategories ? 'Syncing…' : 'Sync to students'}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleSuggestCategories(true)}
-                      disabled={suggestingCategories}
-                      className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-                    >
-                      {suggestingCategories ? 'Categorizing…' : '✦ Auto-categorize all'}
-                    </button>
-                  </div>
-                )}
-              </div>
+              <p className="text-xs text-gray-400 mt-3">{points.length} question{points.length !== 1 ? 's' : ''} in this deck</p>
             </>
           )}
         </div>
