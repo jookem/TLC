@@ -81,26 +81,52 @@ function LessonSlidesTab({ deckId, points }: { deckId: string; points: GrammarDe
     }
     setAutoGenerating(true)
     let created = 0
-    const existingExamples = new Set(slides.flatMap(s => s.examples))
+
+    // Group points by category (fall back to answer text if uncategorized)
+    const groups = new Map<string, typeof points>()
     for (const p of points) {
-      const sentence = p.sentence_with_blank ?? p.point
-      const answer = p.answer ?? p.explanation
-      const title = p.category ?? answer
-      const example = sentence.replace('_____', answer)
-      // Skip if this exact example sentence already exists in any slide
-      if (existingExamples.has(example)) continue
-      const { error } = await addLessonSlide(deckId, {
-        title,
-        explanation: p.hint_ja ?? '',
-        examples: example ? [example] : [],
-      })
-      if (!error) created++
+      const key = p.category ?? (p.answer ?? p.explanation)
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(p)
     }
+
+    const existingTitles = new Set(slides.map(s => s.title.toLowerCase()))
+
+    for (const [category, groupPoints] of groups) {
+      if (existingTitles.has(category.toLowerCase())) continue
+
+      // Call AI to generate a proper lesson slide for this category
+      const { data, error } = await supabase.functions.invoke('grammar-lesson-generate', {
+        body: {
+          category,
+          samples: groupPoints.slice(0, 5).map(p => ({
+            sentence_with_blank: p.sentence_with_blank ?? p.point,
+            answer: p.answer ?? p.explanation,
+            hint_ja: p.hint_ja,
+          })),
+        },
+      })
+
+      if (error || !data?.slide) {
+        console.error('Failed to generate slide for', category, error)
+        continue
+      }
+
+      const slide = data.slide as { title: string; explanation: string; examples: string[]; hint_ja: string }
+      const { error: addErr } = await addLessonSlide(deckId, {
+        title: slide.title,
+        explanation: slide.explanation,
+        examples: slide.examples,
+        hint_ja: slide.hint_ja || undefined,
+      })
+      if (!addErr) created++
+    }
+
     const { slides: updated } = await listLessonSlides(deckId)
     setSlides(updated ?? [])
     setAutoGenerating(false)
-    if (created > 0) toast.success(`Generated ${created} slide${created !== 1 ? 's' : ''} — add explanations to each`)
-    else toast.info('All slides already exist')
+    if (created > 0) toast.success(`Generated ${created} slide${created !== 1 ? 's' : ''}`)
+    else toast.info('Slides already exist for all categories')
   }
 
   function parseExamples(text: string) {
@@ -180,13 +206,13 @@ function LessonSlidesTab({ deckId, points }: { deckId: string; points: GrammarDe
       {/* Auto-generate from categories */}
       {points.length > 0 && (
         <div className="flex items-center justify-between bg-purple-50 border border-purple-100 rounded-xl px-4 py-3">
-          <p className="text-xs text-purple-700">Auto-generate one slide per quiz category</p>
+          <p className="text-xs text-purple-700">AI generates one slide per grammar category — with explanation, 4 examples, and Japanese note</p>
           <button
             onClick={handleAutoGenerate}
             disabled={autoGenerating}
             className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
           >
-            {autoGenerating ? 'Generating…' : 'Auto-generate from categories'}
+            {autoGenerating ? 'Generating…' : '✦ Auto-generate slides'}
           </button>
         </div>
       )}
