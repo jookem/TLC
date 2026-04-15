@@ -376,6 +376,7 @@ function DeckEditor({
     point: string
     explanation: string
     sentence: string
+    sentence_ja?: string
     answer: string
     hint?: string
     distractors?: string[]
@@ -398,6 +399,7 @@ function DeckEditor({
           point: String(r.point),
           explanation: r.explanation ? String(r.explanation) : '',
           sentence: String(r.sentence),
+          sentence_ja: r.sentence_ja ? String(r.sentence_ja) : undefined,
           answer: String(r.answer),
           hint: r.hint ? String(r.hint) : undefined,
           distractors: Array.isArray(r.distractors) ? r.distractors.map(String) : [],
@@ -423,6 +425,7 @@ function DeckEditor({
         explanation: r.explanation,
         examples: r.examples ?? [],
         sentence_with_blank: r.sentence,
+        sentence_ja: r.sentence_ja,
         answer: r.answer,
         hint_ja: r.hint,
         distractors: r.distractors ?? [],

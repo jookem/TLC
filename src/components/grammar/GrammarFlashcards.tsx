@@ -99,8 +99,8 @@ export function GrammarFlashcards({ cards, onComplete, onClose }: Props) {
                   <p className="text-gray-700 text-sm font-medium">
                     {card.sentence_with_blank.replace('_____', `[${card.answer ?? '...'}]`)}
                   </p>
-                  {card.hint_ja && (
-                    <p className="text-gray-500 text-xs mt-1">{card.hint_ja}</p>
+                  {card.sentence_ja && (
+                    <p className="text-gray-500 text-xs mt-1">{card.sentence_ja}</p>
                   )}
                 </div>
               )}

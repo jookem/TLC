@@ -13,6 +13,7 @@ export interface GrammarBankEntry {
   explanation: string
   examples: string[]
   sentence_with_blank: string | null
+  sentence_ja: string | null
   answer: string | null
   hint_ja: string | null
   distractors: string[]
@@ -30,6 +31,7 @@ export interface GrammarDeckPoint {
   explanation: string
   examples: string[]
   sentence_with_blank: string | null
+  sentence_ja: string | null
   answer: string | null
   hint_ja: string | null
   distractors: string[]
@@ -79,7 +81,7 @@ export async function listGrammar(
   if (deckIds.length > 0) {
     const { data: points } = await supabase
       .from('grammar_deck_points')
-      .select('deck_id, point, explanation, examples, sentence_with_blank, answer, hint_ja, distractors, category')
+      .select('deck_id, point, explanation, examples, sentence_with_blank, sentence_ja, answer, hint_ja, distractors, category')
       .in('deck_id', deckIds)
 
     const templateMap = new Map<string, any>()
@@ -92,6 +94,7 @@ export async function listGrammar(
       entry.explanation = t.explanation
       entry.examples = t.examples ?? []
       entry.sentence_with_blank = t.sentence_with_blank
+      entry.sentence_ja = t.sentence_ja
       entry.answer = t.answer
       entry.hint_ja = t.hint_ja
       entry.distractors = t.distractors ?? []
@@ -242,6 +245,7 @@ export type GrammarPointFields = {
   explanation: string
   examples?: string[]
   sentence_with_blank?: string
+  sentence_ja?: string
   answer?: string
   hint_ja?: string
   distractors?: string[]
