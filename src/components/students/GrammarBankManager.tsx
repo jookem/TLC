@@ -367,6 +367,7 @@ function DeckEditor({
   const [renamingName, setRenamingName] = useState(false)
   const [tab, setTab] = useState<'lesson' | 'quiz'>('lesson')
   const [suggestingCategories, setSuggestingCategories] = useState(false)
+  const [fillingJa, setFillingJa] = useState(false)
   // Add form
   const [addSentence, setAddSentence] = useState('')
   const [addAnswer, setAddAnswer] = useState('')
@@ -533,6 +534,39 @@ function DeckEditor({
     }
   }
 
+  async function handleAutoFillJa(force = false) {
+    const targets = force
+      ? points.filter(p => p.answer)
+      : points.filter(p => p.answer && !p.answer_ja)
+    if (!targets.length) {
+      toast.info(force ? 'No questions with answers found' : 'All questions already have Japanese answers')
+      return
+    }
+    setFillingJa(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('grammar-translate-answers', {
+        body: { answers: targets.map(p => ({ id: p.id, answer: p.answer ?? p.explanation })) },
+      })
+      if (error) {
+        let msg = error.message
+        try { const b = await (error as any).context?.json?.(); if (b?.error) msg = b.error } catch {}
+        throw new Error(msg)
+      }
+      const results: { id: string; answer_ja: string }[] = data.results ?? []
+      await Promise.all(results.map(({ id, answer_ja }) =>
+        supabase.from('grammar_deck_points').update({ answer_ja }).eq('id', id)
+      ))
+      setPoints(prev => prev.map(p => {
+        const match = results.find(r => r.id === p.id)
+        return match ? { ...p, answer_ja: match.answer_ja } : p
+      }))
+      toast.success(`Filled Japanese for ${results.length} question${results.length !== 1 ? 's' : ''}`)
+    } catch (e: any) {
+      toast.error(`Failed: ${e?.message ?? String(e)}`)
+    } finally {
+      setFillingJa(false)
+    }
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -652,13 +686,22 @@ function DeckEditor({
           )}
           <div className="flex items-center gap-2 ml-4">
             {points.length > 0 && (
-              <button
-                onClick={() => handleSuggestCategories(true)}
-                disabled={suggestingCategories}
-                className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 shrink-0"
-              >
-                {suggestingCategories ? 'Categorizing…' : '✦ Auto-categorize all'}
-              </button>
+              <>
+                <button
+                  onClick={() => handleAutoFillJa(false)}
+                  disabled={fillingJa}
+                  className="px-3 py-1.5 bg-sky-600 text-white text-xs rounded-lg hover:bg-sky-700 transition-colors disabled:opacity-50 shrink-0"
+                >
+                  {fillingJa ? '日本語…' : '✦ 日本語 auto-fill'}
+                </button>
+                <button
+                  onClick={() => handleSuggestCategories(true)}
+                  disabled={suggestingCategories}
+                  className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 shrink-0"
+                >
+                  {suggestingCategories ? 'Categorizing…' : '✦ Auto-categorize all'}
+                </button>
+              </>
             )}
             <button aria-label="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
           </div>
