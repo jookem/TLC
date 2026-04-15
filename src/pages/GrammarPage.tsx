@@ -4,7 +4,17 @@ import { listGrammar, listLessonSlides, type GrammarBankEntry, type GrammarLesso
 import { Card, CardContent } from '@/components/ui/card'
 import { GrammarSession } from '@/components/grammar/GrammarSession'
 import { GrammarLesson } from '@/components/grammar/GrammarLesson'
+import { GrammarFlashcards } from '@/components/grammar/GrammarFlashcards'
+import { GrammarPractice } from '@/components/grammar/GrammarPractice'
 import { PageError } from '@/components/shared/PageError'
+
+type GrammarStage = 'lesson' | 'flashcards' | 'practice' | 'quiz'
+type GrammarStudyState = {
+  cards: GrammarBankEntry[]
+  slides: GrammarLessonSlide[]
+  deckName: string
+  stage: GrammarStage
+}
 
 function getStudyBatch<T>(arr: T[]): T[] {
   const size = parseInt(localStorage.getItem('study_size') ?? '20', 10)
@@ -28,8 +38,7 @@ export function GrammarPage() {
   const [entries, setEntries] = useState<GrammarBankEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [studyCards, setStudyCards] = useState<GrammarBankEntry[] | null>(null)
-  const [lessonState, setLessonState] = useState<{ slides: GrammarLessonSlide[]; cards: GrammarBankEntry[]; deckName: string; startIndex: number } | null>(null)
+  const [session, setSession] = useState<GrammarStudyState | null>(null)
   const [search, setSearch] = useState('')
   const [view, setView] = useState<View>('category')
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
@@ -50,34 +59,31 @@ export function GrammarPage() {
 
   useEffect(() => { load() }, [user])
 
-  // Start a study session — checks for lesson slides first (unless skipLesson)
+  // Start a full study session: lesson → flashcards → practice → quiz
   async function startStudy(cards: GrammarBankEntry[], skipLesson = false) {
-    if (skipLesson) { setStudyCards(cards); return }
-
-    // Find the single deck shared by all cards (if any)
     const deckIds = [...new Set(cards.map(c => c.deck_id).filter(Boolean))]
-    if (deckIds.length === 1) {
-      const deckId = deckIds[0]!
-      const { slides } = await listLessonSlides(deckId)
-      if (slides && slides.length > 0) {
-        const deckName = entries.find(e => e.deck_id === deckId)?.category ?? 'Grammar'
+    let slides: GrammarLessonSlide[] = []
+    let deckName = 'Grammar'
 
-        // If all cards share one category, show only that one slide → then quiz
-        // If mixed categories (Study all), show all slides in order
+    if (!skipLesson && deckIds.length === 1) {
+      const deckId = deckIds[0]!
+      const result = await listLessonSlides(deckId)
+      deckName = entries.find(e => e.deck_id === deckId)?.category ?? 'Grammar'
+
+      if (result.slides && result.slides.length > 0) {
         const cardCategories = [...new Set(cards.map(c => c.category).filter(Boolean))]
         if (cardCategories.length === 1) {
-          const match = slides.find(s => s.title.toLowerCase() === cardCategories[0]!.toLowerCase())
-          if (match) {
-            setLessonState({ slides: [match], cards, deckName: cardCategories[0]!, startIndex: 0 })
-            return
-          }
+          const match = result.slides.find(s => s.title.toLowerCase() === cardCategories[0]!.toLowerCase())
+          slides = match ? [match] : result.slides
+          deckName = cardCategories[0] ?? deckName
+        } else {
+          slides = result.slides
         }
-
-        setLessonState({ slides, cards, deckName, startIndex: 0 })
-        return
       }
     }
-    setStudyCards(cards)
+
+    const stage: GrammarStage = slides.length > 0 ? 'lesson' : 'flashcards'
+    setSession({ cards, slides, deckName, stage })
   }
 
   if (error) return <PageError message={error} onRetry={load} />
@@ -131,21 +137,37 @@ export function GrammarPage() {
 
   return (
     <>
-      {lessonState && (
+      {session?.stage === 'lesson' && (
         <GrammarLesson
-          slides={lessonState.slides}
-          deckName={lessonState.deckName}
-          initialIndex={lessonState.startIndex}
-          onComplete={() => { setStudyCards(lessonState.cards); setLessonState(null) }}
-          onClose={() => setLessonState(null)}
+          slides={session.slides}
+          deckName={session.deckName}
+          initialIndex={0}
+          onComplete={() => setSession(s => s && { ...s, stage: 'flashcards' })}
+          onClose={() => setSession(null)}
         />
       )}
 
-      {studyCards && (
+      {session?.stage === 'flashcards' && (
+        <GrammarFlashcards
+          cards={session.cards}
+          onComplete={() => setSession(s => s && { ...s, stage: 'practice' })}
+          onClose={() => setSession(null)}
+        />
+      )}
+
+      {session?.stage === 'practice' && (
+        <GrammarPractice
+          cards={session.cards}
+          onComplete={() => setSession(s => s && { ...s, stage: 'quiz' })}
+          onClose={() => setSession(null)}
+        />
+      )}
+
+      {session?.stage === 'quiz' && (
         <GrammarSession
-          cards={studyCards}
-          onClose={() => setStudyCards(null)}
-          onComplete={() => { setStudyCards(null); load() }}
+          cards={session.cards}
+          onClose={() => setSession(null)}
+          onComplete={() => { setSession(null); load() }}
         />
       )}
 
@@ -162,7 +184,7 @@ export function GrammarPage() {
             <div className="flex items-center gap-2 flex-wrap">
               {due.length > 0 && (
                 <button
-                  onClick={() => setStudyCards(getStudyBatch(due))}
+                  onClick={() => startStudy(getStudyBatch(due), true)}
                   className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors"
                 >
                   復習 ({reviewCount})
@@ -260,7 +282,7 @@ export function GrammarPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {categoryMap.get(cat)!.map(e => (
-                      <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy(categoryMap.get(cat)!)} />
+                      <GrammarCard key={e.id} entry={e} onStudy={() => startStudy([e], true)} onLesson={() => startStudy(categoryMap.get(cat)!)} />
                     ))}
                   </div>
                 </section>
@@ -285,7 +307,7 @@ export function GrammarPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {uncategorized.map(e => (
-                      <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy(uncategorized)} />
+                      <GrammarCard key={e.id} entry={e} onStudy={() => startStudy([e], true)} onLesson={() => startStudy(uncategorized)} />
                     ))}
                   </div>
                 </section>
@@ -310,7 +332,7 @@ export function GrammarPage() {
                   復習が必要 / Review Due ({due.length})
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {due.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy(categoryCards(e))} />)}
+                  {due.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => startStudy([e], true)} onLesson={() => startStudy(categoryCards(e))} />)}
                 </div>
               </section>
             )}
@@ -330,7 +352,7 @@ export function GrammarPage() {
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {items.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => setStudyCards([e])} onLesson={() => startStudy(categoryCards(e))} />)}
+                    {items.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => startStudy([e], true)} onLesson={() => startStudy(categoryCards(e))} />)}
                   </div>
                 </section>
               )
