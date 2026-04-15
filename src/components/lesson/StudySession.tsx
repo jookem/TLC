@@ -136,6 +136,7 @@ export function StudySession({ cards, onClose, onComplete }: Props) {
   function handleClose() {
     if (done) {
       onComplete()
+      return
     }
     onClose()
   }
