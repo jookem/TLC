@@ -15,11 +15,6 @@ type GrammarStudyState = {
   stage: GrammarStage
 }
 
-function getStudyBatch<T>(arr: T[]): T[] {
-  const size = parseInt(localStorage.getItem('study_size') ?? '20', 10)
-  const shuffled = [...arr].sort(() => Math.random() - 0.5)
-  return size === 0 ? shuffled : shuffled.slice(0, size)
-}
 
 const MASTERY_LABELS = ['新しい', '見た', '覚えてる', 'マスター']
 const MASTERY_LABELS_EN = ['New', 'Seen', 'Familiar', 'Mastered']
@@ -40,7 +35,15 @@ export function GrammarPage() {
   const [session, setSession] = useState<GrammarStudyState | null>(null)
   const [search, setSearch] = useState('')
   const [view, setView] = useState<View>('category')
+  const [studySize, setStudySizeState] = useState(() =>
+    parseInt(localStorage.getItem('study_size') ?? '20', 10)
+  )
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
+
+  function setStudySize(val: number) {
+    setStudySizeState(val)
+    localStorage.setItem('study_size', String(val))
+  }
 
   async function load() {
     if (!user) return
@@ -102,8 +105,13 @@ export function GrammarPage() {
     return new Date(e.next_review) <= new Date()
   })
 
-  const sessionLimit = parseInt(localStorage.getItem('study_size') ?? '20', 10)
+  const sessionLimit = studySize
   const reviewCount = sessionLimit === 0 ? due.length : Math.min(sessionLimit, due.length)
+
+  function getCategoryBatch(cards: GrammarBankEntry[]): GrammarBankEntry[] {
+    const shuffled = [...cards].sort(() => Math.random() - 0.5)
+    return sessionLimit === 0 ? shuffled : shuffled.slice(0, sessionLimit)
+  }
 
   // All entries sharing the same category as a given card (for lesson → quiz flow)
   function categoryCards(e: GrammarBankEntry): GrammarBankEntry[] {
@@ -175,18 +183,33 @@ export function GrammarPage() {
             <div className="flex items-center gap-2 flex-wrap">
               {due.length > 0 && (
                 <button
-                  onClick={() => startStudy(getStudyBatch(due), true)}
+                  onClick={() => startStudy(getCategoryBatch(due), true)}
                   className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors"
                 >
                   復習 ({reviewCount})
                 </button>
               )}
               <button
-                onClick={() => startStudy(getStudyBatch(entries))}
+                onClick={() => startStudy(getCategoryBatch(entries))}
                 className="px-4 py-2 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand/90 transition-colors"
               >
                 全部学習
               </button>
+              <div className="flex gap-1.5 ml-auto">
+                {[10, 20, 30, 0].map(val => (
+                  <button
+                    key={val}
+                    onClick={() => setStudySize(val)}
+                    className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
+                      studySize === val
+                        ? 'bg-brand text-white border-brand'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-brand/50'
+                    }`}
+                  >
+                    {val === 0 ? 'All' : val}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -264,12 +287,18 @@ export function GrammarPage() {
                       <h2 className="text-sm font-semibold text-purple-700 uppercase tracking-wide">{cat}</h2>
                       <span className="text-xs text-gray-400">{categoryMap.get(cat)!.length}</span>
                     </div>
-                    <button
-                      onClick={() => startStudy(categoryMap.get(cat)!)}
-                      className="text-xs text-gray-400 hover:text-brand transition-colors"
-                    >
-                      Study this topic →
-                    </button>
+                    {(() => {
+                      const all = categoryMap.get(cat)!
+                      const isCapped = sessionLimit > 0 && all.length > sessionLimit
+                      return (
+                        <button
+                          onClick={() => startStudy(getCategoryBatch(all))}
+                          className="text-xs text-gray-400 hover:text-brand transition-colors"
+                        >
+                          {isCapped ? `Study (${sessionLimit}/${all.length}) →` : 'Study this topic →'}
+                        </button>
+                      )
+                    })()}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {categoryMap.get(cat)!.map(e => (
@@ -289,12 +318,17 @@ export function GrammarPage() {
                       <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Other</h2>
                       <span className="text-xs text-gray-400">{uncategorized.length}</span>
                     </div>
-                    <button
-                      onClick={() => startStudy(uncategorized)}
-                      className="text-xs text-gray-400 hover:text-brand transition-colors"
-                    >
-                      Study this topic →
-                    </button>
+                    {(() => {
+                      const isCapped = sessionLimit > 0 && uncategorized.length > sessionLimit
+                      return (
+                        <button
+                          onClick={() => startStudy(getCategoryBatch(uncategorized))}
+                          className="text-xs text-gray-400 hover:text-brand transition-colors"
+                        >
+                          {isCapped ? `Study (${sessionLimit}/${uncategorized.length}) →` : 'Study this topic →'}
+                        </button>
+                      )
+                    })()}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {uncategorized.map(e => (
@@ -335,12 +369,17 @@ export function GrammarPage() {
                     <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
                       {MASTERY_LABELS[level]} / {MASTERY_LABELS_EN[level]} ({items.length})
                     </h2>
-                    <button
-                      onClick={() => startStudy(getStudyBatch(items))}
-                      className="text-xs text-gray-400 hover:text-brand transition-colors"
-                    >
-                      Study this group →
-                    </button>
+                    {(() => {
+                      const isCapped = sessionLimit > 0 && items.length > sessionLimit
+                      return (
+                        <button
+                          onClick={() => startStudy(getCategoryBatch(items))}
+                          className="text-xs text-gray-400 hover:text-brand transition-colors"
+                        >
+                          {isCapped ? `Study (${sessionLimit}/${items.length}) →` : 'Study this group →'}
+                        </button>
+                      )
+                    })()}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {items.map(e => <GrammarCard key={e.id} entry={e} onStudy={() => startStudy([e], true)} onLesson={() => startStudy(categoryCards(e))} />)}
