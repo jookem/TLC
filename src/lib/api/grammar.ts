@@ -89,10 +89,33 @@ export async function listGrammar(
   // Merge content from grammar_deck_points for deck-assigned entries
   const deckIds = [...new Set(allEntries.filter(e => e.deck_id).map(e => e.deck_id as string))]
   if (deckIds.length > 0) {
-    const { data: points } = await supabase
+    const { data: points, error: pointsError } = await supabase
       .from('grammar_deck_points')
       .select('deck_id, point, explanation, examples, sentence_with_blank, sentence_ja, answer, hint_ja, distractors, category')
       .in('deck_id', deckIds)
+
+    if (pointsError) {
+      // sentence_ja column may not exist yet — fall back without it
+      const { data: pointsFallback } = await supabase
+        .from('grammar_deck_points')
+        .select('deck_id, point, explanation, examples, sentence_with_blank, answer, hint_ja, distractors, category')
+        .in('deck_id', deckIds)
+      const templateMap = new Map<string, any>()
+      for (const p of pointsFallback ?? []) templateMap.set(`${p.deck_id}:${p.point}`, p)
+      for (const entry of allEntries) {
+        if (!entry.deck_id) continue
+        const t = templateMap.get(`${entry.deck_id}:${entry.point}`)
+        if (!t) continue
+        entry.explanation = t.explanation
+        entry.examples = t.examples ?? []
+        entry.sentence_with_blank = t.sentence_with_blank
+        entry.answer = t.answer
+        entry.hint_ja = t.hint_ja
+        entry.distractors = t.distractors ?? []
+        entry.category = t.category
+      }
+      return { entries: allEntries as GrammarBankEntry[] }
+    }
 
     const templateMap = new Map<string, any>()
     for (const p of points ?? []) templateMap.set(`${p.deck_id}:${p.point}`, p)
