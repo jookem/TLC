@@ -82,6 +82,11 @@ function LessonSlidesTab({ deckId, points }: { deckId: string; points: GrammarDe
     setAutoGenerating(true)
     let created = 0
 
+    // Re-fetch slides from DB to get accurate existing titles (state may be stale)
+    const { slides: freshSlides } = await listLessonSlides(deckId)
+    const currentSlides = freshSlides ?? []
+    setSlides(currentSlides)
+
     // Group points by category (fall back to answer text if uncategorized)
     const groups = new Map<string, typeof points>()
     for (const p of points) {
@@ -90,7 +95,7 @@ function LessonSlidesTab({ deckId, points }: { deckId: string; points: GrammarDe
       groups.get(key)!.push(p)
     }
 
-    const existingTitles = new Set(slides.map(s => s.title.toLowerCase()))
+    const existingTitles = new Set(currentSlides.map(s => s.title.toLowerCase()))
 
     for (const [category, groupPoints] of groups) {
       if (existingTitles.has(category.toLowerCase())) continue
