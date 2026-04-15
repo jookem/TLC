@@ -1,128 +1,77 @@
-import { useState } from 'react'
 import { speak } from '@/lib/tts'
 import type { VocabularyBankEntry } from '@/lib/types/database'
 
+const MASTERY_COLORS = [
+  'bg-gray-100 text-gray-500',
+  'bg-yellow-100 text-yellow-700',
+  'bg-brand-light text-brand-dark',
+  'bg-green-100 text-green-700',
+]
+const MASTERY_LABELS = ['New', 'Seen', 'Familiar', 'Mastered']
+
 interface Props {
   words: VocabularyBankEntry[]
-  deckName: string
-  onComplete: () => void  // proceed to quiz
-  onClose: () => void     // exit entirely
+  sessionName: string
+  onStart: () => void   // → flashcards
+  onClose: () => void
 }
 
-export function VocabLesson({ words, deckName, onComplete, onClose }: Props) {
-  const [index, setIndex] = useState(0)
-  const word = words[index]
-  const isLast = index === words.length - 1
-  const pct = words.length > 1 ? Math.round((index / (words.length - 1)) * 100) : 100
-
+export function VocabLesson({ words, sessionName, onStart, onClose }: Props) {
   return (
-    <div role="dialog" aria-modal="true" aria-label="Vocabulary lesson" className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
+    <div role="dialog" aria-modal="true" aria-label="Vocabulary session overview" className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
         <button onClick={onClose} className="text-white/50 hover:text-white text-sm transition-colors">✕</button>
-        <span className="text-white/50 text-xs font-medium tracking-wide uppercase">単語 · {deckName}</span>
-        <button onClick={onComplete} className="text-white/50 hover:text-white text-xs transition-colors">
+        <span className="text-white/50 text-xs font-medium tracking-wide uppercase">単語 · {sessionName}</span>
+        <button onClick={onStart} className="text-white/50 hover:text-white text-xs transition-colors">
           Skip →
         </button>
       </div>
 
-      {/* Progress bar */}
-      <div className="h-1 bg-white/10 mx-4 rounded-full overflow-hidden shrink-0">
-        <div
-          className="h-full bg-brand rounded-full transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-
-      {/* Counter */}
-      <p className="text-center text-white/30 text-xs mt-2 shrink-0">
-        {index + 1} / {words.length}
+      {/* Session info */}
+      <p className="text-white/40 text-xs text-center py-2 shrink-0">
+        {words.length} words in this session — review before practising
       </p>
 
-      {/* Word content */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="max-w-lg mx-auto space-y-6">
-
-          {/* Word + TTS */}
-          <div className="text-center space-y-1">
-            <div className="flex items-center justify-center gap-3">
-              <h1 className="text-4xl font-bold text-white leading-tight">{word.word}</h1>
-              <button
-                onClick={() => speak(word.word)}
-                className="text-white/40 hover:text-white text-2xl transition-colors"
-                title="Listen"
-              >
-                🔊
-              </button>
-            </div>
-            {word.reading && (
-              <p className="text-white/50 text-lg">{word.reading}</p>
-            )}
-          </div>
-
-          {/* Image */}
-          {word.image_url && (
-            <div className="flex justify-center">
-              <img
-                src={word.image_url}
-                alt={word.word}
-                className="max-h-40 object-contain rounded-2xl"
-              />
-            </div>
-          )}
-
-          {/* Definitions */}
-          {(word.definition_ja || word.definition_en) && (
-            <div className="bg-white/10 rounded-2xl p-5 space-y-2">
-              {word.definition_ja && (
-                <p className="text-white/90 text-xl font-medium leading-relaxed">{word.definition_ja}</p>
-              )}
-              {word.definition_en && (
-                <p className="text-white/60 text-base leading-relaxed">{word.definition_en}</p>
-              )}
-            </div>
-          )}
-
-          {/* Example sentence */}
-          {word.example && (
-            <div className="space-y-1">
-              <p className="text-white/40 text-xs font-semibold uppercase tracking-wide">Example</p>
-              <div className="bg-brand/20 border border-brand/30 rounded-xl px-4 py-3">
-                <p className="text-white/85 text-base leading-relaxed italic">"{word.example}"</p>
+      {/* Word grid */}
+      <div className="flex-1 overflow-y-auto px-4 pb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
+          {words.map(w => (
+            <div key={w.id} className="bg-white/10 rounded-xl p-3 space-y-1.5">
+              <div className="flex items-start justify-between gap-1">
+                <button
+                  onClick={() => speak(w.word)}
+                  className="font-bold text-white text-base leading-tight text-left hover:text-brand transition-colors"
+                  title="Listen"
+                >
+                  {w.word}
+                </button>
+                <span className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 font-medium ${MASTERY_COLORS[w.mastery_level]}`}>
+                  {MASTERY_LABELS[w.mastery_level]}
+                </span>
               </div>
+              {w.reading && (
+                <p className="text-white/50 text-xs">{w.reading}</p>
+              )}
+              {w.definition_ja && (
+                <p className="text-white/85 text-sm leading-snug">{w.definition_ja}</p>
+              )}
+              {w.definition_en && (
+                <p className="text-white/50 text-xs leading-snug">{w.definition_en}</p>
+              )}
             </div>
-          )}
-
+          ))}
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* CTA */}
       <div className="px-6 pb-8 pt-4 shrink-0">
-        <div className="max-w-lg mx-auto flex gap-3">
-          {index > 0 && (
-            <button
-              onClick={() => setIndex(i => i - 1)}
-              className="flex-1 py-3 rounded-xl bg-white/10 text-white/70 text-sm font-medium hover:bg-white/15 transition-colors"
-            >
-              ← Back
-            </button>
-          )}
-          {isLast ? (
-            <button
-              onClick={onComplete}
-              className="flex-1 py-3 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors"
-            >
-              Start Quiz →
-            </button>
-          ) : (
-            <button
-              onClick={() => setIndex(i => i + 1)}
-              className="flex-1 py-3 rounded-xl bg-white text-slate-900 text-sm font-semibold hover:bg-white/90 transition-colors"
-            >
-              Next →
-            </button>
-          )}
-        </div>
+        <button
+          onClick={onStart}
+          className="w-full max-w-lg mx-auto block py-3 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors"
+        >
+          フラッシュカード →
+        </button>
       </div>
     </div>
   )

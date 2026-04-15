@@ -62,6 +62,8 @@ const MASTERY_LABELS_EN = ['New', 'Seen', 'Familiar', 'Mastered']
 
 type DeckGroup = { deckId: string | null; deckName: string; words: VocabularyBankEntry[] }
 type View = 'category' | 'deck' | 'az'
+type SessionStage = 'grid' | 'flashcards' | 'quiz'
+type Session = { words: VocabularyBankEntry[]; name: string; stage: SessionStage }
 
 // ── Compact A-Z row ───────────────────────────────────────────────
 
@@ -129,8 +131,11 @@ export function VocabularyPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [studyCards, setStudyCards] = useState<VocabularyBankEntry[] | null>(null)
-  const [lessonDeck, setLessonDeck] = useState<DeckGroup | null>(null)
-  const [quizDeck, setQuizDeck] = useState<DeckGroup | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+
+  function startSession(words: VocabularyBankEntry[], name: string) {
+    setSession({ words, name, stage: 'grid' })
+  }
   const [search, setSearch] = useState('')
   const [view, setView] = useState<View>('category')
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
@@ -235,19 +240,26 @@ export function VocabularyPage() {
           onComplete={() => { setStudyCards(null); loadVocab() }}
         />
       )}
-      {lessonDeck && !quizDeck && (
+      {session?.stage === 'grid' && (
         <VocabLesson
-          words={lessonDeck.words}
-          deckName={lessonDeck.deckName}
-          onClose={() => setLessonDeck(null)}
-          onComplete={() => { setQuizDeck(lessonDeck); setLessonDeck(null) }}
+          words={session.words}
+          sessionName={session.name}
+          onStart={() => setSession(s => s && { ...s, stage: 'flashcards' })}
+          onClose={() => setSession(null)}
         />
       )}
-      {quizDeck && (
+      {session?.stage === 'flashcards' && (
+        <StudySession
+          cards={session.words}
+          onClose={() => setSession(null)}
+          onComplete={() => setSession(s => s && { ...s, stage: 'quiz' })}
+        />
+      )}
+      {session?.stage === 'quiz' && (
         <VocabQuizGame
-          words={quizDeck.words}
-          deckName={quizDeck.deckName}
-          onClose={() => setQuizDeck(null)}
+          words={session.words}
+          deckName={session.name}
+          onClose={() => { setSession(null); loadVocab() }}
         />
       )}
 
@@ -402,10 +414,10 @@ export function VocabularyPage() {
                           フラッシュカード
                         </button>
                         <button
-                          onClick={() => setLessonDeck({ deckId: null, deckName: category, words: batch })}
+                          onClick={() => startSession(batch, category)}
                           className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand/90 transition-colors"
                         >
-                          {isCapped ? `📖 学習 + クイズ (${batch.length}/${words.length}) →` : '📖 学習 + クイズ →'}
+                          {isCapped ? `📖 学習 (${batch.length}/${words.length}) →` : '📖 学習 →'}
                         </button>
                       </div>
                     </div>
@@ -464,10 +476,10 @@ export function VocabularyPage() {
                       </button>
                       {deckId && (
                         <button
-                          onClick={() => setLessonDeck({ deckId, deckName, words: getStudyBatch(words) })}
+                          onClick={() => startSession(getStudyBatch(words), deckName)}
                           className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand/90 transition-colors"
                         >
-                          📖 学習 + クイズ →
+                          📖 学習 →
                         </button>
                       )}
                     </div>
