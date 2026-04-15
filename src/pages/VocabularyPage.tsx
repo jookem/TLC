@@ -143,6 +143,7 @@ export function VocabularyPage() {
         .select('*')
         .eq('student_id', user.id)
         .order('word', { ascending: true })
+        .limit(5000)
       if (err) throw err
 
       const entries = data ?? []

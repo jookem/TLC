@@ -656,6 +656,7 @@ function QuizEditorModal({
       .eq('student_id', studentId)
       .eq('deck_id', deck.id)
       .order('word', { ascending: true })
+      .limit(5000)
     const rows = data ?? []
     setEntries(rows)
     const init: typeof edits = {}
@@ -877,6 +878,7 @@ export function StudentVocabManager({ studentId }: Props) {
       .select('*')
       .eq('student_id', studentId)
       .order('created_at', { ascending: false })
+      .limit(5000)
     if (error) console.error('VocabManager load error:', error.message)
     setVocab(data ?? [])
     setLoading(false)

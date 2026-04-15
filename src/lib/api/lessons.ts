@@ -453,14 +453,13 @@ export async function listDecks(): Promise<{ decks?: Deck[]; error?: string }> {
 }
 
 export async function getDeckWithWords(deckId: string): Promise<{ deck?: Deck; error?: string }> {
-  const { data, error } = await supabase
-    .from('vocabulary_decks')
-    .select('*, words:vocabulary_deck_words(*)')
-    .eq('id', deckId)
-    .single()
-
-  if (error) return { error: error.message }
-  return { deck: data as Deck }
+  const [{ data: deck, error: deckErr }, { data: words, error: wordsErr }] = await Promise.all([
+    supabase.from('vocabulary_decks').select('*').eq('id', deckId).single(),
+    supabase.from('vocabulary_deck_words').select('*').eq('deck_id', deckId).order('word', { ascending: true }).limit(5000),
+  ])
+  if (deckErr) return { error: deckErr.message }
+  if (wordsErr) return { error: wordsErr.message }
+  return { deck: { ...deck, words: words ?? [] } as Deck }
 }
 
 export async function createDeck(name: string): Promise<{ deck?: Deck; error?: string }> {
