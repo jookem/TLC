@@ -675,44 +675,41 @@ export async function syncAllVocabCategoriesToStudents(): Promise<{ synced?: num
   return { synced: total }
 }
 
-/** Push category field from vocabulary_deck_words to every matching vocabulary_bank row. */
+/** Push category + quiz data from vocabulary_deck_words to every matching vocabulary_bank row. */
 export async function syncVocabCategoriesToStudents(
   deckId: string,
 ): Promise<{ synced?: number; error?: string }> {
-  const words: { word: string; category: string }[] = []
+  const words: { word: string; category: string | null; quiz_sentence: string | null; quiz_distractors: string[] | null }[] = []
   const PAGE = 1000
   for (let from = 0; ; from += PAGE) {
     const { data: page, error: fetchErr } = await supabase
       .from('vocabulary_deck_words')
-      .select('word, category')
+      .select('word, category, quiz_sentence, quiz_distractors')
       .eq('deck_id', deckId)
-      .not('category', 'is', null)
       .order('word', { ascending: true })
       .range(from, from + PAGE - 1)
     if (fetchErr) return { error: fetchErr.message }
-    words.push(...((page ?? []) as { word: string; category: string }[]))
+    words.push(...((page ?? []) as typeof words))
     if (!page || page.length < PAGE) break
   }
   if (!words.length) return { synced: 0 }
 
-  // Group by category so we can update all words in one query per category
-  const byCat = new Map<string, string[]>()
-  for (const w of words) {
-    if (!byCat.has(w.category)) byCat.set(w.category, [])
-    byCat.get(w.category)!.push(w.word)
-  }
-
-  for (const [category, wordList] of byCat) {
-    // Batch .in() calls at 500 words to stay under URL length limits
-    for (let i = 0; i < wordList.length; i += 500) {
-      const chunk = wordList.slice(i, i + 500)
-      const { error } = await supabase
-        .from('vocabulary_bank')
-        .update({ category })
+  // Update each word's category + quiz data in vocabulary_bank
+  // Batch into 500-word chunks per update to stay under URL limits
+  for (let i = 0; i < words.length; i += 500) {
+    const chunk = words.slice(i, i + 500)
+    // Group by identical (category, quiz_sentence, quiz_distractors) to minimise queries
+    // Simpler: just update each word individually in parallel batches of 50
+    await Promise.all(chunk.map(w =>
+      supabase.from('vocabulary_bank')
+        .update({
+          category: w.category ?? null,
+          quiz_sentence: w.quiz_sentence ?? null,
+          quiz_distractors: w.quiz_distractors ?? [],
+        })
         .eq('deck_id', deckId)
-        .in('word', chunk)
-      if (error) return { error: error.message }
-    }
+        .eq('word', w.word)
+    ))
   }
 
   return { synced: words.length }

@@ -60,8 +60,7 @@ const MASTERY_COLORS = [
 ]
 const MASTERY_LABELS_EN = ['New', 'Seen', 'Familiar', 'Mastered']
 
-type DeckGroup = { deckId: string | null; deckName: string; words: VocabularyBankEntry[] }
-type View = 'category' | 'deck' | 'az'
+type View = 'category' | 'mastery' | 'az'
 type SessionStage = 'grid' | 'flashcards' | 'quiz'
 type Session = { words: VocabularyBankEntry[]; name: string; stage: SessionStage }
 
@@ -127,7 +126,6 @@ function LetterIndex({ letters, onJump }: { letters: string[]; onJump: (l: strin
 export function VocabularyPage() {
   const { user } = useAuth()
   const [vocab, setVocab] = useState<VocabularyBankEntry[]>([])
-  const [deckNames, setDeckNames] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [studyCards, setStudyCards] = useState<VocabularyBankEntry[] | null>(null)
@@ -157,21 +155,7 @@ export function VocabularyPage() {
         if (!data || data.length < PAGE) break
       }
 
-      const entries = allEntries
-      setVocab(entries)
-
-      const deckIds = [...new Set(entries.map(v => v.deck_id).filter(Boolean) as string[])]
-      if (deckIds.length > 0) {
-        const { data: decks } = await supabase
-          .from('vocabulary_decks')
-          .select('id, name')
-          .in('id', deckIds)
-        if (decks) {
-          const map: Record<string, string> = {}
-          for (const d of decks) map[d.id] = d.name
-          setDeckNames(map)
-        }
-      }
+      setVocab(allEntries)
       setError(null)
     } catch (e: any) {
       setError(e?.message ?? 'Failed to load vocabulary')
@@ -214,22 +198,6 @@ export function VocabularyPage() {
   function jumpTo(letter: string) {
     sectionRefs.current[letter]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
-
-  // ── Deck grouping ──────────────────────────────────────────────
-  const deckGroupMap = new Map<string | null, DeckGroup>()
-  for (const v of filtered) {
-    const dId = v.deck_id ?? null
-    if (!deckGroupMap.has(dId)) {
-      const deckName = dId ? (deckNames[dId] ?? 'Assigned Deck') : 'その他 / Other'
-      deckGroupMap.set(dId, { deckId: dId, deckName, words: [] })
-    }
-    deckGroupMap.get(dId)!.words.push(v)
-  }
-  const deckGroups = [...deckGroupMap.values()].sort((a, b) => {
-    if (a.deckId && !b.deckId) return -1
-    if (!a.deckId && b.deckId) return 1
-    return a.deckName.localeCompare(b.deckName)
-  })
 
   return (
     <>
@@ -311,10 +279,10 @@ export function VocabularyPage() {
                 By Category
               </button>
               <button
-                onClick={() => setView('deck')}
-                className={`px-3 py-2 font-medium transition-colors ${view === 'deck' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                onClick={() => setView('mastery')}
+                className={`px-3 py-2 font-medium transition-colors ${view === 'mastery' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
               >
-                By Deck
+                By Mastery
               </button>
               <button
                 onClick={() => setView('az')}
@@ -450,57 +418,72 @@ export function VocabularyPage() {
           )
         })()}
 
-        {/* ── By Deck view ── */}
-        {view === 'deck' && (
-          <div className="space-y-3">
-            {deckGroups.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <p className="text-gray-500">{q ? `No words match "${search}"` : '単語がまだありません。'}</p>
-                </CardContent>
-              </Card>
-            ) : deckGroups.map(({ deckId, deckName, words }) => (
-              <Card key={deckId ?? '__other__'}>
-                <CardContent className="py-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h2 className="font-semibold text-gray-900">{deckName}</h2>
-                      <p className="text-sm text-gray-500">{words.length}語</p>
-                    </div>
-                    <div className="flex gap-2 shrink-0 flex-wrap justify-end">
-                      <button
-                        onClick={() => setStudyCards(getStudyBatch(words))}
-                        className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                      >
-                        フラッシュカード
-                      </button>
-                      {deckId && (
-                        <button
-                          onClick={() => startSession(getStudyBatch(words), deckName)}
-                          className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand/90 transition-colors"
-                        >
-                          📖 学習 →
-                        </button>
-                      )}
-                    </div>
+        {/* ── By Mastery view ── */}
+        {view === 'mastery' && vocab.length > 0 && (() => {
+          const due = filtered.filter(v => {
+            if (!v.next_review) return v.mastery_level < 3
+            return new Date(v.next_review) <= new Date()
+          })
+          const byMastery = [0, 1, 2, 3].map(level => ({
+            level,
+            items: filtered.filter(v => v.mastery_level === level),
+          }))
+          return (
+            <div className="space-y-6">
+              {due.length > 0 && (
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-medium text-orange-600 uppercase tracking-wide">
+                      復習が必要 / Review Due ({due.length})
+                    </h2>
+                    <button
+                      onClick={() => setStudyCards(getStudyBatch(due))}
+                      className="text-xs text-gray-400 hover:text-brand transition-colors"
+                    >
+                      Study this group →
+                    </button>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {words.map(word => (
-                      <button
-                        key={word.id}
-                        onClick={() => speak(word.word)}
-                        className="text-xs px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-full text-gray-700 hover:border-brand hover:text-brand transition-colors"
-                        title={word.definition_en ?? word.definition_ja ?? ''}
-                      >
-                        {word.word}
+                    {due.map(w => (
+                      <button key={w.id} onClick={() => speak(w.word)}
+                        className="text-xs px-2.5 py-1 bg-orange-50 border border-orange-200 rounded-full text-orange-700 hover:border-orange-400 transition-colors"
+                        title={w.definition_en ?? w.definition_ja ?? ''}>
+                        {w.word}
                       </button>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                </section>
+              )}
+              {byMastery.map(({ level, items }) => items.length === 0 ? null : (
+                <section key={level} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                      {MASTERY_LABELS_EN[level]} ({items.length})
+                    </h2>
+                    <button
+                      onClick={() => setStudyCards(getStudyBatch(items))}
+                      className="text-xs text-gray-400 hover:text-brand transition-colors"
+                    >
+                      Study this group →
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {items.map(w => (
+                      <button key={w.id} onClick={() => speak(w.word)}
+                        className={`text-xs px-2.5 py-1 border rounded-full transition-colors ${MASTERY_COLORS[level]} hover:opacity-80`}
+                        title={w.definition_en ?? w.definition_ja ?? ''}>
+                        {w.word}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ))}
+              {filtered.length === 0 && q && (
+                <Card><CardContent className="py-8 text-center"><p className="text-gray-500">No words match "{search}"</p></CardContent></Card>
+              )}
+            </div>
+          )
+        })()}
 
         {vocab.length === 0 && (
           <Card>
