@@ -583,6 +583,7 @@ export async function assignDeckToStudent(
       .from('vocabulary_deck_words')
       .select('*')
       .eq('deck_id', deckId)
+      .order('word', { ascending: true })
       .range(from, from + PAGE - 1)
     if (fetchErr) {
       console.error('[assignDeck] fetch deck words error', fetchErr)
