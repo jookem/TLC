@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { CelebrationScreen } from '@/components/shared/CelebrationScreen'
 import type { VocabularyBankEntry } from '@/lib/types/database'
-import { toast } from 'sonner'
 
 type QuizQuestion = {
   word: string
@@ -47,7 +46,7 @@ function SentenceDisplay({ sentence }: { sentence: string }) {
 
 export function VocabQuizGame({ words, deckName, onClose }: Props) {
   const [generating, setGenerating] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+
   const [questions, setQuestions] = useState<QuizQuestion[]>([])
   const [index, setIndex] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
@@ -75,7 +74,7 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
           } catch {}
         }
       }
-      generate(uid)
+      loadQuestions(uid)
     })
   }, [])
 
@@ -91,86 +90,31 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
     if (userId) localStorage.removeItem(quizSessionKey(userId, deckName))
     setShowResumePrompt(false)
     setGenerating(true)
-    generate(userId)
+    loadQuestions(userId)
   }
 
-  async function generate(uid: string | null = userId) {
-    setGenerating(true)
-    setError(null)
-    try {
-      // Use cached questions where available — require _____ in sentence (reject bad cached data)
-      const cached = words.filter(w =>
-        w.quiz_sentence && w.quiz_sentence.includes('_____') && w.quiz_distractors?.length >= 1
-      )
-      const uncached = words.filter(w =>
-        !w.quiz_sentence || !w.quiz_sentence.includes('_____') || !w.quiz_distractors?.length
-      )
-
-      const cachedQuestions: QuizQuestion[] = cached.map(w => ({
-        word: w.word,
-        sentence: w.quiz_sentence!,
-        answer: w.word,
-        choices: shuffle([w.word, ...(w.quiz_distractors ?? []).slice(0, 3)]),
+  function loadQuestions(uid: string | null = userId) {
+    // Use only pre-stored questions — no AI generation during student study
+    const ready = words.filter(w =>
+      w.quiz_sentence && w.quiz_sentence.includes('_____') && w.quiz_distractors?.length >= 1
+    )
+    const allQuestions: QuizQuestion[] = shuffle(ready.map(w => ({
+      word: w.word,
+      sentence: w.quiz_sentence!,
+      answer: w.word,
+      choices: shuffle([w.word, ...(w.quiz_distractors ?? []).slice(0, 3)]),
+    })))
+    setQuestions(allQuestions)
+    setIndex(0)
+    setScore(0)
+    if (uid && allQuestions.length > 0) {
+      localStorage.setItem(quizSessionKey(uid, deckName), JSON.stringify({
+        questions: allQuestions,
+        index: 0,
+        score: 0,
       }))
-
-      let newQuestions: QuizQuestion[] = []
-      if (uncached.length > 0) {
-        const { data, error: fnError } = await supabase.functions.invoke('vocab-quiz-generate', {
-          body: {
-            words: uncached.map(w => ({ word: w.word, definition_en: w.definition_en })),
-            level: deckName,
-            wordPool: words.map(w => ({ word: w.word })),
-          },
-        })
-        if (fnError) {
-          let msg = fnError.message
-          try { const b = await (fnError as any).context?.json?.(); if (b?.error) msg = b.error } catch {}
-          throw new Error(msg)
-        }
-        const raw: { word: string; sentence: string; distractors: string[] }[] = data.questions ?? []
-
-        // Save generated questions to DB for next time
-        await Promise.all(raw.map(q => {
-          const entry = uncached.find(w => w.word === q.word)
-          if (!entry) return
-          return supabase.from('vocabulary_bank').update({
-            quiz_sentence: q.sentence,
-            quiz_distractors: q.distractors,
-          }).eq('id', entry.id)
-        }))
-
-        newQuestions = raw.map(q => ({
-          word: q.word,
-          sentence: q.sentence,
-          answer: q.word,
-          choices: shuffle([q.word, ...q.distractors.slice(0, 3)]),
-        }))
-
-        if (cached.length > 0) {
-          toast.success(`${cached.length} cached · ${raw.length} newly generated`)
-        }
-      }
-
-      const allQuestions = shuffle([...cachedQuestions, ...newQuestions])
-      setQuestions(allQuestions)
-      setIndex(0)
-      setScore(0)
-
-      // Save initial state so session is tracked from the start
-      if (uid && allQuestions.length > 0) {
-        localStorage.setItem(quizSessionKey(uid, deckName), JSON.stringify({
-          questions: allQuestions,
-          index: 0,
-          score: 0,
-        }))
-      }
-    } catch (e: any) {
-      const msg = e?.message ?? e?.context?.message ?? String(e)
-      setError(`Could not generate questions: ${msg}`)
-      console.error(e)
-    } finally {
-      setGenerating(false)
     }
+    setGenerating(false)
   }
 
   function handleSelect(choice: string) {
@@ -204,7 +148,7 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
     return (
       <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center gap-4 p-6">
         <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-        <p className="text-white text-sm">Generating questions…</p>
+        <p className="text-white text-sm">Loading quiz…</p>
         <p className="text-white/50 text-xs">{deckName}</p>
       </div>
     )
@@ -241,14 +185,14 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
     )
   }
 
-  // ── Error ────────────────────────────────────────────────────────
+  // ── No questions available ───────────────────────────────────────
 
-  if (error) {
+  if (!generating && questions.length === 0) {
     return (
-      <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center gap-4 p-6">
-        <p className="text-white">{error}</p>
-        <button onClick={() => generate()} className="px-6 py-2 bg-white text-slate-900 rounded-lg font-medium text-sm">Try Again</button>
-        <button onClick={onClose} className="text-white/50 text-sm">Back</button>
+      <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="text-white font-semibold">No quiz questions yet</p>
+        <p className="text-white/50 text-sm">Your teacher hasn't generated questions for these words yet.</p>
+        <button onClick={onClose} className="mt-2 px-6 py-2 bg-white text-slate-900 rounded-lg font-medium text-sm">Back</button>
       </div>
     )
   }
