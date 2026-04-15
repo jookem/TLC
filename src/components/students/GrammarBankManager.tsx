@@ -374,7 +374,16 @@ function DeckEditor({
   const [importJson, setImportJson] = useState('')
   const [importing, setImporting] = useState(false)
 
-  type ImportRow = { sentence: string; answer: string; hint?: string; distractors?: string[]; category?: string }
+  type ImportRow = {
+    point: string
+    explanation: string
+    sentence: string
+    answer: string
+    hint?: string
+    distractors?: string[]
+    category?: string
+    examples?: string[]
+  }
 
   function parseImport(): { rows: ImportRow[]; error: string | null } {
     try {
@@ -383,14 +392,19 @@ function DeckEditor({
       const rows: ImportRow[] = []
       for (let i = 0; i < parsed.length; i++) {
         const r = parsed[i]
-        if (!r.sentence || !r.answer) return { rows: [], error: `Item ${i + 1} missing "sentence" or "answer"` }
-        if (!r.sentence.includes('_____')) return { rows: [], error: `Item ${i + 1} sentence must contain _____` }
+        if (!r.point) return { rows: [], error: `Item ${i + 1} missing "point" (grammar rule title)` }
+        if (!r.sentence) return { rows: [], error: `Item ${i + 1} missing "sentence"` }
+        if (!r.answer) return { rows: [], error: `Item ${i + 1} missing "answer"` }
+        if (!String(r.sentence).includes('_____')) return { rows: [], error: `Item ${i + 1} "sentence" must contain _____ (5 underscores)` }
         rows.push({
+          point: String(r.point),
+          explanation: r.explanation ? String(r.explanation) : '',
           sentence: String(r.sentence),
           answer: String(r.answer),
           hint: r.hint ? String(r.hint) : undefined,
           distractors: Array.isArray(r.distractors) ? r.distractors.map(String) : [],
           category: r.category ? String(r.category) : undefined,
+          examples: Array.isArray(r.examples) ? r.examples.map(String) : [],
         })
       }
       return { rows, error: null }
@@ -407,8 +421,9 @@ function DeckEditor({
     let added = 0
     for (const r of rows) {
       const { error: err } = await addPointToDeck(deck.id, {
-        point: r.sentence,
-        explanation: r.answer,
+        point: r.point,
+        explanation: r.explanation,
+        examples: r.examples ?? [],
         sentence_with_blank: r.sentence,
         answer: r.answer,
         hint_ja: r.hint,
@@ -421,15 +436,18 @@ function DeckEditor({
     const newPoints = refreshed?.points ?? points
     setPoints(newPoints)
 
-    // Auto-sync all imported questions to existing student grammar_bank copies
-    const toSync = newPoints.filter(p => p.category)
-    if (toSync.length) {
-      await Promise.all(toSync.map(p =>
+    // Auto-sync all imported points to existing student grammar_bank copies
+    for (let i = 0; i < newPoints.length; i += 50) {
+      await Promise.all(newPoints.slice(i, i + 50).map(p =>
         supabase.from('grammar_bank').update({
-          category: p.category ?? null,
+          explanation: p.explanation,
+          examples: p.examples ?? [],
+          sentence_with_blank: p.sentence_with_blank ?? null,
+          answer: p.answer ?? null,
           hint_ja: p.hint_ja ?? null,
-          explanation: p.answer ?? p.explanation,
-        }).eq('deck_id', deck.id).eq('point', p.sentence_with_blank ?? p.point)
+          distractors: p.distractors ?? [],
+          category: p.category ?? null,
+        }).eq('deck_id', deck.id).eq('point', p.point)
       ))
     }
 
@@ -437,7 +455,7 @@ function DeckEditor({
     setShowImport(false)
     setImportJson('')
     onUpdated()
-    toast.success(`Imported ${added} of ${rows.length} question${rows.length !== 1 ? 's' : ''}`)
+    toast.success(`Imported ${added} of ${rows.length} point${rows.length !== 1 ? 's' : ''}`)
   }
 
   useEffect(() => {
@@ -691,9 +709,16 @@ function DeckEditor({
                     <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Paste JSON to bulk import</p>
                     <button onClick={() => { setShowImport(false); setImportJson('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                   </div>
-                  <p className="text-xs text-amber-700 font-mono bg-amber-100 rounded p-2 leading-relaxed">
-                    {'[{ "sentence": "She _____ every day.", "answer": "runs", "hint": "動詞", "distractors": ["run","ran","running"] }, ...]'}
-                  </p>
+                  <p className="text-xs text-amber-700 font-mono bg-amber-100 rounded p-2 leading-relaxed whitespace-pre-wrap">{`[{
+  "point": "Simple Present",
+  "explanation": "Used for habits and facts.",
+  "sentence": "She _____ every day.",
+  "answer": "runs",
+  "hint": "動詞（三単現）",
+  "distractors": ["run", "ran", "running"],
+  "category": "Verb Tenses",
+  "examples": ["I eat breakfast every morning."]
+}, ...]`}</p>
                   <textarea
                     autoFocus
                     value={importJson}
