@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { GrammarLessonSlide } from '@/lib/api/grammar'
+import { renderMarkdown } from '@/lib/renderMarkdown'
 
 interface Props {
   slides: GrammarLessonSlide[]
@@ -52,8 +53,8 @@ export function GrammarLesson({ slides, deckName, initialIndex = 0, onComplete, 
 
           {/* Explanation */}
           {slide.explanation && (
-            <div className="bg-white/10 rounded-2xl p-5">
-              <p className="text-white/90 text-base leading-relaxed whitespace-pre-wrap">{slide.explanation}</p>
+            <div className="bg-white/10 rounded-2xl p-5 text-white/90 text-base leading-relaxed [&_strong]:font-bold [&_strong]:text-white [&_em]:italic [&_ol]:mt-1 [&_ul]:mt-1 [&_li]:leading-relaxed">
+              {renderMarkdown(slide.explanation)}
             </div>
           )}
 

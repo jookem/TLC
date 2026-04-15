@@ -226,19 +226,22 @@ function LessonSlidesTab({ deckId, points }: { deckId: string; points: GrammarDe
           placeholder="Grammar point title * e.g. Present Perfect"
           required
         />
-        <textarea
-          value={addExplanation}
-          onChange={e => setAddExplanation(e.target.value)}
-          placeholder="Explanation — how the grammar rule works"
-          rows={3}
-          className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-        />
+        <div className="space-y-1">
+          <textarea
+            value={addExplanation}
+            onChange={e => setAddExplanation(e.target.value)}
+            placeholder="Explanation — supports markdown&#10;**bold**  *italic*&#10;1. numbered list&#10;- bullet list"
+            rows={7}
+            className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand resize-y"
+          />
+          <p className="text-xs text-gray-400">Formatting: <code className="bg-gray-100 px-1 rounded">**bold**</code> <code className="bg-gray-100 px-1 rounded">*italic*</code> <code className="bg-gray-100 px-1 rounded">1. list</code> <code className="bg-gray-100 px-1 rounded">- bullet</code></p>
+        </div>
         <textarea
           value={addExamples}
           onChange={e => setAddExamples(e.target.value)}
           placeholder="Examples — one per line&#10;e.g. I have eaten lunch.&#10;She has lived here for 3 years."
-          rows={3}
-          className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+          rows={4}
+          className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand resize-y"
         />
         <Input
           value={addHint}
@@ -262,26 +265,29 @@ function LessonSlidesTab({ deckId, points }: { deckId: string; points: GrammarDe
           {slides.map((s, i) => (
             <div key={s.id} className="border border-gray-200 rounded-xl overflow-hidden">
               {editingId === s.id ? (
-                <div className="p-3 space-y-2 bg-gray-50">
-                  <Input value={editFields.title} onChange={e => setEditFields(f => ({ ...f, title: e.target.value }))} placeholder="Title *" className="h-7 text-xs" />
-                  <textarea
-                    value={editFields.explanation}
-                    onChange={e => setEditFields(f => ({ ...f, explanation: e.target.value }))}
-                    placeholder="Explanation"
-                    rows={3}
-                    className="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-                  />
+                <div className="p-4 space-y-3 bg-gray-50">
+                  <Input value={editFields.title} onChange={e => setEditFields(f => ({ ...f, title: e.target.value }))} placeholder="Title *" />
+                  <div className="space-y-1">
+                    <textarea
+                      value={editFields.explanation}
+                      onChange={e => setEditFields(f => ({ ...f, explanation: e.target.value }))}
+                      placeholder="Explanation — supports markdown&#10;**bold**  *italic*&#10;1. numbered list&#10;- bullet list"
+                      rows={8}
+                      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand resize-y"
+                    />
+                    <p className="text-xs text-gray-400">Formatting: <code className="bg-gray-100 px-1 rounded">**bold**</code> <code className="bg-gray-100 px-1 rounded">*italic*</code> <code className="bg-gray-100 px-1 rounded">1. list</code> <code className="bg-gray-100 px-1 rounded">- bullet</code></p>
+                  </div>
                   <textarea
                     value={editFields.examples}
                     onChange={e => setEditFields(f => ({ ...f, examples: e.target.value }))}
                     placeholder="Examples (one per line)"
-                    rows={3}
-                    className="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+                    rows={4}
+                    className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand resize-y"
                   />
-                  <Input value={editFields.hint_ja} onChange={e => setEditFields(f => ({ ...f, hint_ja: e.target.value }))} placeholder="Japanese note" className="h-7 text-xs" />
+                  <Input value={editFields.hint_ja} onChange={e => setEditFields(f => ({ ...f, hint_ja: e.target.value }))} placeholder="Japanese note" />
                   <div className="flex gap-2">
-                    <button onClick={handleEditSave} disabled={savingEdit} className="px-3 py-1 bg-brand text-white text-xs rounded-md disabled:opacity-50">{savingEdit ? 'Saving…' : 'Save'}</button>
-                    <button onClick={() => setEditingId(null)} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                    <button onClick={handleEditSave} disabled={savingEdit} className="px-4 py-1.5 bg-brand text-white text-sm rounded-md disabled:opacity-50">{savingEdit ? 'Saving…' : 'Save'}</button>
+                    <button onClick={() => setEditingId(null)} className="px-4 py-1.5 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
                   </div>
                 </div>
               ) : (
