@@ -633,6 +633,7 @@ export async function assignDeckToStudent(
       definition_ja: w.definition_ja ?? null,
       definition_en: w.definition_en ?? null,
       example: w.example ?? null,
+      category: w.category ?? null,
     }))
 
   if (newEntries.length > 0) {
@@ -646,6 +647,31 @@ export async function assignDeckToStudent(
   }
 
   return { count: words.length }
+}
+
+/** Push category field from vocabulary_deck_words to every matching vocabulary_bank row. */
+export async function syncVocabCategoriesToStudents(
+  deckId: string,
+): Promise<{ synced?: number; error?: string }> {
+  const { data: words, error: fetchErr } = await supabase
+    .from('vocabulary_deck_words')
+    .select('word, category')
+    .eq('deck_id', deckId)
+    .not('category', 'is', null)
+  if (fetchErr) return { error: fetchErr.message }
+  if (!words?.length) return { synced: 0 }
+
+  const results = await Promise.all(
+    words.map(w =>
+      supabase.from('vocabulary_bank')
+        .update({ category: w.category })
+        .eq('deck_id', deckId)
+        .eq('word', w.word)
+    )
+  )
+  const err = results.find(r => r.error)
+  if (err?.error) return { error: err.error.message }
+  return { synced: words.length }
 }
 
 export async function syncDeckToAllStudents(

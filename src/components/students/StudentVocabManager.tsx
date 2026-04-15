@@ -16,6 +16,7 @@ import {
   syncDeckToAllStudents,
   removeDeckFromStudent,
   reorderVocabDecks,
+  syncVocabCategoriesToStudents,
   type Deck,
   type DeckWord,
 } from '@/lib/api/lessons'
@@ -68,6 +69,7 @@ function DeckEditor({
   const [renamingName, setRenamingName] = useState(false)
   const [tab, setTab] = useState<'words' | 'quiz'>('words')
   const [suggestingCategories, setSuggestingCategories] = useState(false)
+  const [syncingCategories, setSyncingCategories] = useState(false)
 
   // ── Quiz tab state — keyed by vocabulary_deck_words.id ───────
   const [generating, setGenerating] = useState(false)
@@ -269,6 +271,14 @@ function DeckEditor({
     }
   }
 
+  async function handleSyncCategories() {
+    setSyncingCategories(true)
+    const { synced, error } = await syncVocabCategoriesToStudents(deck.id)
+    setSyncingCategories(false)
+    if (error) toast.error(`Sync failed: ${error}`)
+    else toast.success(`Synced ${synced} categories to students`)
+  }
+
   async function handleAddWord(e: React.FormEvent) {
     e.preventDefault()
     if (!word.trim() || !defJa.trim()) return
@@ -374,10 +384,19 @@ function DeckEditor({
             {words.length > 0 && (
               <button
                 onClick={handleSuggestCategories}
-                disabled={suggestingCategories}
+                disabled={suggestingCategories || syncingCategories}
                 className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 shrink-0"
               >
                 {suggestingCategories ? 'Categorizing…' : '✦ Auto-categorize'}
+              </button>
+            )}
+            {words.some(w => w.category) && (
+              <button
+                onClick={handleSyncCategories}
+                disabled={syncingCategories || suggestingCategories}
+                className="px-3 py-1.5 bg-purple-100 text-purple-700 text-xs rounded-lg hover:bg-purple-200 transition-colors disabled:opacity-50 shrink-0"
+              >
+                {syncingCategories ? 'Syncing…' : '↑ Sync to students'}
               </button>
             )}
             <button
