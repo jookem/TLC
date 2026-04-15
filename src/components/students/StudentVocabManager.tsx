@@ -199,45 +199,61 @@ function DeckEditor({
   async function handleSuggestCategories() {
     if (!words.length) { toast.info('No words to categorize'); return }
     setSuggestingCategories(true)
+
+    const BATCH_SIZE = 15
+    const BATCH_DELAY_MS = 4000  // 4s between calls — keeps tokens under 10k/min
+    const allCategories: { id: string; category: string }[] = []
+    const wordsById = new Map(words.map(w => [w.id, w]))
+
     try {
-      const { data, error } = await supabase.functions.invoke('vocab-categorize', {
-        body: {
-          words: words.map(w => ({
-            id: w.id,
-            word: w.word,
-            definition_en: w.definition_en,
-            definition_ja: w.definition_ja,
-            example: w.example,
-          })),
-        },
-      })
-      if (error) {
-        let msg = error.message
-        try { const b = await (error as any).context?.json?.(); if (b?.error) msg = b.error } catch {}
-        throw new Error(msg)
+      for (let i = 0; i < words.length; i += BATCH_SIZE) {
+        const batch = words.slice(i, i + BATCH_SIZE)
+
+        const { data, error } = await supabase.functions.invoke('vocab-categorize', {
+          body: {
+            words: batch.map(w => ({
+              id: w.id,
+              word: w.word,
+              definition_en: w.definition_en,
+              definition_ja: w.definition_ja,
+              example: w.example,
+            })),
+          },
+        })
+
+        if (error) {
+          let msg = error.message
+          try { const b = await (error as any).context?.json?.(); if (b?.error) msg = b.error } catch {}
+          throw new Error(msg)
+        }
+
+        const batchCategories: { id: string; category: string }[] = data.categories ?? []
+        allCategories.push(...batchCategories)
+
+        // Save this batch to DB immediately so progress isn't lost on late failure
+        await Promise.all(batchCategories.map(({ id, category }) =>
+          supabase.from('vocabulary_deck_words').update({ category }).eq('id', id)
+        ))
+        const wordsInBatch = new Map(batch.map(w => [w.id, w]))
+        await Promise.all(batchCategories.map(({ id, category }) => {
+          const w = wordsInBatch.get(id)
+          if (!w) return Promise.resolve()
+          return supabase.from('vocabulary_bank').update({ category }).eq('deck_id', deck.id).eq('word', w.word)
+        }))
+
+        // Update local state after each batch so the UI shows progress
+        setWords(prev => prev.map(w => {
+          const match = batchCategories.find(c => c.id === w.id)
+          return match ? { ...w, category: match.category } : w
+        }))
+
+        // Rate-limit delay between batches (skip after last batch)
+        if (i + BATCH_SIZE < words.length) {
+          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
+        }
       }
-      const categories: { id: string; category: string }[] = data.categories ?? []
 
-      // Update vocabulary_deck_words (the source template)
-      await Promise.all(categories.map(({ id, category }) =>
-        supabase.from('vocabulary_deck_words').update({ category }).eq('id', id)
-      ))
-
-      // Sync to all students' vocabulary_bank entries for this deck
-      const wordsById = new Map(words.map(w => [w.id, w]))
-      await Promise.all(categories.map(({ id, category }) => {
-        const w = wordsById.get(id)
-        if (!w) return Promise.resolve()
-        return supabase.from('vocabulary_bank').update({ category }).eq('deck_id', deck.id).eq('word', w.word)
-      }))
-
-      // Update local state
-      setWords(prev => prev.map(w => {
-        const match = categories.find(c => c.id === w.id)
-        return match ? { ...w, category: match.category } : w
-      }))
-
-      toast.success(`Categorized ${categories.length} word${categories.length !== 1 ? 's' : ''}`)
+      toast.success(`Categorized ${allCategories.length} word${allCategories.length !== 1 ? 's' : ''}`)
     } catch (e: any) {
       toast.error(`Failed: ${e?.message ?? String(e)}`)
     } finally {
