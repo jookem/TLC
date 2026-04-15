@@ -651,7 +651,6 @@ function DeckEditor({
                 {syncingCategories ? 'Syncing…' : '↑ Sync to students'}
               </button>
             )}
-            <button onClick={async () => { await onDelete(deck.id, name); onClose() }} className="text-xs text-gray-300 hover:text-red-500 transition-colors">Delete deck</button>
             <button aria-label="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
           </div>
         </div>
@@ -884,7 +883,7 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
   }
 
   async function handleRemoveDeck(deckId: string, deckName: string) {
-    if (!confirm(`Remove all points from deck "${deckName}" from this student?`)) return
+    if (!confirm(`Unassign deck "${deckName}" from this student?`)) return
     setRemovingDeck(deckId)
     const { error } = await removeGrammarDeckFromStudent(deckId, studentId)
     setRemovingDeck(null)
@@ -977,7 +976,7 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
                       <button onClick={() => setEditingDeck(deck)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
                       {isAssigned ? (
                         <button onClick={() => handleRemoveDeck(row.id, row.name)} disabled={removingDeck === row.id} className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50">
-                          {removingDeck === row.id ? '…' : 'Remove'}
+                          {removingDeck === row.id ? '…' : 'Unassign'}
                         </button>
                       ) : (
                         <button onClick={() => handleAssign(row.id)} disabled={assigning === row.id} className="text-xs text-brand hover:text-brand/80 transition-colors disabled:opacity-50">

@@ -363,9 +363,6 @@ function PuzzleEditor({
             </button>
           )}
           <div className="flex items-center gap-3 ml-4">
-            <button onClick={async () => { await onDelete(deck.id, name); onClose() }} className="text-xs text-gray-300 hover:text-red-500 transition-colors">
-              Delete deck
-            </button>
             <button aria-label="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
           </div>
         </div>
@@ -597,7 +594,7 @@ export function PuzzleDeckManager({ studentId }: { studentId: string }) {
   }
 
   async function handleRemove(deckId: string, deckName: string) {
-    if (!confirm(`Remove deck "${deckName}" from this student?`)) return
+    if (!confirm(`Unassign deck "${deckName}" from this student?`)) return
     setRemoving(deckId)
     const { error } = await removePuzzleDeckFromStudent(deckId, studentId)
     setRemoving(null)
@@ -664,7 +661,7 @@ export function PuzzleDeckManager({ studentId }: { studentId: string }) {
                       <button onClick={() => setEditingDeck(deck)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
                       {isAssigned ? (
                         <button onClick={() => handleRemove(row.id, row.name)} disabled={removing === row.id} className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50">
-                          {removing === row.id ? '…' : 'Remove'}
+                          {removing === row.id ? '…' : 'Unassign'}
                         </button>
                       ) : (
                         <button onClick={() => handleAssign(row.id)} disabled={assigning === row.id} className="text-xs text-brand hover:text-brand/80 transition-colors disabled:opacity-50">
