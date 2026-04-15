@@ -505,14 +505,21 @@ function DeckEditor({
     if (!points.length) { toast.info('No questions to sync'); return }
     setSyncingCategories(true)
     try {
-      await Promise.all(points.map(p =>
-        supabase.from('grammar_bank').update({
-          category: p.category ?? null,
-          hint_ja: p.hint_ja ?? null,
-          explanation: p.answer ?? p.explanation,
-        }).eq('deck_id', deck.id).eq('point', p.sentence_with_blank ?? p.point)
-      ))
-      toast.success(`Synced ${points.length} question${points.length !== 1 ? 's' : ''} to all students`)
+      // Batch in groups of 50 to avoid connection limits
+      for (let i = 0; i < points.length; i += 50) {
+        await Promise.all(points.slice(i, i + 50).map(p =>
+          supabase.from('grammar_bank').update({
+            explanation: p.explanation,
+            examples: p.examples ?? [],
+            sentence_with_blank: p.sentence_with_blank ?? null,
+            answer: p.answer ?? null,
+            hint_ja: p.hint_ja ?? null,
+            distractors: p.distractors ?? [],
+            category: p.category ?? null,
+          }).eq('deck_id', deck.id).eq('point', p.point)
+        ))
+      }
+      toast.success(`Synced ${points.length} point${points.length !== 1 ? 's' : ''} to all students`)
     } catch (e: any) {
       toast.error(`Failed: ${e?.message ?? String(e)}`)
     } finally {

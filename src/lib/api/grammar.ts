@@ -273,13 +273,20 @@ export async function assignGrammarDeckToStudent(
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.user) return { error: 'Not authenticated.' }
 
-  const { data: points, error: fetchErr } = await supabase
-    .from('grammar_deck_points')
-    .select('*')
-    .eq('deck_id', deckId)
-
-  if (fetchErr) return { error: fetchErr.message }
-  if (!points?.length) return { count: 0 }
+  const points: GrammarDeckPoint[] = []
+  const PAGE = 1000
+  for (let from = 0; ; from += PAGE) {
+    const { data: page, error: fetchErr } = await supabase
+      .from('grammar_deck_points')
+      .select('*')
+      .eq('deck_id', deckId)
+      .order('created_at', { ascending: true })
+      .range(from, from + PAGE - 1)
+    if (fetchErr) return { error: fetchErr.message }
+    points.push(...(page ?? []))
+    if (!page || page.length < PAGE) break
+  }
+  if (!points.length) return { count: 0 }
 
   const entries = points.map((p: GrammarDeckPoint) => ({
     student_id: studentId,
@@ -297,7 +304,7 @@ export async function assignGrammarDeckToStudent(
 
   const { error } = await supabase
     .from('grammar_bank')
-    .upsert(entries, { onConflict: 'student_id,point', ignoreDuplicates: true })
+    .upsert(entries, { onConflict: 'student_id,point', ignoreDuplicates: false })
 
   if (error) return { error: error.message }
   return { count: entries.length }
