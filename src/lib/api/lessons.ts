@@ -592,33 +592,51 @@ export async function assignDeckToStudent(
   }
   if (!wordTexts.length) return { count: 0 }
 
-  // Find words already in the student's bank (preserve mastery/progress)
-  const existing: { id: string; word: string }[] = []
+  // Find words already assigned to THIS specific deck — nothing to do for these
+  const alreadyAssigned: string[] = []
   for (let i = 0; i < wordTexts.length; i += 500) {
     const chunk = wordTexts.slice(i, i + 500)
     const { data: page } = await supabase
       .from('vocabulary_bank')
+      .select('word')
+      .eq('student_id', studentId)
+      .eq('deck_id', deckId)
+      .in('word', chunk)
+    alreadyAssigned.push(...(page ?? []).map((r: any) => r.word))
+  }
+  const alreadyAssignedSet = new Set(alreadyAssigned)
+  const wordsToProcess = wordTexts.filter(w => !alreadyAssignedSet.has(w))
+
+  if (!wordsToProcess.length) return { count: wordTexts.length }
+
+  // Find detached words (deck_id IS NULL) — previously unassigned, mastery preserved
+  // IMPORTANT: only match by ID when re-attaching to avoid touching other decks' words
+  const detachedRows: { id: string; word: string }[] = []
+  for (let i = 0; i < wordsToProcess.length; i += 500) {
+    const chunk = wordsToProcess.slice(i, i + 500)
+    const { data: page } = await supabase
+      .from('vocabulary_bank')
       .select('id, word')
       .eq('student_id', studentId)
+      .is('deck_id', null)
       .in('word', chunk)
-    existing.push(...(page ?? []))
+    detachedRows.push(...(page ?? []))
   }
+  const detachedByWord = new Map(detachedRows.map(r => [r.word, r.id]))
 
-  const existingByWord = new Map(existing.map(e => [e.word, e.id]))
-
-  // Update deck_id for words already in bank (preserves mastery/next_review)
-  const existingWords = [...existingByWord.keys()]
-  for (let i = 0; i < existingWords.length; i += 50) {
+  // Re-attach detached rows by ID (preserves mastery/next_review, never touches other decks)
+  const detachedIds = detachedRows.map(r => r.id)
+  for (let i = 0; i < detachedIds.length; i += 50) {
     await supabase
       .from('vocabulary_bank')
       .update({ deck_id: deckId })
       .eq('student_id', studentId)
-      .in('word', existingWords.slice(i, i + 50))
+      .in('id', detachedIds.slice(i, i + 50))
   }
 
-  // Insert only progress rows for words not yet in the bank (no content — read from template)
-  const newEntries = wordTexts
-    .filter(w => !existingByWord.has(w))
+  // Insert only rows for words genuinely not in the bank at all
+  const newEntries = wordsToProcess
+    .filter(w => !detachedByWord.has(w))
     .map(w => ({
       student_id: studentId,
       teacher_id: session.user.id,

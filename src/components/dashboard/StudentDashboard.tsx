@@ -44,6 +44,7 @@ export function StudentDashboard() {
           .from('lesson_notes')
           .select('*, lesson:lessons(scheduled_start, teacher:profiles!lessons_teacher_id_fkey(full_name))')
           .eq('is_visible_to_student', true)
+          .or(`student_id.eq.${user!.id},student_id.is.null`)
           .order('created_at', { ascending: false })
           .limit(3),
 
