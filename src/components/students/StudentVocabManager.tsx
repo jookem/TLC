@@ -72,7 +72,7 @@ function DeckEditor({
   const [generating, setGenerating] = useState(false)
   const [savingQuizId, setSavingQuizId] = useState<string | null>(null)
   const [regenId, setRegenId] = useState<string | null>(null)
-  const [quizEdits, setQuizEdits] = useState<Record<string, { sentence: string; d0: string; d1: string; d2: string }>>({})
+  const [quizEdits, setQuizEdits] = useState<Record<string, { sentence: string; answer: string; d0: string; d1: string; d2: string; inflections: string }>>({})
 
   // Initialise quizEdits whenever words load/change
   useEffect(() => {
@@ -81,9 +81,11 @@ function DeckEditor({
       if (!quizEdits[w.id]) {
         init[w.id] = {
           sentence: w.quiz_sentence ?? '',
+          answer: w.quiz_answer ?? '',
           d0: w.quiz_distractors?.[0] ?? '',
           d1: w.quiz_distractors?.[1] ?? '',
           d2: w.quiz_distractors?.[2] ?? '',
+          inflections: (w.inflections ?? []).join(', '),
         }
       }
     }
@@ -101,9 +103,9 @@ function DeckEditor({
   }
 
   /** Save quiz data to vocabulary_deck_words, then sync to all students' vocabulary_bank */
-  async function persistQuiz(deckWordId: string, wordText: string, sentence: string, quizAnswer: string | null, distractors: string[]) {
+  async function persistQuiz(deckWordId: string, wordText: string, sentence: string, quizAnswer: string | null, distractors: string[], inflections: string[] | null) {
     await supabase.from('vocabulary_deck_words')
-      .update({ quiz_sentence: sentence, quiz_answer: quizAnswer, quiz_distractors: distractors })
+      .update({ quiz_sentence: sentence, quiz_answer: quizAnswer, quiz_distractors: distractors, inflections })
       .eq('id', deckWordId)
     await supabase.from('vocabulary_bank')
       .update({ quiz_sentence: sentence, quiz_answer: quizAnswer, quiz_distractors: distractors })
@@ -121,21 +123,21 @@ function DeckEditor({
         level: deck.name,
         wordPool: pool.map(w => ({ word: w.word })),
       })
-      const raw: { word: string; sentence: string; quiz_answer?: string; distractors: string[] }[] = data.questions ?? []
+      const raw: { word: string; sentence: string; quiz_answer?: string; distractors: string[]; inflections?: string[] }[] = data.questions ?? []
       await Promise.all(raw.map(q => {
         const target = targets.find(w => w.word === q.word)
         if (!target) return
-        return persistQuiz(target.id, target.word, q.sentence, q.quiz_answer ?? null, q.distractors)
+        return persistQuiz(target.id, target.word, q.sentence, q.quiz_answer ?? null, q.distractors, q.inflections ?? null)
       }))
       setWords(prev => prev.map(w => {
         const q = raw.find(r => r.word === w.word)
-        return q ? { ...w, quiz_sentence: q.sentence, quiz_answer: q.quiz_answer ?? null, quiz_distractors: q.distractors } : w
+        return q ? { ...w, quiz_sentence: q.sentence, quiz_answer: q.quiz_answer ?? null, quiz_distractors: q.distractors, inflections: q.inflections ?? null } : w
       }))
       setQuizEdits(prev => {
         const next = { ...prev }
         for (const q of raw) {
           const target = targets.find(w => w.word === q.word)
-          if (target) next[target.id] = { sentence: q.sentence, d0: q.distractors[0] ?? '', d1: q.distractors[1] ?? '', d2: q.distractors[2] ?? '' }
+          if (target) next[target.id] = { sentence: q.sentence, answer: q.quiz_answer ?? '', d0: q.distractors[0] ?? '', d1: q.distractors[1] ?? '', d2: q.distractors[2] ?? '', inflections: (q.inflections ?? []).join(', ') }
         }
         return next
       })
@@ -156,9 +158,9 @@ function DeckEditor({
       })
       const q = (data.questions ?? [])[0]
       if (!q) throw new Error('No question returned')
-      await persistQuiz(w.id, w.word, q.sentence, q.quiz_answer ?? null, q.distractors)
-      setWords(prev => prev.map(x => x.id === w.id ? { ...x, quiz_sentence: q.sentence, quiz_answer: q.quiz_answer ?? null, quiz_distractors: q.distractors } : x))
-      setQuizEdits(prev => ({ ...prev, [w.id]: { sentence: q.sentence, d0: q.distractors[0] ?? '', d1: q.distractors[1] ?? '', d2: q.distractors[2] ?? '' } }))
+      await persistQuiz(w.id, w.word, q.sentence, q.quiz_answer ?? null, q.distractors, q.inflections ?? null)
+      setWords(prev => prev.map(x => x.id === w.id ? { ...x, quiz_sentence: q.sentence, quiz_answer: q.quiz_answer ?? null, quiz_distractors: q.distractors, inflections: q.inflections ?? null } : x))
+      setQuizEdits(prev => ({ ...prev, [w.id]: { sentence: q.sentence, answer: q.quiz_answer ?? '', d0: q.distractors[0] ?? '', d1: q.distractors[1] ?? '', d2: q.distractors[2] ?? '', inflections: (q.inflections ?? []).join(', ') } }))
     } catch (e: any) {
       toast.error(`Regeneration failed: ${e?.message ?? String(e)}`)
     } finally {
@@ -171,8 +173,9 @@ function DeckEditor({
     if (!e) return
     setSavingQuizId(w.id)
     const distractors = [e.d0, e.d1, e.d2].filter(Boolean)
-    await persistQuiz(w.id, w.word, e.sentence || '', null, distractors)
-    setWords(prev => prev.map(x => x.id === w.id ? { ...x, quiz_sentence: e.sentence || null, quiz_answer: null, quiz_distractors: distractors } : x))
+    const inflections = e.inflections ? e.inflections.split(',').map(s => s.trim()).filter(Boolean) : null
+    await persistQuiz(w.id, w.word, e.sentence || '', e.answer || null, distractors, inflections)
+    setWords(prev => prev.map(x => x.id === w.id ? { ...x, quiz_sentence: e.sentence || null, quiz_answer: e.answer || null, quiz_distractors: distractors, inflections } : x))
     setSavingQuizId(null)
     toast.success('Saved')
   }
@@ -495,6 +498,26 @@ function DeckEditor({
                                 placeholder="e.g. She _____ to school every day."
                                 className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand"
                               />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs text-gray-500 mb-1 block">Correct answer</label>
+                                <input
+                                  value={e.answer}
+                                  onChange={ev => setQuizEdits(prev => ({ ...prev, [w.id]: { ...prev[w.id], answer: ev.target.value } }))}
+                                  placeholder="e.g. works"
+                                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-500 mb-1 block">Inflections (comma-separated)</label>
+                                <input
+                                  value={e.inflections}
+                                  onChange={ev => setQuizEdits(prev => ({ ...prev, [w.id]: { ...prev[w.id], inflections: ev.target.value } }))}
+                                  placeholder="e.g. works, worked, working"
+                                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                                />
+                              </div>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                               {(['d0', 'd1', 'd2'] as const).map((k, i) => (
