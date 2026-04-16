@@ -13,7 +13,7 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 /** Extract individual JSON objects from a potentially malformed array string. */
-function extractQuestions(text: string): { word: string; sentence: string; quiz_answer: string | null; distractors: string[] }[] {
+function extractQuestions(text: string): { word: string; sentence: string; quiz_answer: string | null; distractors: string[]; inflections: string[] | null }[] {
   const arrayMatch = text.match(/\[[\s\S]*\]/)
   if (arrayMatch) {
     try {
@@ -30,7 +30,11 @@ function extractQuestions(text: string): { word: string; sentence: string; quiz_
     try {
       const obj = JSON.parse(match[0])
       if (obj.word && obj.sentence && Array.isArray(obj.distractors)) {
-        results.push({ ...obj, quiz_answer: obj.quiz_answer ?? null })
+        results.push({
+          ...obj,
+          quiz_answer: obj.quiz_answer ?? null,
+          inflections: Array.isArray(obj.inflections) ? obj.inflections : null,
+        })
       }
     } catch {
       // skip malformed object
@@ -101,43 +105,52 @@ Deno.serve(async (req) => {
     const prompt = `You are creating fill-in-the-blank vocabulary quiz questions for Japanese ESL students.
 Level: ${levelGuide.label}
 
-For each target word, write:
+For each target word, output:
 1. One English sentence with exactly "_____" (five underscores) as the blank.
-2. The EXACT word form (quiz_answer) that belongs in the blank — this may differ from the base form if the sentence requires conjugation (e.g. third-person -s, past tense -ed, plural -s).
-3. Exactly 3 distractor words conjugated/inflected to match the SAME grammatical form as quiz_answer.
+2. quiz_answer — the EXACT inflected form that fills the blank (may differ from base form).
+3. distractors — exactly 3 wrong answers inflected to the SAME grammatical form as quiz_answer.
+4. inflections — an array of ALL notable word forms beyond the base form (stored for future use).
 ${poolSection}
 CRITICAL — THE BLANK:
 - The sentence field MUST contain "_____" (five underscores). No exceptions.
 - The target word must NOT appear anywhere in the sentence.
-- WRONG: {"word":"run","sentence":"She runs to school.","quiz_answer":"runs","distractors":["walks","swims","reads"]} — word visible
-- CORRECT: {"word":"run","sentence":"She _____ to school every day.","quiz_answer":"runs","distractors":["walks","swims","reads"]}
+- WRONG: {"word":"run","sentence":"She runs to school.",...} — word visible in sentence
+- CORRECT: {"word":"run","sentence":"She _____ to school every day.",...}
 
 SENTENCE RULES:
 - ${levelGuide.sentenceRule}
 - ${levelGuide.grammarBan}
 - The sentence context must make it clear that ONLY the target word fills the blank correctly.
 - Do NOT use apostrophes — write "does not" not "doesn't", "I am" not "I'm".
-- The blank must be grammatically and semantically unambiguous — only one word makes sense.
+- The blank must be grammatically and semantically unambiguous.
 
 GRAMMAR FORM RULES:
-- quiz_answer must be the exact inflected form required by the sentence grammar.
-  Examples: base "work" → quiz_answer "works" (he/she/it present), "worked" (past), "working" (progressive)
-- All 3 distractors must use the SAME grammatical form as quiz_answer.
-  If quiz_answer is "works" (3rd person -s), distractors must also end in -s: "plays", "eats", "helps"
-  If quiz_answer is "worked" (past), distractors must also be past: "played", "ate", "helped"
-- This ensures all four choices look grammatically equivalent in the sentence.
+- quiz_answer must be the exact inflected form the sentence requires.
+  Examples: base "work" → "works" (3rd person present), "worked" (past), "working" (progressive)
+- All 3 distractors must use the SAME grammatical form as quiz_answer so all choices look equivalent.
+- For irregular verbs always use the correct irregular form: go→went, run→ran, have→had.
+
+INFLECTIONS RULES:
+- inflections is an array of all notable forms of the word beyond the base form.
+- Include only forms that differ meaningfully from the base.
+- Verbs: [3rd-person-s, past, past-participle, gerund] — e.g. ["works","worked","worked","working"]
+- If past = past-participle, list it once: ["works","worked","working"]
+- Irregular verbs: ["goes","went","gone","going"] — include the irregular forms explicitly.
+- Nouns: just the plural if it differs — ["dogs"] or ["children"] for irregular plurals.
+- Adjectives: comparative and superlative — ["happier","happiest"].
+- If the word is invariable (e.g. "very", "the"), inflections = [].
 
 DISTRACTOR RULES:
 - All 3 distractors must be the same part of speech as the target word.
-- Prefer distractors from the vocabulary pool (pool words are the same category — good wrong answers).
-- Each distractor must be clearly wrong when placed in the sentence (does not make sense).
-- Do NOT use near-synonyms that could also fit the sentence — they create ambiguous questions.
+- Prefer distractors from the vocabulary pool — same category makes better wrong answers.
+- Each distractor must be clearly wrong in the sentence context.
+- Do NOT use near-synonyms that could also correctly fill the blank.
 
 Target words:
 ${wordList}
 
 Respond ONLY with a JSON array, no markdown, no extra text:
-[{"word":"run","sentence":"She _____ to school every day.","quiz_answer":"runs","distractors":["walks","swims","reads"]}]`
+[{"word":"run","sentence":"She _____ to school every day.","quiz_answer":"runs","distractors":["walks","swims","reads"],"inflections":["runs","ran","run","running"]}]`
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

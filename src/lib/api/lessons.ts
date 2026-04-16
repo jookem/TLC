@@ -423,7 +423,9 @@ export interface DeckWord {
   example: string | null
   category: string | null
   quiz_sentence: string | null
+  quiz_answer: string | null
   quiz_distractors: string[]
+  inflections: string[] | null
   created_at: string
 }
 
@@ -703,6 +705,7 @@ export async function getStudentVocab(
       entry.quiz_sentence = t.quiz_sentence
       entry.quiz_answer = t.quiz_answer ?? null
       entry.quiz_distractors = t.quiz_distractors ?? []
+      entry.inflections = t.inflections ?? null
     }
   }
 

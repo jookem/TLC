@@ -163,6 +163,7 @@ export interface VocabularyBankEntry {
   quiz_sentence: string | null
   quiz_answer: string | null
   quiz_distractors: string[]
+  inflections: string[] | null
   category: string | null
   created_at: string
   updated_at: string
