@@ -599,31 +599,33 @@ export async function assignDeckToStudent(
   }
   if (!wordTexts.length) return { count: 0 }
 
-  // Fetch ALL existing bank rows for this student+deck (active or inactive)
-  const existingRows: { id: string; word: string; is_active: boolean }[] = []
+  // Fetch ALL existing bank rows for this student matching these words,
+  // regardless of which deck they belong to — needed to avoid unique constraint
+  // violations on (student_id, word) when a word exists from another deck.
+  const existingRows: { id: string; word: string; deck_id: string | null; is_active: boolean }[] = []
   for (let i = 0; i < wordTexts.length; i += 500) {
     const chunk = wordTexts.slice(i, i + 500)
     const { data: page } = await supabase
       .from('vocabulary_bank')
-      .select('id, word, is_active')
+      .select('id, word, deck_id, is_active')
       .eq('student_id', studentId)
-      .eq('deck_id', deckId)
       .in('word', chunk)
     existingRows.push(...(page ?? []))
   }
 
   const existingWordSet = new Set(existingRows.map(r => r.word))
-  const inactiveIds = existingRows.filter(r => !r.is_active).map(r => r.id)
 
-  // Re-activate any previously unassigned rows (preserves mastery/next_review)
-  for (let i = 0; i < inactiveIds.length; i += 50) {
+  // Update rows that exist but belong to a different deck or are inactive:
+  // point them at this deck and activate, preserving mastery/next_review.
+  const toUpdate = existingRows.filter(r => r.deck_id !== deckId || !r.is_active)
+  for (let i = 0; i < toUpdate.length; i += 50) {
     await supabase
       .from('vocabulary_bank')
-      .update({ is_active: true })
-      .in('id', inactiveIds.slice(i, i + 50))
+      .update({ deck_id: deckId, is_active: true })
+      .in('id', toUpdate.slice(i, i + 50).map(r => r.id))
   }
 
-  // Insert rows for words not yet in the bank at all
+  // Insert only rows for words that don't exist in the bank at all
   const newEntries = wordTexts
     .filter(w => !existingWordSet.has(w))
     .map(w => ({
