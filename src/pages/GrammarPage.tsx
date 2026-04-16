@@ -287,16 +287,15 @@ export function GrammarPage() {
                   ref={el => { sectionRefs.current[cat] = el }}
                   className="scroll-mt-20 space-y-3"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-sm font-semibold text-purple-700 uppercase tracking-wide">{cat}</h2>
-                      <span className="text-xs text-gray-400">{categoryMap.get(cat)!.length}</span>
-                    </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-sm font-semibold text-purple-700 uppercase tracking-wide">
+                      {cat} <span className="text-gray-400 normal-case font-normal">({categoryMap.get(cat)!.length})</span>
+                    </h2>
                     {(() => {
                       const all = categoryMap.get(cat)!
                       const isCapped = sessionLimit > 0 && all.length > sessionLimit
                       return (
-                        <div className="flex gap-2 items-center">
+                        <div className="flex gap-2 items-center shrink-0">
                           <button
                             onClick={() => startStudy(getCategoryBatch(all), true)}
                             className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -326,15 +325,14 @@ export function GrammarPage() {
                   ref={el => { sectionRefs.current['__other__'] = el }}
                   className="scroll-mt-20 space-y-3"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Other</h2>
-                      <span className="text-xs text-gray-400">{uncategorized.length}</span>
-                    </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+                      Other <span className="font-normal">({uncategorized.length})</span>
+                    </h2>
                     {(() => {
                       const isCapped = sessionLimit > 0 && uncategorized.length > sessionLimit
                       return (
-                        <div className="flex gap-2 items-center">
+                        <div className="flex gap-2 items-center shrink-0">
                           <button
                             onClick={() => startStudy(getCategoryBatch(uncategorized), true)}
                             className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
