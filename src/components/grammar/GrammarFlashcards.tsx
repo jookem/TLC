@@ -24,9 +24,7 @@ function PointDisplay({ point, answerJa }: { point: string; answerJa?: string | 
         <span key={i}>
           {part}
           {i < parts.length - 1 && (
-            fills[i]
-              ? <span className="text-yellow-300 font-bold">[{fills[i]}]</span>
-              : <span>_____</span>
+            <span className="text-yellow-300 font-bold">[{fills[i] ?? fills[fills.length - 1]}]</span>
           )}
         </span>
       ))}
