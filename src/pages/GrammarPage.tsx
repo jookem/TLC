@@ -24,6 +24,24 @@ const MASTERY_COLORS = [
   'bg-brand-light text-brand-dark',
   'bg-green-100 text-green-700',
 ]
+const MASTERY_BAR_COLORS = ['bg-gray-300', 'bg-yellow-400', 'bg-brand', 'bg-green-400']
+
+function MasteryBar({ entries }: { entries: GrammarBankEntry[] }) {
+  const counts = [0, 0, 0, 0]
+  for (const e of entries) counts[e.mastery_level]++
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <div className="flex h-1.5 rounded-full overflow-hidden w-24 bg-gray-100">
+        {counts.map((c, i) => c > 0 && (
+          <div key={i} className={MASTERY_BAR_COLORS[i]} style={{ width: `${(c / entries.length) * 100}%` }} />
+        ))}
+      </div>
+      <span className="text-xs text-gray-400">
+        {counts.map((c, i) => c > 0 ? `${c} ${MASTERY_LABELS_EN[i]}` : null).filter(Boolean).join(' · ')}
+      </span>
+    </div>
+  )
+}
 
 type View = 'category' | 'mastery'
 
@@ -287,28 +305,35 @@ export function GrammarPage() {
                   ref={el => { sectionRefs.current[cat] = el }}
                   className="scroll-mt-20 space-y-3"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="text-sm font-semibold text-purple-700 uppercase tracking-wide">
-                      {cat} <span className="text-gray-400 normal-case font-normal">({categoryMap.get(cat)!.length})</span>
-                    </h2>
+                  <div className="flex items-start justify-between gap-2">
                     {(() => {
                       const all = categoryMap.get(cat)!
                       const isCapped = sessionLimit > 0 && all.length > sessionLimit
+                      const sessions = isCapped ? Math.ceil(all.length / sessionLimit) : 1
                       return (
-                        <div className="flex gap-2 items-center shrink-0">
-                          <button
-                            onClick={() => startStudy(getCategoryBatch(all), true)}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                          >
-                            フラッシュカード
-                          </button>
-                          <button
-                            onClick={() => startStudy(getCategoryBatch(all))}
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand/90 transition-colors"
-                          >
-                            {isCapped ? `📖 学習 (${sessionLimit}/${all.length}) →` : '📖 学習 →'}
-                          </button>
-                        </div>
+                        <>
+                          <div>
+                            <h2 className="text-sm font-semibold text-purple-700 uppercase tracking-wide">{cat}</h2>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {all.length}点{sessions > 1 ? ` · ${sessions} sessions` : ''}
+                            </p>
+                            <MasteryBar entries={all} />
+                          </div>
+                          <div className="flex flex-col gap-2 shrink-0 items-end">
+                            <button
+                              onClick={() => startStudy(getCategoryBatch(all), true)}
+                              className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                            >
+                              フラッシュカード
+                            </button>
+                            <button
+                              onClick={() => startStudy(getCategoryBatch(all))}
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand/90 transition-colors"
+                            >
+                              {isCapped ? `📖 学習 (${sessionLimit}/${all.length}) →` : '📖 学習 →'}
+                            </button>
+                          </div>
+                        </>
                       )
                     })()}
                   </div>
@@ -325,27 +350,34 @@ export function GrammarPage() {
                   ref={el => { sectionRefs.current['__other__'] = el }}
                   className="scroll-mt-20 space-y-3"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
-                      Other <span className="font-normal">({uncategorized.length})</span>
-                    </h2>
+                  <div className="flex items-start justify-between gap-2">
                     {(() => {
                       const isCapped = sessionLimit > 0 && uncategorized.length > sessionLimit
+                      const sessions = isCapped ? Math.ceil(uncategorized.length / sessionLimit) : 1
                       return (
-                        <div className="flex gap-2 items-center shrink-0">
-                          <button
-                            onClick={() => startStudy(getCategoryBatch(uncategorized), true)}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                          >
-                            フラッシュカード
-                          </button>
-                          <button
-                            onClick={() => startStudy(getCategoryBatch(uncategorized))}
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand/90 transition-colors"
-                          >
-                            {isCapped ? `📖 学習 (${sessionLimit}/${uncategorized.length}) →` : '📖 学習 →'}
-                          </button>
-                        </div>
+                        <>
+                          <div>
+                            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Other</h2>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {uncategorized.length}点{sessions > 1 ? ` · ${sessions} sessions` : ''}
+                            </p>
+                            <MasteryBar entries={uncategorized} />
+                          </div>
+                          <div className="flex flex-col gap-2 shrink-0 items-end">
+                            <button
+                              onClick={() => startStudy(getCategoryBatch(uncategorized), true)}
+                              className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                            >
+                              フラッシュカード
+                            </button>
+                            <button
+                              onClick={() => startStudy(getCategoryBatch(uncategorized))}
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand/90 transition-colors"
+                            >
+                              {isCapped ? `📖 学習 (${sessionLimit}/${uncategorized.length}) →` : '📖 学習 →'}
+                            </button>
+                          </div>
+                        </>
                       )
                     })()}
                   </div>
