@@ -188,15 +188,16 @@ function PuzzleEditor({
     if (selectedGrammar) {
       const { deck: gd } = await getGrammarDeckWithPoints(selectedGrammar)
       for (const pt of gd?.points ?? []) {
-        // New fill-in-the-blank format: fill the blank with the answer to get a complete sentence
         if (pt.sentence_with_blank && pt.answer) {
+          // Fill-in-the-blank format: fill the blank to get a complete sentence
           const s = pt.sentence_with_blank.replace('_____', pt.answer).trim()
           if (s) sentences.push({ sentence: s, hint: pt.hint_ja ?? pt.point })
-        }
-        // Legacy format: use examples array
-        for (const ex of pt.examples ?? []) {
-          const s = ex.trim()
-          if (s) sentences.push({ sentence: s, hint: pt.point })
+        } else {
+          // Legacy format: no sentence_with_blank — use examples array instead
+          for (const ex of (pt.examples ?? [])) {
+            const s = ex.split('\n')[0].trim()  // English line only
+            if (s) sentences.push({ sentence: s, hint: pt.point })
+          }
         }
       }
     }
