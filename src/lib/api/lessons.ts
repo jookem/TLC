@@ -501,20 +501,25 @@ export async function renameDeck(deckId: string, name: string): Promise<{ error?
 }
 
 export async function deleteDeck(deckId: string): Promise<{ error?: string }> {
-  // Remove all student vocab entries that came from this deck
-  const { error: vocabErr } = await supabase
-    .from('vocabulary_bank')
-    .delete()
-    .eq('deck_id', deckId)
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return { error: 'Not authenticated.' }
 
-  if (vocabErr) return { error: vocabErr.message }
-
+  // Delete deck first so it disappears from the UI immediately.
+  // Bank row cleanup follows — if it fails, orphaned rows are invisible
+  // to users (no deck reference) and can be cleaned up manually.
   const { error } = await supabase
     .from('vocabulary_decks')
     .delete()
     .eq('id', deckId)
+    .eq('teacher_id', session.user.id)
 
-  return error ? { error: error.message } : {}
+  if (error) return { error: error.message }
+
+  // Best-effort cleanup of student bank rows — not transactional
+  await supabase.from('vocabulary_bank').delete().eq('deck_id', deckId)
+  await supabase.from('vocabulary_deck_words').delete().eq('deck_id', deckId)
+
+  return {}
 }
 
 export async function addWordToDeck(
