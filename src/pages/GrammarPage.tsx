@@ -131,8 +131,17 @@ export function GrammarPage() {
   const sessionLimit = studySize
   const reviewCount = sessionLimit === 0 ? due.length : Math.min(sessionLimit, due.length)
 
+  function fisherYates<T>(arr: T[]): T[] {
+    const a = [...arr]
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]]
+    }
+    return a
+  }
+
   function getCategoryBatch(cards: GrammarBankEntry[]): GrammarBankEntry[] {
-    const shuffled = [...cards].sort(() => Math.random() - 0.5)
+    const shuffled = fisherYates(cards)
     return sessionLimit === 0 ? shuffled : shuffled.slice(0, sessionLimit)
   }
 

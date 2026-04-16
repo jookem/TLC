@@ -20,13 +20,23 @@ function getStudyBatch<T>(arr: T[]): T[] {
 
 const CATEGORY_SESSION_SIZE = 12
 
-/** Returns up to CATEGORY_SESSION_SIZE words prioritising lowest mastery,
- *  then shuffled so the order gives no alphabetical hints during the quiz. */
+function fisherYates<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+/** Returns up to CATEGORY_SESSION_SIZE words prioritising lowest mastery.
+ *  Words within each mastery tier are shuffled randomly so the selection
+ *  is never the first-N alphabetically, and the final order is also shuffled. */
 function getCategoryBatch(words: VocabularyBankEntry[]): VocabularyBankEntry[] {
-  return [...words]
-    .sort((a, b) => a.mastery_level - b.mastery_level)
-    .slice(0, CATEGORY_SESSION_SIZE)
-    .sort(() => Math.random() - 0.5)
+  const byTier = [0, 1, 2, 3].flatMap(level =>
+    fisherYates(words.filter(w => w.mastery_level === level))
+  )
+  return fisherYates(byTier.slice(0, CATEGORY_SESSION_SIZE))
 }
 
 function MasteryBar({ words }: { words: VocabularyBankEntry[] }) {
