@@ -13,15 +13,21 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 function PointDisplay({ point, answerJa }: { point: string; answerJa?: string | null }) {
-  if (!answerJa || !point.includes('_____')) {
+  const parts = point.split('_____')
+  if (parts.length === 1 || !answerJa) {
     return <h2 className="text-2xl font-bold text-white">{point}</h2>
   }
-  const parts = point.split('_____')
+  const fills = answerJa.split(' / ')
   return (
     <h2 className="text-2xl font-bold text-white">
-      {parts[0]}
-      <span className="text-yellow-300 font-bold">[{answerJa}]</span>
-      {parts[1]}
+      {parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {i < parts.length - 1 && (
+            <span className="text-yellow-300 font-bold">[{fills[i] ?? '…'}]</span>
+          )}
+        </span>
+      ))}
     </h2>
   )
 }
@@ -111,7 +117,13 @@ export function GrammarFlashcards({ cards, onComplete, onClose }: Props) {
                 <div className="bg-gray-50 rounded-xl px-4 py-3">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Pattern</p>
                   <p className="text-gray-700 text-sm font-medium">
-                    {card.sentence_with_blank.replace('_____', `[${card.answer ?? '...'}]`)}
+                    {(() => {
+                      const fills = (card.answer ?? '…').split(' / ')
+                      return card.sentence_with_blank
+                        .split('_____')
+                        .map((part, i, arr) => i < arr.length - 1 ? `${part}[${fills[i] ?? '…'}]` : part)
+                        .join('')
+                    })()}
                   </p>
                   {card.sentence_ja && (
                     <p className="text-gray-500 text-xs mt-1">{card.sentence_ja}</p>

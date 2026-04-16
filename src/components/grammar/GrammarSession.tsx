@@ -44,26 +44,30 @@ function buildChoices(current: GrammarBankEntry): string[] {
 function SentenceDisplay({
   sentence,
   fill,
-  fillColor = 'text-white',
 }: {
   sentence: string
   fill?: string
-  fillColor?: string
 }) {
   const parts = sentence.split('_____')
   if (parts.length === 1) return <span className="text-3xl font-bold text-gray-900">{sentence}</span>
+  const fills = fill ? fill.split(' / ') : []
 
   return (
     <span className="text-3xl font-bold text-gray-900">
-      {parts[0]}
-      <span className={`inline-block min-w-[3rem] text-center font-bold text-3xl mx-1 px-2 rounded-lg border-b-4 ${
-        fill
-          ? 'bg-green-500 border-green-600 text-white'
-          : 'bg-transparent border-gray-300 text-transparent select-none'
-      }`}>
-        {fill ?? '_____'}
-      </span>
-      {parts[1]}
+      {parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {i < parts.length - 1 && (
+            <span className={`inline-block min-w-[3rem] text-center font-bold text-3xl mx-1 px-2 rounded-lg border-b-4 ${
+              fills[i]
+                ? 'bg-green-500 border-green-600 text-white'
+                : 'bg-transparent border-gray-300 text-transparent select-none'
+            }`}>
+              {fills[i] ?? '_____'}
+            </span>
+          )}
+        </span>
+      ))}
     </span>
   )
 }
