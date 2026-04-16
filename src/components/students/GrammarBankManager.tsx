@@ -456,15 +456,15 @@ function DeckEditor({
     let added = 0
     for (const r of rows) {
       const { error: err } = await addPointToDeck(deck.id, {
-        point: r.point,
-        explanation: r.explanation,
+        point: r.sentence,
+        explanation: r.explanation || r.answer,
         examples: r.examples ?? [],
         sentence_with_blank: r.sentence,
         sentence_ja: r.sentence_ja,
         answer: r.answer,
         hint_ja: r.hint,
         distractors: r.distractors ?? [],
-        category: r.category,
+        category: r.category || r.point,
       })
       if (!err) added++
     }
