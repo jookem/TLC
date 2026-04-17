@@ -12,19 +12,18 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
 }
 
-function PointDisplay({ point, answerJa }: { point: string; answerJa?: string | null }) {
+function PointDisplay({ point }: { point: string }) {
   const parts = point.split('_____')
-  if (parts.length === 1 || !answerJa) {
+  if (parts.length === 1) {
     return <h2 className="text-2xl font-bold text-white">{point}</h2>
   }
-  const fills = answerJa.split(' / ')
   return (
     <h2 className="text-2xl font-bold text-white">
       {parts.map((part, i) => (
         <span key={i}>
           {part}
           {i < parts.length - 1 && (
-            <span className="text-yellow-300 font-bold">[{fills[i] ?? fills[fills.length - 1]}]</span>
+            <span className="inline-block min-w-[3rem] border-b-2 border-white/50 mx-1 text-center text-white/30">_____</span>
           )}
         </span>
       ))}
@@ -83,10 +82,7 @@ export function GrammarFlashcards({ cards, onComplete, onClose }: Props) {
         {/* Front — always visible */}
         <div className="w-full max-w-lg bg-white/10 rounded-2xl p-6 text-center space-y-3">
           <p className="text-white/40 text-xs font-semibold uppercase tracking-widest">Grammar Point</p>
-          <PointDisplay point={card.point} answerJa={card.answer_ja} />
-          {card.hint_ja && (
-            <p className="text-brand-light text-sm">{card.hint_ja}</p>
-          )}
+          <PointDisplay point={card.point} />
           {!flipped && card.examples.length > 0 && (
             <p className="text-white/40 text-sm italic">"{card.examples[0]}"</p>
           )}
@@ -113,20 +109,28 @@ export function GrammarFlashcards({ cards, onComplete, onClose }: Props) {
                   </div>
                 </div>
               )}
-              {card.sentence_with_blank && (
-                <div className="bg-gray-50 rounded-xl px-4 py-3">
+              {(card.sentence_with_blank || card.hint_ja) && (
+                <div className="bg-gray-50 rounded-xl px-4 py-3 space-y-1">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Pattern</p>
-                  <p className="text-gray-700 text-sm font-medium">
-                    {(() => {
-                      const fills = (card.answer ?? '…').split(' / ')
-                      return card.sentence_with_blank
-                        .split('_____')
-                        .map((part, i, arr) => i < arr.length - 1 ? `${part}[${fills[i] ?? '…'}]` : part)
-                        .join('')
-                    })()}
-                  </p>
+                  {card.hint_ja && (
+                    <p className="text-brand text-sm font-medium">{card.hint_ja}</p>
+                  )}
+                  {card.sentence_with_blank && (
+                    <p className="text-gray-700 text-sm font-medium">
+                      {(() => {
+                        const fills = (card.answer ?? '…').split(' / ')
+                        return card.sentence_with_blank
+                          .split('_____')
+                          .map((part, i, arr) => i < arr.length - 1 ? `${part}[${fills[i] ?? '…'}]` : part)
+                          .join('')
+                      })()}
+                    </p>
+                  )}
+                  {card.answer_ja && (
+                    <p className="text-gray-500 text-xs">{card.answer_ja}</p>
+                  )}
                   {card.sentence_ja && (
-                    <p className="text-gray-500 text-xs mt-1">{card.sentence_ja}</p>
+                    <p className="text-gray-500 text-xs">{card.sentence_ja}</p>
                   )}
                 </div>
               )}
