@@ -12,18 +12,21 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
 }
 
-function PointDisplay({ point }: { point: string }) {
+function PointDisplay({ point, answerJa }: { point: string; answerJa?: string | null }) {
   const parts = point.split('_____')
   if (parts.length === 1) {
     return <h2 className="text-2xl font-bold text-white">{point}</h2>
   }
+  const fills = answerJa?.split(' / ') ?? null
   return (
     <h2 className="text-2xl font-bold text-white">
       {parts.map((part, i) => (
         <span key={i}>
           {part}
           {i < parts.length - 1 && (
-            <span className="inline-block min-w-[3rem] border-b-2 border-white/50 mx-1 text-center text-white/30">_____</span>
+            fills
+              ? <span className="text-yellow-300 font-bold">[{fills[i] ?? fills[fills.length - 1]}]</span>
+              : <span className="inline-block min-w-[3rem] border-b-2 border-white/50 mx-1">_____</span>
           )}
         </span>
       ))}
@@ -82,10 +85,7 @@ export function GrammarFlashcards({ cards, onComplete, onClose }: Props) {
         {/* Front — always visible */}
         <div className="w-full max-w-lg bg-white/10 rounded-2xl p-6 text-center space-y-3">
           <p className="text-white/40 text-xs font-semibold uppercase tracking-widest">Grammar Point</p>
-          <PointDisplay point={card.point} />
-          {!flipped && card.examples.length > 0 && (
-            <p className="text-white/40 text-sm italic">"{card.examples[0]}"</p>
-          )}
+          <PointDisplay point={card.point} answerJa={card.answer_ja} />
         </div>
 
         {/* Back — revealed on flip */}
