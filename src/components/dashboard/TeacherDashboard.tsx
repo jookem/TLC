@@ -41,11 +41,13 @@ export function TeacherDashboard() {
   const [studentCount, setStudentCount] = useState(0)
   const [weeklyData, setWeeklyData] = useState<{ label: string; count: number }[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
 
     async function load() {
+      try {
       const [lessonsResult, pendingBookingsResult, studentsResult, completedResult] = await Promise.all([
         supabase
           .from('lessons')
@@ -81,11 +83,17 @@ export function TeacherDashboard() {
       setPendingBookings(pendingBookingsResult.data ?? [])
       setStudentCount(studentsResult.data?.length ?? 0)
       setWeeklyData(buildWeeklyData(completedResult.data ?? []))
-      setLoading(false)
+      } catch (e: any) {
+        setError(e?.message ?? 'Failed to load dashboard')
+      } finally {
+        setLoading(false)
+      }
     }
 
     load()
   }, [user])
+
+  if (error) return <p className="text-sm text-red-500 p-4">Failed to load dashboard: {error}</p>
 
   if (loading) {
     return (

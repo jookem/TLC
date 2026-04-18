@@ -43,6 +43,11 @@ export function LessonNotesEditor({
   const [vocabulary, setVocabulary] = useState<VocabularyItem[]>(initialNotes?.vocabulary ?? [])
   const [grammarPoints, setGrammarPoints] = useState<GrammarPoint[]>(initialNotes?.grammar_points ?? [])
 
+  // Always-current ref so the debounce timer reads fresh state even when called
+  // immediately after a setState (before the next render flushes).
+  const latestRef = useRef({ summary, homework, strengths, areasToFocus, teacherNotes, isVisible, selectedGoalIds, vocabulary, grammarPoints })
+  latestRef.current = { summary, homework, strengths, areasToFocus, teacherNotes, isVisible, selectedGoalIds, vocabulary, grammarPoints }
+
   const [newWord, setNewWord] = useState('')
   const [newDefinitionJa, setNewDefinitionJa] = useState('')
   const [newDefinitionEn, setNewDefinitionEn] = useState('')
@@ -64,24 +69,27 @@ export function LessonNotesEditor({
   const triggerAutoSave = useCallback(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
+      const v = latestRef.current
       setSaving(true)
       await saveLessonNotes({
         lesson_id: lessonId,
         student_id: noteStudentId,
-        summary,
-        vocabulary,
-        grammar_points: grammarPoints,
-        homework,
-        strengths,
-        areas_to_focus: areasToFocus,
-        teacher_notes: teacherNotes,
-        goal_ids: selectedGoalIds,
-        is_visible_to_student: isVisible,
+        summary: v.summary,
+        vocabulary: v.vocabulary,
+        grammar_points: v.grammarPoints,
+        homework: v.homework,
+        strengths: v.strengths,
+        areas_to_focus: v.areasToFocus,
+        teacher_notes: v.teacherNotes,
+        goal_ids: v.selectedGoalIds,
+        is_visible_to_student: v.isVisible,
       })
       setSaving(false)
       setSavedAt(new Date())
     }, 2000)
-  }, [lessonId, noteStudentId, summary, vocabulary, grammarPoints, homework, strengths, areasToFocus, teacherNotes, selectedGoalIds, isVisible])
+  }, [lessonId, noteStudentId])
+
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current) }, [])
 
   async function addVocabItem() {
     if (!newWord.trim() || !newDefinitionJa.trim()) return

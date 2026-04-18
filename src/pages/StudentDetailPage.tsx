@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -44,8 +44,11 @@ export function StudentDetailPage() {
   const [goalEdits, setGoalEdits] = useState<{ title: string; description: string; target_date: string; status: string }>({ title: '', description: '', target_date: '', status: 'active' })
   const [savingGoal, setSavingGoal] = useState(false)
 
+  const loadIdRef = useRef(0)
+
   async function loadData() {
     if (!user || !studentId) return
+    const loadId = ++loadIdRef.current
 
     const [studentResult, goalsResult, lessonsResult, snapshotsResult, detailsResult] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', studentId).single(),
@@ -54,6 +57,8 @@ export function StudentDetailPage() {
       supabase.from('progress_snapshots').select('*').eq('student_id', studentId).eq('teacher_id', user.id).order('snapshot_date', { ascending: false }),
       supabase.from('student_details').select('*').eq('student_id', studentId).maybeSingle(),
     ])
+
+    if (loadId !== loadIdRef.current) return // stale — a newer load has started
 
     if (!studentResult.data) {
       navigate('/students')

@@ -26,9 +26,14 @@ Deno.serve(async (req) => {
     if (!authHeader) return jsonError('Unauthorized', 401)
 
     const jwt = authHeader.replace('Bearer ', '')
-    const payload = JSON.parse(atob(jwt.split('.')[1]))
-    const teacherId: string = payload.sub
-    if (!teacherId) return jsonError('Unauthorized', 401)
+    let teacherId: string
+    try {
+      const payload = JSON.parse(atob(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+      teacherId = payload.sub
+      if (!teacherId) throw new Error('missing sub')
+    } catch {
+      return jsonError('Unauthorized', 401)
+    }
 
     // Service role client — bypass RLS for all subsequent operations
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {

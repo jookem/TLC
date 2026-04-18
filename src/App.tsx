@@ -21,6 +21,7 @@ import { GamePage } from '@/pages/GamePage'
 import { SpellingPage } from '@/pages/SpellingPage'
 import { GamesPage } from '@/pages/GamesPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -69,12 +70,14 @@ function AppRoutes() {
 export function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <NotificationsProvider>
-          <AppRoutes />
-          <Toaster />
-        </NotificationsProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <NotificationsProvider>
+            <AppRoutes />
+            <Toaster />
+          </NotificationsProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }

@@ -154,7 +154,7 @@ export async function createLesson(data: {
     scheduled_start: data.scheduled_start,
     scheduled_end: data.scheduled_end,
     lesson_type: data.lesson_type,
-    status: 'completed',
+    status: new Date(data.scheduled_end) <= new Date() ? 'completed' : 'scheduled',
     is_group: isGroup,
     group_name: groupName,
   }).select('id').single()
@@ -638,13 +638,23 @@ export async function assignDeckToStudent(
       is_active: true,
     }))
 
+  let inserted = 0
+  let failed = 0
   for (let i = 0; i < newEntries.length; i += 500) {
     const { error: insertErr } = await supabase
       .from('vocabulary_bank')
       .insert(newEntries.slice(i, i + 500))
-    if (insertErr) return { error: insertErr.message }
+    if (insertErr) {
+      failed += newEntries.slice(i, i + 500).length
+      console.error('Batch insert failed:', insertErr.message)
+    } else {
+      inserted += newEntries.slice(i, i + 500).length
+    }
   }
 
+  if (failed > 0) {
+    return { count: inserted + toUpdate.length, error: `${failed} word${failed !== 1 ? 's' : ''} failed to assign` }
+  }
   return { count: wordTexts.length }
 }
 
