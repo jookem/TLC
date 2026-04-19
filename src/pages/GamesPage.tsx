@@ -181,18 +181,47 @@ export function GamesPage() {
 
   async function loadKaraoke() {
     if (!user) return
-    const { data } = await supabase
+
+    // Step 1: get deck_ids the student is assigned to
+    const { data: bankRows } = await supabase
+      .from('grammar_bank')
+      .select('deck_id')
+      .eq('student_id', user.id)
+      .not('deck_id', 'is', null)
+
+    const deckIds = [...new Set((bankRows ?? []).map((r: any) => r.deck_id as string))]
+
+    const all: string[] = []
+
+    if (deckIds.length > 0) {
+      // Step 2: pull examples from grammar_deck_points for those decks
+      const { data: points } = await supabase
+        .from('grammar_deck_points')
+        .select('examples')
+        .in('deck_id', deckIds)
+
+      for (const row of points ?? []) {
+        for (const ex of row.examples ?? []) {
+          const s = ex?.trim()
+          if (s && s.split(/\s+/).length >= 3) all.push(s)
+        }
+      }
+    }
+
+    // Also check examples stored directly on grammar_bank (non-deck entries)
+    const { data: directRows } = await supabase
       .from('grammar_bank')
       .select('examples')
       .eq('student_id', user.id)
+      .is('deck_id', null)
 
-    const all: string[] = []
-    for (const row of data ?? []) {
-      for (const ex of row.examples ?? []) {
+    for (const row of directRows ?? []) {
+      for (const ex of (row as any).examples ?? []) {
         const s = ex?.trim()
         if (s && s.split(/\s+/).length >= 3) all.push(s)
       }
     }
+
     const seen = new Set<string>()
     const unique = all.filter(s => { if (seen.has(s)) return false; seen.add(s); return true })
     const shuffled = [...unique].sort(() => Math.random() - 0.5)
