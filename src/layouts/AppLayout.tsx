@@ -7,6 +7,7 @@ import { AvatarMenu } from '@/components/shared/AvatarMenu'
 import { useAuth } from '@/contexts/AuthContext'
 import { NotificationBell } from '@/components/shared/NotificationBell'
 import { useDueCounts } from '@/lib/hooks/useDueCounts'
+import { GuideModal } from '@/components/guide/GuideModal'
 
 const teacherNav = [
   { href: '/dashboard', label: 'Dashboard', shortLabel: 'Home', icon: LayoutDashboard },
@@ -85,6 +86,7 @@ export function AppLayout() {
               </nav>
             </div>
             <div className="flex items-center gap-2">
+              <GuideModal />
               <NotificationBell />
               <AvatarMenu profile={profile} />
             </div>
