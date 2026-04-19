@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { VocabularyFlashcard } from '@/components/lesson/VocabularyFlashcard'
@@ -143,6 +144,8 @@ export function VocabularyPage() {
   const [search, setSearch] = useState('')
   const [view, setView] = useState<View>('category')
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
+  const [searchParams] = useSearchParams()
+  const autoLaunched = useRef(false)
 
   async function loadVocab() {
     if (!user) return
@@ -164,6 +167,19 @@ export function VocabularyPage() {
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [user])
+
+  useEffect(() => {
+    if (loading || autoLaunched.current) return
+    if (searchParams.get('review') !== 'true') return
+    const due = vocab.filter(v => {
+      if (!v.next_review) return v.mastery_level < 3
+      return new Date(v.next_review) <= new Date()
+    })
+    if (due.length === 0) return
+    autoLaunched.current = true
+    setStudyCards(getStudyBatch(due))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, vocab])
 
   if (error) return <PageError message={error} onRetry={loadVocab} />
   if (loading) return <div className="h-48 bg-gray-200 rounded-lg animate-pulse" />

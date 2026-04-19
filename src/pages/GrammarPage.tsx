@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { listGrammar, listLessonSlides, type GrammarBankEntry, type GrammarLessonSlide } from '@/lib/api/grammar'
 import { Card, CardContent } from '@/components/ui/card'
@@ -57,6 +58,8 @@ export function GrammarPage() {
     parseInt(localStorage.getItem('study_size') ?? '20', 10)
   )
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
+  const [searchParams] = useSearchParams()
+  const autoLaunched = useRef(false)
 
   function setStudySize(val: number) {
     setStudySizeState(val)
@@ -83,6 +86,21 @@ export function GrammarPage() {
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [user])
+
+  useEffect(() => {
+    if (loading || autoLaunched.current) return
+    if (searchParams.get('review') !== 'true') return
+    const due = entries.filter(e => {
+      if (!e.next_review) return e.mastery_level < 3
+      return new Date(e.next_review) <= new Date()
+    })
+    if (due.length === 0) return
+    autoLaunched.current = true
+    const shuffled = [...due].sort(() => Math.random() - 0.5)
+    const batch = studySize === 0 ? shuffled : shuffled.slice(0, studySize)
+    startStudy(batch, true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, entries])
 
   // Start a full study session: lesson → flashcards → quiz
   async function startStudy(cards: GrammarBankEntry[], skipLesson = false) {
