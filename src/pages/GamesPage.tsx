@@ -35,6 +35,10 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
 }
 
+function isValidPuzzle(p: Puzzle): boolean {
+  return !p.japanese_sentence?.includes('MYMEMORY WARNING') && !p.japanese_sentence?.includes('YOU USED ALL AVAILABLE')
+}
+
 function getStudyBatch<T>(arr: T[]): T[] {
   const size = parseInt(localStorage.getItem('study_size') ?? '20', 10)
   const shuffled = shuffle(arr)
@@ -201,7 +205,7 @@ export function GamesPage() {
   // ── Train handlers ─────────────────────────────────────────────
 
   function startTrainDeck(deck: DeckWithPuzzles, onlyIncomplete = false) {
-    let puzzles = deck.puzzles
+    let puzzles = deck.puzzles.filter(isValidPuzzle)
     if (onlyIncomplete) puzzles = puzzles.filter(p => !progressMap[p.id]?.completed)
     if (!puzzles.length) return
     const batch = getStudyBatch(puzzles)
@@ -412,8 +416,9 @@ export function GamesPage() {
             )}
 
             {trainDecks.map(deck => {
-              const total = deck.puzzles.length
-              const completed = deck.puzzles.filter(p => progressMap[p.id]?.completed).length
+              const validPuzzles = deck.puzzles.filter(isValidPuzzle)
+              const total = validPuzzles.length
+              const completed = validPuzzles.filter(p => progressMap[p.id]?.completed).length
               const incomplete = total - completed
               const pct = total > 0 ? Math.round((completed / total) * 100) : 0
               const sessionLimit = parseInt(localStorage.getItem('study_size') ?? '20', 10)
@@ -452,7 +457,7 @@ export function GamesPage() {
                     )}
                     {deck.puzzles.length > 0 && (
                       <div className="space-y-1 pt-1">
-                        {deck.puzzles.map(p => {
+                        {deck.puzzles.filter(isValidPuzzle).map(p => {
                           const prog = progressMap[p.id]
                           return (
                             <div key={p.id} className="flex items-center gap-2 text-sm py-1">

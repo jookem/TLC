@@ -94,12 +94,19 @@ async function translateAndParse(
   let english = text.trim()
   let japanese: string | null = null
 
+  function isMyMemoryError(text: string | null | undefined): boolean {
+    return typeof text === 'string' && (text.includes('MYMEMORY WARNING') || text.includes('YOU USED ALL AVAILABLE'))
+  }
+
   if (isJapanese(text)) {
-    const res = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ja|en`,
-    )
-    const json = await res.json()
-    english = json.responseData?.translatedText ?? text
+    try {
+      const res = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ja|en`,
+      )
+      const json = await res.json()
+      const translated = json.responseStatus === 200 ? json.responseData?.translatedText : null
+      if (translated && !isMyMemoryError(translated)) english = translated
+    } catch { /* keep original text */ }
   } else {
     // Translate English → Japanese for the hint
     try {
@@ -107,7 +114,8 @@ async function translateAndParse(
         `https://api.mymemory.translated.net/get?q=${encodeURIComponent(english)}&langpair=en|ja`,
       )
       const json = await res.json()
-      japanese = json.responseData?.translatedText ?? null
+      const translated = json.responseStatus === 200 ? json.responseData?.translatedText : null
+      if (translated && !isMyMemoryError(translated)) japanese = translated
     } catch { /* no hint if translation fails */ }
   }
 
