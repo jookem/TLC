@@ -317,6 +317,8 @@ function PuzzleEditor({
   const [editParts, setEditParts] = useState<PuzzlePart[]>([])
   const [editHint, setEditHint] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
+  const [translatingMissing, setTranslatingMissing] = useState(false)
+  const [translateProgress, setTranslateProgress] = useState('')
 
   function startEditPuzzle(p: Puzzle) {
     setEditingPuzzleId(p.id)
@@ -354,6 +356,38 @@ function PuzzleEditor({
     onUpdated()
   }
 
+  function isBadSentence(s: string | null | undefined): boolean {
+    return !s || s.includes('MYMEMORY WARNING') || s.includes('YOU USED ALL AVAILABLE')
+  }
+
+  async function handleTranslateMissing() {
+    const missing = puzzles.filter(p => isBadSentence(p.japanese_sentence) && p.hint)
+    if (!missing.length) { toast.info('No missing translations found.'); return }
+    setTranslatingMissing(true)
+    let done = 0
+    for (const p of missing) {
+      setTranslateProgress(`Translating ${done + 1} / ${missing.length}…`)
+      try {
+        const res = await fetch(
+          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(p.hint!)}&langpair=en|ja`,
+        )
+        const json = await res.json()
+        const translated = json.responseStatus === 200 ? json.responseData?.translatedText : null
+        if (translated && !translated.includes('MYMEMORY WARNING')) {
+          await updatePuzzle(p.id, { japanese_sentence: translated })
+          setPuzzles(prev => prev.map(x => x.id === p.id ? { ...x, japanese_sentence: translated } : x))
+        }
+      } catch { /* skip on error */ }
+      done++
+      // Small delay to avoid hammering the API
+      await new Promise(r => setTimeout(r, 300))
+    }
+    setTranslatingMissing(false)
+    setTranslateProgress('')
+    toast.success(`Done — ${done} sentence${done !== 1 ? 's' : ''} processed.`)
+    onUpdated()
+  }
+
   return (
     <div role="dialog" aria-modal="true" aria-label="Edit puzzle deck" className="fixed z-50 bg-black/60 flex items-center justify-center p-4" style={{ top: 0, left: 0, width: '100vw', height: '100vh', minHeight: '-webkit-fill-available' }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
@@ -371,7 +405,16 @@ function PuzzleEditor({
               {name} <span className="text-xs text-gray-400 font-normal">✏️</span>
             </button>
           )}
-          <div className="flex items-center gap-3 ml-4">
+          <div className="flex items-center gap-2 ml-4 shrink-0">
+            {puzzles.some(p => isBadSentence(p.japanese_sentence) && p.hint) && (
+              <button
+                onClick={handleTranslateMissing}
+                disabled={translatingMissing}
+                className="px-3 py-1.5 bg-sky-600 text-white text-xs rounded-lg hover:bg-sky-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {translatingMissing ? translateProgress : '🌐 Translate missing'}
+              </button>
+            )}
             <button aria-label="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
           </div>
         </div>
