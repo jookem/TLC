@@ -34,12 +34,15 @@ export function LessonsPage() {
       const { data: relationships, error: relErr } = await supabase
         .from('teacher_student_relationships')
         .select('student:profiles!teacher_student_relationships_student_id_fkey(id, full_name, email)')
-        .eq('teacher_id', user!.id)
         .eq('status', 'active')
         .order('started_at')
       if (relErr) throw relErr
 
-      const studentList = (relationships ?? []).map((r: any) => r.student).filter(Boolean)
+      // Deduplicate students who may be linked to multiple teachers
+      const seen = new Set<string>()
+      const studentList = (relationships ?? [])
+        .map((r: any) => r.student)
+        .filter((s: any) => s && !seen.has(s.id) && seen.add(s.id))
       setStudents(studentList)
 
       if (selectedStudentId) {
