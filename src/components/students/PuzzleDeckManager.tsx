@@ -316,6 +316,7 @@ function PuzzleEditor({
   const [editingPuzzleId, setEditingPuzzleId] = useState<string | null>(null)
   const [editParts, setEditParts] = useState<PuzzlePart[]>([])
   const [editHint, setEditHint] = useState('')
+  const [editJapaneseSentence, setEditJapaneseSentence] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [translatingMissing, setTranslatingMissing] = useState(false)
   const [translateProgress, setTranslateProgress] = useState('')
@@ -324,6 +325,7 @@ function PuzzleEditor({
     setEditingPuzzleId(p.id)
     setEditParts(p.parts.map(pt => ({ ...pt })))
     setEditHint(p.hint ?? '')
+    setEditJapaneseSentence(p.japanese_sentence ?? '')
   }
 
   function updateEditPart(i: number, field: keyof PuzzlePart, val: string) {
@@ -334,6 +336,16 @@ function PuzzleEditor({
     setEditParts(prev => prev.filter((_, idx) => idx !== i))
   }
 
+  function moveEditPart(i: number, dir: -1 | 1) {
+    setEditParts(prev => {
+      const next = [...prev]
+      const j = i + dir
+      if (j < 0 || j >= next.length) return prev;
+      [next[i], next[j]] = [next[j], next[i]]
+      return next
+    })
+  }
+
   function addEditPart() {
     setEditParts(prev => [...prev, { text: '', label: 'Other' }])
   }
@@ -342,14 +354,16 @@ function PuzzleEditor({
     const valid = editParts.filter(p => p.text.trim())
     if (valid.length < 2) { toast.error('Need at least 2 parts.'); return }
     setSavingEdit(true)
+    const jaVal = editJapaneseSentence.trim() || undefined
     const { error } = await updatePuzzle(puzzleId, {
+      japanese_sentence: jaVal,
       hint: editHint.trim() || undefined,
       parts: valid,
     })
     setSavingEdit(false)
     if (error) { toast.error(error); return }
     setPuzzles(prev => prev.map(p => p.id === puzzleId
-      ? { ...p, parts: valid, hint: editHint.trim() || null }
+      ? { ...p, parts: valid, hint: editHint.trim() || null, japanese_sentence: jaVal ?? p.japanese_sentence }
       : p
     ))
     setEditingPuzzleId(null)
@@ -501,10 +515,27 @@ function PuzzleEditor({
                   {editingPuzzleId === p.id ? (
                     /* ── Edit mode ── */
                     <div className="p-3 space-y-2 bg-gray-50">
-                      <p className="text-xs font-medium text-gray-600">{p.japanese_sentence}</p>
+                      <div>
+                        <label className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Japanese sentence (shown to student)</label>
+                        <input
+                          value={editJapaneseSentence}
+                          onChange={e => setEditJapaneseSentence(e.target.value)}
+                          placeholder="Japanese translation…"
+                          className="w-full h-8 text-sm border border-gray-200 rounded px-2 bg-white mt-0.5"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Word order (drag ↑↓ to reorder)</label>
+                      </div>
                       <div className="space-y-1.5">
                         {editParts.map((pt, i) => (
                           <div key={i} className="flex items-center gap-1.5">
+                            <div className="flex flex-col gap-0">
+                              <button onClick={() => moveEditPart(i, -1)} disabled={i === 0}
+                                className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs px-0.5" title="Move up">▲</button>
+                              <button onClick={() => moveEditPart(i, 1)} disabled={i === editParts.length - 1}
+                                className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs px-0.5" title="Move down">▼</button>
+                            </div>
                             <span className="text-xs text-gray-400 w-4 shrink-0">{i + 1}.</span>
                             <input
                               value={pt.text}
