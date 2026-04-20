@@ -74,6 +74,7 @@ export async function listGrammar(
     .from('grammar_bank')
     .select('id, student_id, teacher_id, lesson_id, deck_id, point, mastery_level, next_review, interval_days, ease_factor, created_at, updated_at')
     .eq('student_id', studentId)
+    .eq('is_active', true)
     .order('created_at', { ascending: false })
 
   if (error) return { error: error.message }
