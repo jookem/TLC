@@ -312,7 +312,7 @@ export function GrammarSession({ cards, sessionName, onClose, onComplete }: Prop
                 fill={phase === 'revealed' ? answer : undefined}
               />
             </div>
-            {current.hint_ja && (
+            {current.hint_ja && phase === 'revealed' && (
               <p className="text-base text-gray-500 font-medium">{current.hint_ja}</p>
             )}
           </div>
