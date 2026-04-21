@@ -13,30 +13,40 @@ interface Props {
   onComplete: () => void
 }
 
-function CharacterBubble({
+function CharacterPortrait({
   color,
   imageUrl,
   initial,
   label,
   dim,
+  flip = false,
 }: {
   color: string
   imageUrl?: string | null
   initial: string
   label: string
   dim: boolean
+  flip?: boolean
 }) {
   return (
-    <div className={`flex flex-col items-center gap-1.5 transition-opacity duration-300 ${dim ? 'opacity-40' : 'opacity-100'}`}>
-      <div
-        className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white shadow-lg overflow-hidden flex items-center justify-center text-white text-2xl font-bold"
-        style={{ backgroundColor: color }}
-      >
-        {imageUrl
-          ? <img src={imageUrl} alt={label} className="w-full h-full object-cover" />
-          : initial}
-      </div>
-      <span className="text-[11px] font-medium text-white bg-black/40 px-2 py-0.5 rounded-full whitespace-nowrap">
+    <div
+      className={`flex flex-col items-center gap-1.5 transition-opacity duration-300 ${dim ? 'opacity-35' : 'opacity-100'}`}
+    >
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={label}
+          className={`h-36 sm:h-52 w-auto object-contain drop-shadow-xl ${flip ? '-scale-x-100' : ''}`}
+        />
+      ) : (
+        <div
+          className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-white text-2xl sm:text-3xl font-bold"
+          style={{ backgroundColor: color }}
+        >
+          {initial}
+        </div>
+      )}
+      <span className="text-[11px] font-medium text-white bg-black/50 px-2 py-0.5 rounded-full whitespace-nowrap">
         {label}
       </span>
     </div>
@@ -58,9 +68,13 @@ export function RPGDialogueBox({
   const isNpcTurn = currentNode.speaker === 'npc'
   const isStudentTurn = currentNode.speaker === 'student'
 
+  // Resolve NPC sprite: use the expression-specific image, fall back to neutral, then null
+  const expression = currentNode.speaker === 'npc' ? (currentNode.expression ?? 'neutral') : 'neutral'
+  const npcSprite = npc?.sprites?.[expression] ?? npc?.sprites?.['neutral'] ?? null
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
-      {/* Exit button */}
+      {/* Exit */}
       <button
         onClick={onExit}
         className="absolute top-3 left-3 z-10 px-3 py-1.5 bg-black/50 hover:bg-black/70 text-white text-sm rounded-lg transition-colors"
@@ -68,9 +82,9 @@ export function RPGDialogueBox({
         ← Exit
       </button>
 
-      {/* Scene area */}
+      {/* Scene */}
       <div
-        className="flex-1 flex items-end justify-between px-6 pb-6 min-h-0"
+        className="flex-1 flex items-end justify-between px-4 sm:px-10 pb-4 min-h-0 relative"
         style={{
           backgroundColor: background.color,
           backgroundImage: background.imageUrl ? `url(${background.imageUrl})` : undefined,
@@ -79,8 +93,9 @@ export function RPGDialogueBox({
         }}
       >
         {/* NPC — left */}
-        <CharacterBubble
+        <CharacterPortrait
           color={npc?.placeholder_color ?? '#6366f1'}
+          imageUrl={npcSprite}
           initial={npc?.name?.[0] ?? 'N'}
           label={npc?.name ?? 'NPC'}
           dim={isStudentTurn}
@@ -88,13 +103,14 @@ export function RPGDialogueBox({
 
         <div className="flex-1" />
 
-        {/* Student — right */}
-        <CharacterBubble
+        {/* Student — right (mirrored so character faces left/inward) */}
+        <CharacterPortrait
           color={avatarPreset?.placeholder_color ?? '#f59e0b'}
           imageUrl={avatarPreset?.image_url}
           initial={studentName?.[0] ?? 'S'}
           label={studentName}
           dim={isNpcTurn}
+          flip={!!avatarPreset?.image_url}
         />
       </div>
 
