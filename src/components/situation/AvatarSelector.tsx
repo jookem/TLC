@@ -21,14 +21,19 @@ export function AvatarSelector({ presets, selected, onSelect }: Props) {
                 : 'border-gray-200 hover:border-gray-300 bg-white'
             }`}
           >
-            <div
-              className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-sm overflow-hidden"
-              style={{ backgroundColor: preset.placeholder_color }}
-            >
-              {preset.image_url
-                ? <img src={preset.image_url} alt={preset.name} className="w-full h-full object-cover" />
-                : preset.name[0]}
-            </div>
+            {(() => {
+              const preview = preset.sprites?.['neutral'] ?? preset.image_url
+              return (
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-sm overflow-hidden"
+                  style={{ backgroundColor: preset.placeholder_color }}
+                >
+                  {preview
+                    ? <img src={preview} alt={preset.name} className="w-full h-full object-cover" />
+                    : preset.name[0]}
+                </div>
+              )
+            })()}
             <span className="text-xs font-medium text-gray-700">{preset.name}</span>
           </button>
         ))}

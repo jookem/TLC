@@ -198,9 +198,12 @@ export function SituationSimulator() {
               className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold shadow overflow-hidden"
               style={{ backgroundColor: selectedAvatar.placeholder_color }}
             >
-              {selectedAvatar.image_url
-                ? <img src={selectedAvatar.image_url} alt="" className="w-full h-full object-cover" />
-                : selectedAvatar.name[0]}
+              {(() => {
+                const preview = selectedAvatar.sprites?.['neutral'] ?? selectedAvatar.image_url
+                return preview
+                  ? <img src={preview} alt="" className="w-full h-full object-cover" />
+                  : selectedAvatar.name[0]
+              })()}
             </div>
             <span className="text-sm font-medium text-gray-800">{selectedAvatar.name}</span>
           </div>

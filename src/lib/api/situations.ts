@@ -15,6 +15,7 @@ export interface AvatarPreset {
   age_group: 'children' | 'teens' | 'adults'
   placeholder_color: string
   image_url: string | null
+  sprites: Record<string, string>
   sort_order: number
 }
 

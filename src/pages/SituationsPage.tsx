@@ -200,20 +200,21 @@ function AvatarSection() {
     })
   }, [])
 
-  async function handleAvatarUpload(preset: AvatarPreset, file: File) {
-    const path = `avatars/${preset.id}.png`
+  async function handleExpressionUpload(preset: AvatarPreset, expression: Expression, file: File) {
+    const path = `avatars/${preset.id}/${expression}.png`
     const url = await uploadToStorage(file, path)
     if (!url) return
 
+    const newSprites = { ...preset.sprites, [expression]: url }
     const { error } = await supabase
       .from('avatar_presets')
-      .update({ image_url: url })
+      .update({ sprites: newSprites })
       .eq('id', preset.id)
 
     if (error) { toast.error(error.message); return }
 
-    setPresets(prev => prev.map(p => p.id === preset.id ? { ...p, image_url: url } : p))
-    toast.success(`${preset.name} avatar uploaded`)
+    setPresets(prev => prev.map(p => p.id === preset.id ? { ...p, sprites: newSprites } : p))
+    toast.success(`${preset.name} · ${EXPRESSION_LABELS[expression]} uploaded`)
   }
 
   if (loading) return <div className="h-48 bg-gray-200 rounded-xl animate-pulse" />
@@ -223,22 +224,36 @@ function AvatarSection() {
   return (
     <div className="space-y-5">
       <p className="text-sm text-gray-500">
-        Upload a transparent PNG for each avatar. 512×512px, waist-up framing. Avatars will be mirrored automatically to face the NPC.
+        Upload a transparent PNG for each expression. 512×512px, waist-up framing. Avatars are mirrored automatically to face the NPC.
       </p>
       {groups.map(group => {
         const groupPresets = presets.filter(p => p.age_group === group)
         return (
           <div key={group}>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 capitalize">{group}</p>
-            <div className="flex gap-5 flex-wrap">
+            <div className="space-y-4">
               {groupPresets.map(preset => (
-                <div key={preset.id} className="flex flex-col items-center gap-2">
-                  <ImageSlot
-                    label={preset.name}
-                    currentUrl={preset.image_url}
-                    placeholderColor={preset.placeholder_color}
-                    onUpload={file => handleAvatarUpload(preset, file)}
-                  />
+                <div key={preset.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                      style={{ backgroundColor: preset.placeholder_color }}
+                    >
+                      {preset.name[0]}
+                    </div>
+                    <p className="font-semibold text-sm text-gray-900">{preset.name}</p>
+                  </div>
+                  <div className="flex gap-3 flex-wrap">
+                    {EXPRESSIONS.map(expr => (
+                      <ImageSlot
+                        key={expr}
+                        label={EXPRESSION_LABELS[expr]}
+                        currentUrl={preset.sprites?.[expr] ?? null}
+                        placeholderColor={preset.placeholder_color}
+                        onUpload={file => handleExpressionUpload(preset, expr, file)}
+                      />
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

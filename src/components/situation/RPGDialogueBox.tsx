@@ -68,9 +68,17 @@ export function RPGDialogueBox({
   const isNpcTurn = currentNode.speaker === 'npc'
   const isStudentTurn = currentNode.speaker === 'student'
 
-  // Resolve NPC sprite: use the expression-specific image, fall back to neutral, then null
-  const expression = currentNode.speaker === 'npc' ? (currentNode.expression ?? 'neutral') : 'neutral'
-  const npcSprite = npc?.sprites?.[expression] ?? npc?.sprites?.['neutral'] ?? null
+  // NPC sprite: use the node's expression, fall back to neutral
+  const npcExpression = currentNode.speaker === 'npc' ? (currentNode.expression ?? 'neutral') : 'neutral'
+  const npcSprite = npc?.sprites?.[npcExpression] ?? npc?.sprites?.['neutral'] ?? null
+
+  // Avatar sprite: neutral while NPC talks, thinking while student picks
+  const avatarExpression = isStudentTurn ? 'thinking' : 'neutral'
+  const avatarSprite =
+    avatarPreset?.sprites?.[avatarExpression] ??
+    avatarPreset?.sprites?.['neutral'] ??
+    avatarPreset?.image_url ??
+    null
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
@@ -106,11 +114,11 @@ export function RPGDialogueBox({
         {/* Student — right (mirrored so character faces left/inward) */}
         <CharacterPortrait
           color={avatarPreset?.placeholder_color ?? '#f59e0b'}
-          imageUrl={avatarPreset?.image_url}
+          imageUrl={avatarSprite}
           initial={studentName?.[0] ?? 'S'}
           label={studentName}
           dim={isNpcTurn}
-          flip={!!avatarPreset?.image_url}
+          flip={!!avatarSprite}
         />
       </div>
 
