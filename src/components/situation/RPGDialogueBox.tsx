@@ -30,6 +30,9 @@ function CharacterPortrait({
 }) {
   return (
     <div className={`flex flex-col items-center transition-all duration-300 ${dim ? 'opacity-30 scale-95' : 'opacity-100 scale-100'}`}>
+      <span className="text-[11px] font-medium text-white/80 bg-black/60 px-2.5 py-0.5 rounded-full mb-1.5 whitespace-nowrap backdrop-blur-sm">
+        {label}
+      </span>
       {imageUrl ? (
         <img
           src={imageUrl}
@@ -44,9 +47,6 @@ function CharacterPortrait({
           {initial}
         </div>
       )}
-      <span className="text-[11px] font-medium text-white/80 bg-black/60 px-2.5 py-0.5 rounded-full mt-1.5 whitespace-nowrap backdrop-blur-sm">
-        {label}
-      </span>
     </div>
   )
 }
