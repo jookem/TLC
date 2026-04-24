@@ -15,11 +15,12 @@ import {
   assignDeckToStudent,
   removeDeckFromStudent,
   reorderVocabDecks,
+  updateVocabDeckFolder,
   getStudentVocab,
   type Deck,
   type DeckWord,
 } from '@/lib/api/lessons'
-import { SortableDeckList } from '@/components/shared/SortableDeckList'
+import { FolderDeckList } from '@/components/shared/FolderDeckList'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AnkiImporter } from './AnkiImporter'
 import { Input } from '@/components/ui/input'
@@ -1113,10 +1114,11 @@ export function StudentVocabManager({ studentId }: Props) {
             ) : decks.length === 0 ? (
               <p className="text-xs text-gray-400">No decks yet. Create one to get started.</p>
             ) : (
-              <SortableDeckList
+              <FolderDeckList
                 decks={decks.map(d => ({
                   id: d.id,
                   name: d.name,
+                  folder: d.folder,
                   meta: `${d.word_count ?? 0} words`,
                   badge: assignedDeckIds.has(d.id) ? 'Assigned' : undefined,
                 }))}
@@ -1124,6 +1126,10 @@ export function StudentVocabManager({ studentId }: Props) {
                   const newOrder = rows.map(r => decks.find(d => d.id === r.id)!)
                   setDecks(newOrder)
                   reorderVocabDecks(newOrder.map(d => d.id))
+                }}
+                onMoveToFolder={async (id, folder) => {
+                  const { error } = await updateVocabDeckFolder(id, folder)
+                  if (!error) setDecks(prev => prev.map(d => d.id === id ? { ...d, folder } : d))
                 }}
                 renderActions={row => {
                   const deck = decks.find(d => d.id === row.id)!

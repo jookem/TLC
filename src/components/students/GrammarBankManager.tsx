@@ -14,6 +14,7 @@ import {
   assignGrammarDeckToStudent,
   removeGrammarDeckFromStudent,
   reorderGrammarDecks,
+  updateGrammarDeckFolder,
   listLessonSlides,
   addLessonSlide,
   updateLessonSlide,
@@ -24,7 +25,7 @@ import {
   type GrammarDeckPoint,
   type GrammarLessonSlide,
 } from '@/lib/api/grammar'
-import { SortableDeckList, type DeckRow } from '@/components/shared/SortableDeckList'
+import { FolderDeckList } from '@/components/shared/FolderDeckList'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -1109,10 +1110,11 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
             ) : decks.length === 0 ? (
               <p className="text-xs text-gray-400">No decks yet. Create one to get started.</p>
             ) : (
-              <SortableDeckList
+              <FolderDeckList
                 decks={decks.map(d => ({
                   id: d.id,
                   name: d.name,
+                  folder: d.folder,
                   meta: `${d.point_count ?? 0} points`,
                   badge: assignedDeckIds.has(d.id) ? 'Assigned' : undefined,
                 }))}
@@ -1120,6 +1122,10 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
                   const newOrder = rows.map(r => decks.find(d => d.id === r.id)!)
                   setDecks(newOrder)
                   reorderGrammarDecks(newOrder.map(d => d.id))
+                }}
+                onMoveToFolder={async (id, folder) => {
+                  const { error } = await updateGrammarDeckFolder(id, folder)
+                  if (!error) setDecks(prev => prev.map(d => d.id === id ? { ...d, folder } : d))
                 }}
                 renderActions={row => {
                   const deck = decks.find(d => d.id === row.id)!

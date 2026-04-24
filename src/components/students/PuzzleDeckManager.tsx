@@ -5,9 +5,10 @@ import {
   getPuzzleDeckWithPuzzles, createPuzzle, updatePuzzle, deletePuzzle,
   assignPuzzleDeckToStudent, removePuzzleDeckFromStudent, getAssignedDeckIds,
   reorderPuzzleDecks,
+  updatePuzzleDeckFolder,
   type PuzzleDeck, type Puzzle, type PuzzlePart,
 } from '@/lib/api/puzzles'
-import { SortableDeckList } from '@/components/shared/SortableDeckList'
+import { FolderDeckList } from '@/components/shared/FolderDeckList'
 import { listGrammarDecks, getGrammarDeckWithPoints, type GrammarDeck } from '@/lib/api/grammar'
 import { listDecks, getDeckWithWords, type Deck } from '@/lib/api/lessons'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -726,10 +727,11 @@ export function PuzzleDeckManager({ studentId }: { studentId: string }) {
             ) : decks.length === 0 ? (
               <p className="text-xs text-gray-400">No puzzle decks yet. Create one to get started.</p>
             ) : (
-              <SortableDeckList
+              <FolderDeckList
                 decks={decks.map(d => ({
                   id: d.id,
                   name: d.name,
+                  folder: d.folder,
                   meta: `${d.puzzle_count ?? 0} puzzles`,
                   badge: assignedIds.has(d.id) ? 'Assigned' : undefined,
                 }))}
@@ -737,6 +739,10 @@ export function PuzzleDeckManager({ studentId }: { studentId: string }) {
                   const newOrder = rows.map(r => decks.find(d => d.id === r.id)!)
                   setDecks(newOrder)
                   reorderPuzzleDecks(newOrder.map(d => d.id))
+                }}
+                onMoveToFolder={async (id, folder) => {
+                  const { error } = await updatePuzzleDeckFolder(id, folder)
+                  if (!error) setDecks(prev => prev.map(d => d.id === id ? { ...d, folder } : d))
                 }}
                 renderActions={row => {
                   const deck = decks.find(d => d.id === row.id)!

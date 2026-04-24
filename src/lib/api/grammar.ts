@@ -58,6 +58,7 @@ export interface GrammarDeck {
   id: string
   teacher_id: string
   name: string
+  folder: string | null
   created_at: string
   point_count?: number
   points?: GrammarDeckPoint[]
@@ -383,6 +384,17 @@ export async function reorderGrammarDecks(
   const results = await Promise.all(updates)
   const err = results.find(r => r.error)
   return err?.error ? { error: err.error.message } : {}
+}
+
+export async function updateGrammarDeckFolder(
+  deckId: string,
+  folder: string | null,
+): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from('grammar_decks')
+    .update({ folder })
+    .eq('id', deckId)
+  return error ? { error: error.message } : {}
 }
 
 // ── Grammar Lesson Slides ──────────────────────────────────────

@@ -413,6 +413,7 @@ export interface Deck {
   id: string
   teacher_id: string
   name: string
+  folder: string | null
   created_at: string
   word_count?: number
   words?: DeckWord[]
@@ -727,4 +728,15 @@ export async function reorderVocabDecks(
   const results = await Promise.all(updates)
   const err = results.find(r => r.error)
   return err?.error ? { error: err.error.message } : {}
+}
+
+export async function updateVocabDeckFolder(
+  deckId: string,
+  folder: string | null,
+): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from('vocabulary_decks')
+    .update({ folder })
+    .eq('id', deckId)
+  return error ? { error: error.message } : {}
 }
