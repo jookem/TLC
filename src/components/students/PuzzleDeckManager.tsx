@@ -214,7 +214,9 @@ function PuzzleEditor({
     if (selectedVocab) {
       const { deck: vd } = await getDeckWithWords(selectedVocab)
       for (const w of vd?.words ?? []) {
-        const s = w.example?.trim() || stripHtml(w.definition_en) || stripHtml(w.definition_ja)
+        const s = (w.quiz_sentence && w.quiz_answer)
+          ? w.quiz_sentence.replace('_____', w.quiz_answer).trim()
+          : w.example?.trim() || stripHtml(w.definition_en) || stripHtml(w.definition_ja)
         if (s) sentences.push({ sentence: s, hint: w.word })
       }
     }

@@ -7,6 +7,8 @@ import {
 } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { useTimezone } from '@/lib/hooks/useTimezone'
+import { supabase } from '@/lib/supabase'
+import { NotesReadView } from '@/components/lesson/NotesReadView'
 
 type Lesson = {
   id: string
@@ -57,7 +59,44 @@ function lessonLabel(l: Lesson): string {
 export function MonthCalendar({ lessons, pendingRequests, role, teacherColorMap }: Props) {
   const [current, setCurrent] = useState(() => new Date())
   const [selected, setSelected] = useState<Date | null>(null)
+  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null)
+  const [notesCache, setNotesCache] = useState<Record<string, any | null>>({})
+  const [loadingNoteId, setLoadingNoteId] = useState<string | null>(null)
   const TZ = useTimezone()
+
+  async function toggleNotes(lessonId: string) {
+    if (expandedNoteId === lessonId) {
+      setExpandedNoteId(null)
+      return
+    }
+    setExpandedNoteId(lessonId)
+    if (lessonId in notesCache) return
+
+    setLoadingNoteId(lessonId)
+    let notes: any = null
+    if (role === 'teacher') {
+      const { data } = await supabase
+        .from('lesson_notes')
+        .select('summary, vocabulary, grammar_points, homework, strengths, areas_to_focus')
+        .eq('lesson_id', lessonId)
+        .is('student_id', null)
+        .maybeSingle()
+      notes = data
+    } else {
+      // Try individual note first, fall back to group note
+      const { data: auth } = await supabase.auth.getUser()
+      const uid = auth.user?.id
+      const [indRes, grpRes] = await Promise.all([
+        uid
+          ? supabase.from('lesson_notes').select('summary, vocabulary, grammar_points, homework, strengths, areas_to_focus').eq('lesson_id', lessonId).eq('student_id', uid).maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabase.from('lesson_notes').select('summary, vocabulary, grammar_points, homework, strengths, areas_to_focus').eq('lesson_id', lessonId).is('student_id', null).eq('is_visible_to_student', true).maybeSingle(),
+      ])
+      notes = indRes.data ?? grpRes.data
+    }
+    setNotesCache(prev => ({ ...prev, [lessonId]: notes }))
+    setLoadingNoteId(null)
+  }
 
   const monthStart = startOfMonth(current)
   const monthEnd = endOfMonth(current)
@@ -159,38 +198,61 @@ export function MonthCalendar({ lessons, pendingRequests, role, teacherColorMap 
 
           {selectedLessons.map(l => {
             const tc = l.teacher_id && teacherColorMap ? teacherColorMap[l.teacher_id] : null
+            const isExpanded = expandedNoteId === l.id
+            const notes = notesCache[l.id]
             return (
-            <div key={l.id} className="flex items-center justify-between gap-3 text-sm">
-              <div>
-                <p className="font-medium flex items-center gap-1.5">
-                  {role === 'teacher'
-                    ? l.is_group ? (l.group_name ?? 'Group') : l.student?.full_name
-                    : l.teacher?.full_name}
-                  {tc && role === 'teacher' && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-normal ${tc.bg} ${tc.text}`}>
-                      {l.teacher?.full_name?.split(' ')[0]}
-                    </span>
+            <div key={l.id} className="space-y-2">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <div>
+                  <p className="font-medium flex items-center gap-1.5">
+                    {role === 'teacher'
+                      ? l.is_group ? (l.group_name ?? 'Group') : l.student?.full_name
+                      : l.teacher?.full_name}
+                    {tc && role === 'teacher' && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-normal ${tc.bg} ${tc.text}`}>
+                        {l.teacher?.full_name?.split(' ')[0]}
+                      </span>
+                    )}
+                  </p>
+                  {role === 'teacher' && l.is_group && (
+                    <p className="text-xs text-gray-400">{lessonStudentNames(l).map(n => n.split(' ')[0]).join(', ')}</p>
                   )}
-                </p>
-                {role === 'teacher' && l.is_group && (
-                  <p className="text-xs text-gray-400">{lessonStudentNames(l).map(n => n.split(' ')[0]).join(', ')}</p>
-                )}
-                <p className="text-xs text-gray-500">
-                  {formatInTimeZone(new Date(l.scheduled_start), TZ, 'h:mm a')}
-                  {' – '}
-                  {formatInTimeZone(new Date(l.scheduled_end), TZ, 'h:mm a')} JST
-                </p>
+                  <p className="text-xs text-gray-500">
+                    {formatInTimeZone(new Date(l.scheduled_start), TZ, 'h:mm a')}
+                    {' – '}
+                    {formatInTimeZone(new Date(l.scheduled_end), TZ, 'h:mm a')} JST
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    l.status === 'completed' ? 'bg-green-100 text-green-700' :
+                    l.status === 'cancelled' ? 'bg-gray-100 text-gray-500' :
+                    tc ? `${tc.bg} ${tc.text}` : 'bg-brand-light text-brand-dark'
+                  }`}>
+                    {l.status}
+                  </span>
+                  {l.status !== 'cancelled' && (
+                    <button
+                      onClick={() => toggleNotes(l.id)}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      {loadingNoteId === l.id ? '…' : isExpanded ? 'Notes ▴' : 'Notes ▾'}
+                    </button>
+                  )}
+                  <Link to={`/lessons/${l.id}`} className="text-xs text-brand hover:underline">View</Link>
+                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  l.status === 'completed' ? 'bg-green-100 text-green-700' :
-                  l.status === 'cancelled' ? 'bg-gray-100 text-gray-500' :
-                  tc ? `${tc.bg} ${tc.text}` : 'bg-brand-light text-brand-dark'
-                }`}>
-                  {l.status}
-                </span>
-                <Link to={`/lessons/${l.id}`} className="text-xs text-brand hover:underline">View</Link>
-              </div>
+              {isExpanded && (
+                <div className="ml-0 pl-3 border-l-2 border-gray-200">
+                  {loadingNoteId === l.id ? (
+                    <p className="text-xs text-gray-400">Loading…</p>
+                  ) : notes ? (
+                    <NotesReadView notes={notes} />
+                  ) : (
+                    <p className="text-xs text-gray-400">No notes for this lesson.</p>
+                  )}
+                </div>
+              )}
             </div>
             )
           })}
