@@ -8,6 +8,7 @@ type QuizQuestion = {
   sentence: string
   choices: string[]
   answer: string
+  image_url: string | null
 }
 
 interface SavedQuizSession {
@@ -109,6 +110,7 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
             word: w.word,
             sentence: w.quiz_sentence,
             answer,
+            image_url: w.image_url ?? null,
             choices: shuffle([answer, ...w.quiz_distractors.slice(0, 3)]),
           }
         })
@@ -246,8 +248,15 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
 
       {/* Question */}
       <div className="flex-1 flex flex-col justify-center px-6 gap-8">
-        <div className="bg-white/10 rounded-2xl p-6 text-center">
-          <p className="text-white text-xl font-medium leading-relaxed">
+        <div className="bg-white/10 rounded-2xl overflow-hidden text-center">
+          {q.image_url && (
+            <img
+              src={q.image_url}
+              alt={q.word}
+              className="w-full max-h-48 object-cover"
+            />
+          )}
+          <p className="text-white text-xl font-medium leading-relaxed p-6">
             <SentenceDisplay sentence={q.sentence} />
           </p>
         </div>

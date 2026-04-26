@@ -391,6 +391,47 @@ export async function removeVocabImage(
   return {}
 }
 
+export async function uploadDeckWordImage(
+  deckWordId: string,
+  deckId: string,
+  wordText: string,
+  file: File,
+): Promise<{ url?: string; error?: string }> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated.' }
+
+  const webpFile = await convertToWebP(file)
+  const path = `deck/${deckWordId}.webp`
+
+  const { error: uploadError } = await supabase.storage
+    .from('vocab-images')
+    .upload(path, webpFile, { upsert: true, contentType: 'image/webp' })
+
+  if (uploadError) return { error: uploadError.message }
+
+  const { data: urlData } = await supabase.storage
+    .from('vocab-images')
+    .getPublicUrl(path)
+
+  const url = `${urlData.publicUrl}?t=${Date.now()}`
+
+  await supabase.from('vocabulary_deck_words').update({ image_url: url }).eq('id', deckWordId)
+  await supabase.from('vocabulary_bank').update({ image_url: url }).eq('deck_id', deckId).eq('word', wordText)
+
+  return { url }
+}
+
+export async function removeDeckWordImage(
+  deckWordId: string,
+  deckId: string,
+  wordText: string,
+): Promise<{ error?: string }> {
+  await supabase.storage.from('vocab-images').remove([`deck/${deckWordId}.webp`])
+  await supabase.from('vocabulary_deck_words').update({ image_url: null }).eq('id', deckWordId)
+  await supabase.from('vocabulary_bank').update({ image_url: null }).eq('deck_id', deckId).eq('word', wordText)
+  return {}
+}
+
 // ── Vocabulary Decks ─────────────────────────────────────────
 
 export interface DeckWord {
@@ -402,6 +443,7 @@ export interface DeckWord {
   definition_en: string | null
   example: string | null
   category: string | null
+  image_url: string | null
   quiz_sentence: string | null
   quiz_answer: string | null
   quiz_distractors: string[]

@@ -4,6 +4,8 @@ import {
   deleteVocabEntry,
   uploadVocabImage,
   removeVocabImage,
+  uploadDeckWordImage,
+  removeDeckWordImage,
   listDecks,
   createDeck,
   deleteDeck,
@@ -69,6 +71,9 @@ function DeckEditor({
   const [renamingName, setRenamingName] = useState(false)
   const [tab, setTab] = useState<'words' | 'quiz'>('words')
   const [suggestingCategories, setSuggestingCategories] = useState(false)
+  const [uploadingImageId, setUploadingImageId] = useState<string | null>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const imageTargetWordRef = useRef<DeckWord | null>(null)
   // ── Quiz tab state — keyed by vocabulary_deck_words.id ───────
   const [generating, setGenerating] = useState(false)
   const [savingQuizId, setSavingQuizId] = useState<string | null>(null)
@@ -313,6 +318,26 @@ function DeckEditor({
     })
   }
 
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    const w = imageTargetWordRef.current
+    if (!file || !w) return
+    e.target.value = ''
+    setUploadingImageId(w.id)
+    const { url, error } = await uploadDeckWordImage(w.id, deck.id, w.word, file)
+    setUploadingImageId(null)
+    if (error) { toast.error(error); return }
+    setWords(prev => prev.map(x => x.id === w.id ? { ...x, image_url: url ?? null } : x))
+  }
+
+  async function handleImageRemove(w: DeckWord) {
+    setUploadingImageId(w.id)
+    const { error } = await removeDeckWordImage(w.id, deck.id, w.word)
+    setUploadingImageId(null)
+    if (error) { toast.error(error); return }
+    setWords(prev => prev.map(x => x.id === w.id ? { ...x, image_url: null } : x))
+  }
+
   async function handleEditSave() {
     if (!editingWordId || !editFields.word.trim()) return
     setSavingEdit(true)
@@ -349,6 +374,13 @@ function DeckEditor({
   return (
     <div role="dialog" aria-modal="true" aria-label="Edit vocabulary deck" className="fixed z-50 bg-black/60 flex items-center justify-center p-4" style={{ top: 0, left: 0, width: '100vw', height: '100vh', minHeight: '-webkit-fill-available' }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageUpload}
+        />
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           {renamingName ? (
@@ -606,6 +638,34 @@ function DeckEditor({
                     </div>
                   ) : (
                     <div className="flex items-start gap-2 py-2">
+                      {/* Image thumbnail */}
+                      <div className="relative shrink-0 group">
+                        {uploadingImageId === w.id ? (
+                          <div className="w-10 h-10 rounded border border-gray-200 flex items-center justify-center bg-gray-50">
+                            <div className="w-4 h-4 border-2 border-gray-300 border-t-brand rounded-full animate-spin" />
+                          </div>
+                        ) : w.image_url ? (
+                          <>
+                            <img
+                              src={w.image_url}
+                              alt={w.word}
+                              className="w-10 h-10 rounded border border-gray-200 object-cover cursor-pointer"
+                              onClick={() => { imageTargetWordRef.current = w; imageInputRef.current?.click() }}
+                            />
+                            <button
+                              onClick={() => handleImageRemove(w)}
+                              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[9px] leading-none items-center justify-center hidden group-hover:flex"
+                              title="Remove image"
+                            >✕</button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => { imageTargetWordRef.current = w; imageInputRef.current?.click() }}
+                            className="w-10 h-10 rounded border border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-brand hover:text-brand transition-colors text-lg"
+                            title="Add image"
+                          >+</button>
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-sm text-gray-900">{w.word}</span>
