@@ -249,7 +249,7 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
       {/* Question */}
       <div className="flex-1 flex flex-col justify-center px-6 gap-8">
         <div className="bg-white/10 rounded-2xl overflow-hidden text-center">
-          {q.image_url && (
+          {q.image_url && selected && (
             <img
               src={q.image_url}
               alt={q.word}
