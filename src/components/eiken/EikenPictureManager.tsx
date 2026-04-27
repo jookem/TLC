@@ -38,6 +38,210 @@ const EMPTY_FORM = {
   questions: ['', '', '', '', ''],
 }
 
+// ── Edit Modal ────────────────────────────────────────────────
+
+function EditModal({
+  pic,
+  onClose,
+  onSaved,
+}: {
+  pic: EikenPicture
+  onClose: () => void
+  onSaved: (updated: EikenPicture) => void
+}) {
+  const fmt = levelFormat(pic.level)
+  const hasPassage = fmt === 'passage'
+  const hasStarter = fmt === 'comic'
+  const hasImageB = pic.level === 'Eiken Pre-2'
+  const questionCount =
+    pic.level === 'Eiken 5' ? 3 :
+    pic.level === 'Eiken 4' ? 4 :
+    pic.level === 'Eiken 3' ? 5 : 0
+
+  const padded = [...(pic.questions ?? []), '', '', '', '', ''].slice(0, 5)
+
+  const [form, setForm] = useState({
+    description: pic.description ?? '',
+    passageTitle: pic.passage_title ?? '',
+    passageText: pic.passage_text ?? '',
+    starterSentence: pic.starter_sentence ?? '',
+    imageBDescription: pic.image_b_description ?? '',
+    questions: padded,
+  })
+  const [saving, setSaving] = useState(false)
+
+  function setQ(i: number, val: string) {
+    setForm(f => { const q = [...f.questions]; q[i] = val; return { ...f, questions: q } })
+  }
+
+  async function handleSave() {
+    if (!form.description.trim()) { toast.error('Picture description is required'); return }
+    if (hasPassage && !form.passageText.trim()) { toast.error('Passage text is required'); return }
+    if (hasStarter && !form.starterSentence.trim()) { toast.error('Starter sentence is required'); return }
+
+    setSaving(true)
+    const questions = questionCount > 0 ? form.questions.slice(0, questionCount).filter(q => q.trim()) : []
+
+    const { error } = await supabase.from('eiken_pictures').update({
+      description: form.description.trim(),
+      passage_title: hasPassage ? form.passageTitle.trim() || null : null,
+      passage_text: hasPassage ? form.passageText.trim() || null : null,
+      starter_sentence: hasStarter ? form.starterSentence.trim() || null : null,
+      image_b_description: hasImageB ? form.imageBDescription.trim() || null : null,
+      questions: questions.length ? questions : [],
+    }).eq('id', pic.id)
+
+    setSaving(false)
+    if (error) { toast.error('Failed to save'); return }
+
+    toast.success('Changes saved')
+    onSaved({
+      ...pic,
+      description: form.description.trim(),
+      passage_title: hasPassage ? form.passageTitle.trim() || null : null,
+      passage_text: hasPassage ? form.passageText.trim() || null : null,
+      starter_sentence: hasStarter ? form.starterSentence.trim() || null : null,
+      image_b_description: hasImageB ? form.imageBDescription.trim() || null : null,
+      questions,
+    })
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+          <div>
+            <h2 className="font-semibold text-gray-900">Edit picture</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{pic.level}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+
+          {/* Image preview */}
+          <img
+            src={pic.image_url}
+            alt={pic.level}
+            className="w-full max-h-40 object-cover rounded-xl border border-gray-200"
+          />
+
+          {/* Passage fields */}
+          {hasPassage && (
+            <>
+              <div>
+                <label className="text-xs font-medium text-gray-600">Passage title</label>
+                <input
+                  value={form.passageTitle}
+                  onChange={e => setForm(f => ({ ...f, passageTitle: e.target.value }))}
+                  placeholder="e.g. Sam's Pet"
+                  className="mt-1 w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600">
+                  Passage text <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  value={form.passageText}
+                  onChange={e => setForm(f => ({ ...f, passageText: e.target.value }))}
+                  placeholder="e.g. Sam is 10 years old, and he has a dog..."
+                  rows={4}
+                  className="mt-1 resize-none text-sm"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Questions */}
+          {questionCount > 0 && (
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-600">Questions (No. 1–{questionCount})</label>
+              {form.questions.slice(0, questionCount).map((q, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="text-xs text-gray-400 mt-2.5 w-10 shrink-0">No. {i + 1}</span>
+                  <input
+                    value={q}
+                    onChange={e => setQ(i, e.target.value)}
+                    placeholder={`Question ${i + 1}`}
+                    className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Starter sentence */}
+          {hasStarter && (
+            <div>
+              <label className="text-xs font-medium text-gray-600">
+                Starter sentence <span className="text-red-500">*</span>
+              </label>
+              <input
+                value={form.starterSentence}
+                onChange={e => setForm(f => ({ ...f, starterSentence: e.target.value }))}
+                placeholder="e.g. One day, Mr. and Mrs. Sato were eating lunch..."
+                className="mt-1 w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30"
+              />
+            </div>
+          )}
+
+          {/* Description (AI prompt) */}
+          <div>
+            <label className="text-xs font-medium text-gray-600">
+              {hasImageB ? 'Picture A description (for AI)' : 'Picture description (for AI)'}
+              <span className="text-red-500"> *</span>
+            </label>
+            <Textarea
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              placeholder="Describe what is happening in detail so the AI can evaluate student answers."
+              rows={3}
+              className="mt-1 resize-none text-sm"
+            />
+          </div>
+
+          {/* Picture B description */}
+          {hasImageB && (
+            <div>
+              <label className="text-xs font-medium text-gray-600">Picture B description (for AI)</label>
+              <Textarea
+                value={form.imageBDescription}
+                onChange={e => setForm(f => ({ ...f, imageBDescription: e.target.value }))}
+                placeholder="Describe the situation in Picture B."
+                rows={2}
+                className="mt-1 resize-none text-sm"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 px-6 py-4 border-t shrink-0">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 py-2 bg-brand text-white text-sm font-medium rounded-lg disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Component ────────────────────────────────────────────
+
 export function EikenPictureManager() {
   const { user } = useAuth()
   const [pictures, setPictures] = useState<EikenPicture[]>([])
@@ -48,6 +252,7 @@ export function EikenPictureManager() {
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [pendingFileB, setPendingFileB] = useState<File | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
+  const [editingPic, setEditingPic] = useState<EikenPicture | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const fileBRef = useRef<HTMLInputElement>(null)
 
@@ -170,205 +375,224 @@ export function EikenPictureManager() {
   const levelPictures = pictures.filter(p => p.level === selectedLevel)
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">🖼️ Eiken Picture Bank</CardTitle>
-          {!showForm && (
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="px-3 py-1.5 bg-brand text-white text-xs font-medium rounded-lg hover:bg-brand/90 transition-colors"
-            >
-              + Upload Picture
-            </button>
-          )}
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
-          <input ref={fileBRef} type="file" accept="image/*" className="hidden" onChange={handleFileBSelect} />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <>
+      {editingPic && (
+        <EditModal
+          pic={editingPic}
+          onClose={() => setEditingPic(null)}
+          onSaved={updated => setPictures(prev => prev.map(p => p.id === updated.id ? updated : p))}
+        />
+      )}
 
-        {/* Level tabs */}
-        <div className="grid grid-cols-3 gap-1 bg-gray-100 rounded-lg p-1">
-          {LEVELS.map(level => (
-            <button
-              key={level}
-              onClick={() => setSelectedLevel(level)}
-              className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
-                selectedLevel === level ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {level}
-            </button>
-          ))}
-        </div>
-
-        {/* Upload form */}
-        {showForm && pendingFile && (
-          <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50">
-            <p className="text-sm font-medium text-gray-700">New picture — {selectedLevel}</p>
-
-            {/* Main image preview */}
-            <div>
-              <p className="text-xs text-gray-500 mb-1">{hasImageB ? 'Picture A' : 'Picture'}</p>
-              <img
-                src={URL.createObjectURL(pendingFile)}
-                alt="Preview"
-                className="w-full max-h-48 object-cover rounded-lg border border-gray-200"
-              />
-            </div>
-
-            {/* Picture B upload for Pre-2 */}
-            {hasImageB && (
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Picture B <span className="text-red-500">*</span></p>
-                {pendingFileB ? (
-                  <img
-                    src={URL.createObjectURL(pendingFileB)}
-                    alt="Picture B"
-                    className="w-full max-h-48 object-cover rounded-lg border border-gray-200"
-                  />
-                ) : (
-                  <button
-                    onClick={() => fileBRef.current?.click()}
-                    className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-xs text-gray-400 hover:border-brand hover:text-brand transition-colors"
-                  >
-                    + Upload Picture B
-                  </button>
-                )}
-              </div>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">🖼️ Eiken Picture Bank</CardTitle>
+            {!showForm && (
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="px-3 py-1.5 bg-brand text-white text-xs font-medium rounded-lg hover:bg-brand/90 transition-colors"
+              >
+                + Upload Picture
+              </button>
             )}
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+            <input ref={fileBRef} type="file" accept="image/*" className="hidden" onChange={handleFileBSelect} />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
 
-            {/* Passage fields for 5, 4, 3 */}
-            {hasPassage && (
-              <>
+          {/* Level tabs */}
+          <div className="grid grid-cols-3 gap-1 bg-gray-100 rounded-lg p-1">
+            {LEVELS.map(level => (
+              <button
+                key={level}
+                onClick={() => setSelectedLevel(level)}
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  selectedLevel === level ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {level}
+              </button>
+            ))}
+          </div>
+
+          {/* Upload form */}
+          {showForm && pendingFile && (
+            <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50">
+              <p className="text-sm font-medium text-gray-700">New picture — {selectedLevel}</p>
+
+              {/* Main image preview */}
+              <div>
+                <p className="text-xs text-gray-500 mb-1">{hasImageB ? 'Picture A' : 'Picture'}</p>
+                <img
+                  src={URL.createObjectURL(pendingFile)}
+                  alt="Preview"
+                  className="w-full max-h-48 object-cover rounded-lg border border-gray-200"
+                />
+              </div>
+
+              {/* Picture B upload for Pre-2 */}
+              {hasImageB && (
                 <div>
-                  <label className="text-xs font-medium text-gray-600">Passage title</label>
+                  <p className="text-xs text-gray-500 mb-1">Picture B <span className="text-red-500">*</span></p>
+                  {pendingFileB ? (
+                    <img
+                      src={URL.createObjectURL(pendingFileB)}
+                      alt="Picture B"
+                      className="w-full max-h-48 object-cover rounded-lg border border-gray-200"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => fileBRef.current?.click()}
+                      className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-xs text-gray-400 hover:border-brand hover:text-brand transition-colors"
+                    >
+                      + Upload Picture B
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Passage fields for 5, 4, 3 */}
+              {hasPassage && (
+                <>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Passage title</label>
+                    <input
+                      value={form.passageTitle}
+                      onChange={e => setForm(f => ({ ...f, passageTitle: e.target.value }))}
+                      placeholder="e.g. Sam's Pet"
+                      className="mt-1 w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Passage text <span className="text-red-500">*</span></label>
+                    <Textarea
+                      value={form.passageText}
+                      onChange={e => setForm(f => ({ ...f, passageText: e.target.value }))}
+                      placeholder="e.g. Sam is 10 years old, and he has a dog..."
+                      rows={3}
+                      className="mt-1 resize-none text-sm"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Questions */}
+              {hasQuestions && (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-600">Questions (No. 1–{questionCount})</label>
+                  {form.questions.slice(0, questionCount).map((q, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="text-xs text-gray-400 mt-2 w-10 shrink-0">No. {i + 1}</span>
+                      <input
+                        value={q}
+                        onChange={e => setQ(i, e.target.value)}
+                        placeholder={`Question ${i + 1}`}
+                        className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Starter sentence for Pre-2 Plus, Eiken 2 */}
+              {hasStarter && (
+                <div>
+                  <label className="text-xs font-medium text-gray-600">Starter sentence <span className="text-red-500">*</span></label>
                   <input
-                    value={form.passageTitle}
-                    onChange={e => setForm(f => ({ ...f, passageTitle: e.target.value }))}
-                    placeholder="e.g. Sam's Pet"
+                    value={form.starterSentence}
+                    onChange={e => setForm(f => ({ ...f, starterSentence: e.target.value }))}
+                    placeholder="e.g. One day, Mr. and Mrs. Sato were eating lunch with their daughter, Yuki."
                     className="mt-1 w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30"
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600">Passage text <span className="text-red-500">*</span></label>
-                  <Textarea
-                    value={form.passageText}
-                    onChange={e => setForm(f => ({ ...f, passageText: e.target.value }))}
-                    placeholder="e.g. Sam is 10 years old, and he has a dog..."
-                    rows={3}
-                    className="mt-1 resize-none text-sm"
-                  />
-                </div>
-              </>
-            )}
+              )}
 
-            {/* Questions for Eiken 3 */}
-            {hasQuestions && (
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-600">Questions (No. 1–{questionCount})</label>
-                {form.questions.slice(0, questionCount).map((q, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span className="text-xs text-gray-400 mt-2 w-10 shrink-0">No. {i + 1}</span>
-                    <input
-                      value={q}
-                      onChange={e => setQ(i, e.target.value)}
-                      placeholder={`Question ${i + 1}`}
-                      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Starter sentence for Pre-2 Plus, Eiken 2 */}
-            {hasStarter && (
+              {/* Description */}
               <div>
-                <label className="text-xs font-medium text-gray-600">Starter sentence <span className="text-red-500">*</span></label>
-                <input
-                  value={form.starterSentence}
-                  onChange={e => setForm(f => ({ ...f, starterSentence: e.target.value }))}
-                  placeholder="e.g. One day, Mr. and Mrs. Sato were eating lunch with their daughter, Yuki."
-                  className="mt-1 w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30"
-                />
-              </div>
-            )}
-
-            {/* Description (what's in the picture — for AI) */}
-            <div>
-              <label className="text-xs font-medium text-gray-600">
-                {hasImageB ? 'Picture A description (for AI)' : 'Picture description (for AI)'} <span className="text-red-500">*</span>
-              </label>
-              <Textarea
-                value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Describe what is happening in detail so the AI can evaluate student answers."
-                rows={2}
-                className="mt-1 resize-none text-sm"
-              />
-            </div>
-
-            {hasImageB && (
-              <div>
-                <label className="text-xs font-medium text-gray-600">Picture B description (for AI)</label>
+                <label className="text-xs font-medium text-gray-600">
+                  {hasImageB ? 'Picture A description (for AI)' : 'Picture description (for AI)'} <span className="text-red-500">*</span>
+                </label>
                 <Textarea
-                  value={form.imageBDescription}
-                  onChange={e => setForm(f => ({ ...f, imageBDescription: e.target.value }))}
-                  placeholder="Describe the situation in Picture B."
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Describe what is happening in detail so the AI can evaluate student answers."
                   rows={2}
                   className="mt-1 resize-none text-sm"
                 />
               </div>
-            )}
 
-            <div className="flex gap-2">
-              <button
-                onClick={handleUpload}
-                disabled={uploading}
-                className="flex-1 py-2 bg-brand text-white text-sm font-medium rounded-lg disabled:opacity-50"
-              >
-                {uploading ? 'Saving…' : 'Save Picture'}
-              </button>
-              <button onClick={cancelUpload} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg">
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
+              {hasImageB && (
+                <div>
+                  <label className="text-xs font-medium text-gray-600">Picture B description (for AI)</label>
+                  <Textarea
+                    value={form.imageBDescription}
+                    onChange={e => setForm(f => ({ ...f, imageBDescription: e.target.value }))}
+                    placeholder="Describe the situation in Picture B."
+                    rows={2}
+                    className="mt-1 resize-none text-sm"
+                  />
+                </div>
+              )}
 
-        {/* Picture grid */}
-        {levelPictures.length === 0 && !showForm ? (
-          <p className="text-sm text-gray-400 text-center py-6">
-            No pictures for {selectedLevel} yet.
-          </p>
-        ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {levelPictures.map(pic => (
-              <div key={pic.id} className="relative group rounded-lg overflow-hidden border border-gray-200">
-                <img src={pic.image_url} alt={pic.level} className="w-full aspect-video object-cover" />
-                {pic.description && (
-                  <div className="absolute inset-0 bg-black/70 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity overflow-auto leading-relaxed">
-                    {pic.passage_title && <p className="font-bold mb-1">{pic.passage_title}</p>}
-                    {pic.description}
-                  </div>
-                )}
+              <div className="flex gap-2">
                 <button
-                  onClick={() => handleDelete(pic)}
-                  disabled={deleting === pic.id}
-                  className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white text-xs rounded-full flex items-center justify-center disabled:opacity-50"
+                  onClick={handleUpload}
+                  disabled={uploading}
+                  className="flex-1 py-2 bg-brand text-white text-sm font-medium rounded-lg disabled:opacity-50"
                 >
-                  {deleting === pic.id ? '…' : '×'}
+                  {uploading ? 'Saving…' : 'Save Picture'}
+                </button>
+                <button onClick={cancelUpload} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg">
+                  Cancel
                 </button>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
 
-        <p className="text-xs text-gray-400">
-          {pictures.length} picture{pictures.length !== 1 ? 's' : ''} total · shared across all students
-        </p>
-      </CardContent>
-    </Card>
+          {/* Picture grid */}
+          {levelPictures.length === 0 && !showForm ? (
+            <p className="text-sm text-gray-400 text-center py-6">
+              No pictures for {selectedLevel} yet.
+            </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {levelPictures.map(pic => (
+                <div key={pic.id} className="relative group rounded-lg overflow-hidden border border-gray-200">
+                  <img src={pic.image_url} alt={pic.level} className="w-full aspect-video object-cover" />
+                  {pic.description && (
+                    <div className="absolute inset-0 bg-black/70 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity overflow-auto leading-relaxed">
+                      {pic.passage_title && <p className="font-bold mb-1">{pic.passage_title}</p>}
+                      {pic.description}
+                    </div>
+                  )}
+                  {/* Action buttons — visible on hover */}
+                  <div className="absolute bottom-0 inset-x-0 flex gap-1 p-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/60 to-transparent">
+                    <button
+                      onClick={() => setEditingPic(pic)}
+                      className="flex-1 py-1 bg-white/90 text-gray-800 text-[10px] font-medium rounded"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(pic)}
+                      disabled={deleting === pic.id}
+                      className="flex-1 py-1 bg-red-500/90 text-white text-[10px] font-medium rounded disabled:opacity-50"
+                    >
+                      {deleting === pic.id ? '…' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="text-xs text-gray-400">
+            {pictures.length} picture{pictures.length !== 1 ? 's' : ''} total · shared across all students
+          </p>
+        </CardContent>
+      </Card>
+    </>
   )
 }
