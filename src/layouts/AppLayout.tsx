@@ -39,7 +39,7 @@ export function AppLayout() {
 
   const isTeacher = profile.role === 'teacher'
   const nav = isTeacher ? teacherNav : studentNav
-  const updateAvailable = useVersionCheck()
+  const { updateAvailable, applyUpdate } = useVersionCheck()
   const { counts: due } = useDueCounts()
   const dueBadge: Record<string, number> = {
     '/grammar': due.grammar,
@@ -52,7 +52,7 @@ export function AppLayout() {
         <div className="fixed top-0 inset-x-0 z-50 bg-brand text-white text-sm flex items-center justify-between px-4 py-2 shadow-md">
           <span>A new version is available.</span>
           <button
-            onClick={() => window.location.reload()}
+            onClick={applyUpdate}
             className="ml-4 px-3 py-1 bg-white text-brand font-medium rounded-full text-xs hover:bg-brand-light transition-colors"
           >
             Update now
