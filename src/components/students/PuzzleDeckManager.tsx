@@ -629,7 +629,7 @@ function PuzzleEditor({
 }
 
 // ── Main Component ────────────────────────────────────────────
-export function PuzzleDeckManager({ studentId }: { studentId: string }) {
+export function PuzzleDeckManager({ studentId }: { studentId?: string }) {
   const [decks, setDecks] = useState<PuzzleDeck[]>([])
   const [decksLoading, setDecksLoading] = useState(true)
   const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set())
@@ -643,7 +643,7 @@ export function PuzzleDeckManager({ studentId }: { studentId: string }) {
   async function load() {
     const [{ decks: d }, ids] = await Promise.all([
       listPuzzleDecks(),
-      getAssignedDeckIds(studentId),
+      studentId ? getAssignedDeckIds(studentId) : Promise.resolve([]),
     ])
     setDecks(d ?? [])
     setAssignedIds(new Set(ids))
@@ -673,7 +673,7 @@ export function PuzzleDeckManager({ studentId }: { studentId: string }) {
 
   async function handleAssign(deckId: string) {
     setAssigning(deckId)
-    const { error } = await assignPuzzleDeckToStudent(deckId, studentId)
+    const { error } = await assignPuzzleDeckToStudent(deckId, studentId!)
     setAssigning(null)
     if (error) toast.error(error)
     else { setAssignedIds(prev => new Set([...prev, deckId])); toast.success('Deck assigned') }
@@ -682,7 +682,7 @@ export function PuzzleDeckManager({ studentId }: { studentId: string }) {
   async function handleRemove(deckId: string, deckName: string) {
     if (!confirm(`Unassign deck "${deckName}" from this student?`)) return
     setRemoving(deckId)
-    const { error } = await removePuzzleDeckFromStudent(deckId, studentId)
+    const { error } = await removePuzzleDeckFromStudent(deckId, studentId!)
     setRemoving(null)
     if (error) toast.error(error)
     else { setAssignedIds(prev => { const s = new Set(prev); s.delete(deckId); return s }); toast.success('Deck removed') }
@@ -751,7 +751,7 @@ export function PuzzleDeckManager({ studentId }: { studentId: string }) {
                   return (
                     <>
                       <button onClick={() => setEditingDeck(deck)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
-                      {isAssigned ? (
+                      {studentId && (isAssigned ? (
                         <button onClick={() => handleRemove(row.id, row.name)} disabled={removing === row.id} className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50">
                           {removing === row.id ? '…' : 'Unassign'}
                         </button>
@@ -759,7 +759,7 @@ export function PuzzleDeckManager({ studentId }: { studentId: string }) {
                         <button onClick={() => handleAssign(row.id)} disabled={assigning === row.id} className="text-xs text-brand hover:text-brand/80 transition-colors disabled:opacity-50">
                           {assigning === row.id ? '…' : 'Assign'}
                         </button>
-                      )}
+                      ))}
                       <button onClick={() => handleDelete(row.id, row.name)} disabled={deleting === row.id} className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
                         {deleting === row.id ? '…' : 'Delete'}
                       </button>

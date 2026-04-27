@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useVersionCheck } from '@/lib/hooks/useVersionCheck'
 import {
   LayoutDashboard, Users, Calendar, Clock, BookOpen,
-  Home, CalendarPlus, Target, Languages, GraduationCap, Gamepad2, Drama,
+  Home, CalendarPlus, Target, Languages, GraduationCap, Gamepad2, Library,
 } from 'lucide-react'
 import { AvatarMenu } from '@/components/shared/AvatarMenu'
 import { useAuth } from '@/contexts/AuthContext'
@@ -16,7 +16,7 @@ const teacherNav = [
   { href: '/calendar',   label: 'Calendar',    shortLabel: 'Calendar', icon: Calendar },
   { href: '/availability', label: 'Availability', shortLabel: 'Hours', icon: Clock },
   { href: '/lessons',    label: 'Lessons',     shortLabel: 'Lessons', icon: BookOpen },
-  { href: '/situations', label: 'Situations',  shortLabel: 'Sitns',   icon: Drama },
+  { href: '/materials',  label: 'Materials',   shortLabel: 'Matls',   icon: Library },
 ]
 
 const studentNav = [

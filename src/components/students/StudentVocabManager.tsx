@@ -38,7 +38,7 @@ const MASTERY_COLORS = [
 const MASTERY_LABELS = ['New', 'Seen', 'Familiar', 'Mastered']
 
 interface Props {
-  studentId: string
+  studentId?: string
 }
 
 // ── Deck Editor Modal ─────────────────────────────────────────
@@ -50,7 +50,7 @@ function DeckEditor({
   onDelete,
 }: {
   deck: Deck
-  studentId: string
+  studentId?: string
   onClose: () => void
   onUpdated: () => void
   onDelete: (deckId: string, deckName: string) => Promise<void>
@@ -954,6 +954,7 @@ export function StudentVocabManager({ studentId }: Props) {
   const [imageTargetId, setImageTargetId] = useState<string | null>(null)
 
   async function loadVocab() {
+    if (!studentId) { setVocab([]); setLoading(false); return }
     const { entries, error } = await getStudentVocab(studentId)
     if (error) console.error('VocabManager load error:', error)
     setVocab(entries)
@@ -1000,7 +1001,7 @@ export function StudentVocabManager({ studentId }: Props) {
 
   async function handleAssign(deckId: string) {
     setAssigning(deckId)
-    const { count, error } = await assignDeckToStudent(deckId, studentId)
+    const { count, error } = await assignDeckToStudent(deckId, studentId!)
     setAssigning(null)
     if (error) toast.error(error)
     else {
@@ -1012,7 +1013,7 @@ export function StudentVocabManager({ studentId }: Props) {
   async function handleRemoveDeck(deckId: string, deckName: string) {
     if (!confirm(`Unassign deck "${deckName}" from this student?`)) return
     setRemoving(deckId)
-    const { error } = await removeDeckFromStudent(deckId, studentId)
+    const { error } = await removeDeckFromStudent(deckId, studentId!)
     setRemoving(null)
     if (error) toast.error(error)
     else {
@@ -1048,7 +1049,7 @@ export function StudentVocabManager({ studentId }: Props) {
 
   async function handleDeleteVocab(id: string) {
     setDeletingVocab(id)
-    const { error } = await deleteVocabEntry(id, studentId)
+    const { error } = await deleteVocabEntry(id, studentId!)
     setDeletingVocab(null)
     if (error) toast.error(error)
     else setVocab(prev => prev.filter(v => v.id !== id))
@@ -1195,7 +1196,7 @@ export function StudentVocabManager({ studentId }: Props) {
                   return (
                     <>
                       <button onClick={() => setEditingDeck(deck)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
-                      {isAssigned ? (
+                      {studentId && (isAssigned ? (
                         <button onClick={() => handleRemoveDeck(row.id, row.name)} disabled={removing === row.id} className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50">
                           {removing === row.id ? '…' : 'Unassign'}
                         </button>
@@ -1203,7 +1204,7 @@ export function StudentVocabManager({ studentId }: Props) {
                         <button onClick={() => handleAssign(row.id)} disabled={assigning === row.id} className="text-xs text-brand hover:text-brand/80 transition-colors disabled:opacity-50">
                           {assigning === row.id ? '…' : 'Assign'}
                         </button>
-                      )}
+                      ))}
                       <button onClick={() => handleDeleteDeck(row.id, row.name)} disabled={deleting === row.id} className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
                         {deleting === row.id ? '…' : 'Delete'}
                       </button>

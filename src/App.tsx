@@ -25,6 +25,7 @@ import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 import { PendingApprovalPage } from '@/pages/PendingApprovalPage'
 import { AdminTeachersPage } from '@/pages/AdminTeachersPage'
 import { SituationsPage } from '@/pages/SituationsPage'
+import { MaterialsPage } from '@/pages/MaterialsPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useAuth()
@@ -68,6 +69,7 @@ function AppRoutes() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/admin/teachers" element={<AdminTeachersPage />} />
         <Route path="/situations" element={<SituationsPage />} />
+        <Route path="/materials" element={<MaterialsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

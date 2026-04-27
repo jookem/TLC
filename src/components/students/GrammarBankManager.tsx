@@ -965,7 +965,7 @@ function DeckEditor({
 }
 
 // ── Main Component ────────────────────────────────────────────
-export function GrammarBankManager({ studentId }: { studentId: string }) {
+export function GrammarBankManager({ studentId }: { studentId?: string }) {
   const [entries, setEntries] = useState<GrammarBankEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [decks, setDecks] = useState<GrammarDeck[]>([])
@@ -979,6 +979,7 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
   const [deletingEntry, setDeletingEntry] = useState<string | null>(null)
 
   async function loadEntries() {
+    if (!studentId) { setEntries([]); setLoading(false); return }
     const { entries: e } = await listGrammar(studentId)
     setEntries(e ?? [])
     setLoading(false)
@@ -1025,7 +1026,7 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
 
   async function handleAssign(deckId: string) {
     setAssigning(deckId)
-    const { count, error } = await assignGrammarDeckToStudent(deckId, studentId)
+    const { count, error } = await assignGrammarDeckToStudent(deckId, studentId!)
     setAssigning(null)
     if (error) toast.error(error)
     else {
@@ -1037,7 +1038,7 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
   async function handleRemoveDeck(deckId: string, deckName: string) {
     if (!confirm(`Unassign deck "${deckName}" from this student?`)) return
     setRemovingDeck(deckId)
-    const { error } = await removeGrammarDeckFromStudent(deckId, studentId)
+    const { error } = await removeGrammarDeckFromStudent(deckId, studentId!)
     setRemovingDeck(null)
     if (error) toast.error(error)
     else {
@@ -1132,7 +1133,7 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
                   return (
                     <>
                       <button onClick={() => setEditingDeck(deck)} className="text-xs text-gray-400 hover:text-brand transition-colors">Edit</button>
-                      {isAssigned ? (
+                      {studentId && (isAssigned ? (
                         <button onClick={() => handleRemoveDeck(row.id, row.name)} disabled={removingDeck === row.id} className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50">
                           {removingDeck === row.id ? '…' : 'Unassign'}
                         </button>
@@ -1140,7 +1141,7 @@ export function GrammarBankManager({ studentId }: { studentId: string }) {
                         <button onClick={() => handleAssign(row.id)} disabled={assigning === row.id} className="text-xs text-brand hover:text-brand/80 transition-colors disabled:opacity-50">
                           {assigning === row.id ? '…' : 'Assign'}
                         </button>
-                      )}
+                      ))}
                       <button onClick={() => handleDeleteDeck(row.id, row.name)} disabled={deletingDeck === row.id} className="text-xs text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
                         {deletingDeck === row.id ? '…' : 'Delete'}
                       </button>
