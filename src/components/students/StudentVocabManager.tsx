@@ -382,7 +382,7 @@ function DeckEditor({
           onChange={handleImageUpload}
         />
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between px-6 pt-4 pb-2">
           {renamingName ? (
             <div className="flex items-center gap-2 flex-1">
               <input
@@ -404,19 +404,19 @@ function DeckEditor({
               <span className="ml-2 text-xs text-gray-400 font-normal">✏️</span>
             </button>
           )}
-          <div className="flex items-center gap-2 ml-4">
-            {words.length > 0 && (
-              <button
-                onClick={handleSuggestCategories}
-                disabled={suggestingCategories}
-                className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 shrink-0"
-              >
-                {suggestingCategories ? 'Categorizing…' : '✦ Auto-categorize'}
-              </button>
-            )}
-            <button aria-label="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
-          </div>
+          <button aria-label="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600 ml-4">✕</button>
         </div>
+        {words.length > 0 && (
+          <div className="px-6 pb-3">
+            <button
+              onClick={handleSuggestCategories}
+              disabled={suggestingCategories}
+              className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+            >
+              {suggestingCategories ? 'Categorizing…' : '✦ Auto-categorize'}
+            </button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex border-b shrink-0">

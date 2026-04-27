@@ -720,7 +720,7 @@ function DeckEditor({
     <div role="dialog" aria-modal="true" aria-label="Edit grammar deck" className="fixed z-50 bg-black/60 flex items-center justify-center p-4" style={{ top: 0, left: 0, width: '100vw', height: '100vh', minHeight: '-webkit-fill-available' }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+        <div className="flex items-center justify-between px-6 pt-4 pb-2 shrink-0">
           {renamingName ? (
             <input
               autoFocus value={name}
@@ -734,36 +734,34 @@ function DeckEditor({
               {name} <span className="text-xs text-gray-400 font-normal">✏️</span>
             </button>
           )}
-          <div className="flex items-center gap-2 ml-4 shrink-0">
-            {points.length > 0 && (
-              <div className="flex flex-col gap-1">
-                <button
-                  onClick={() => handleEnrichPoints(true)}
-                  disabled={enriching}
-                  title="Re-generate explanation and examples for every question so they match the specific grammar pattern"
-                  className="px-3 py-1 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 whitespace-nowrap"
-                >
-                  {enriching ? 'Enriching…' : '✦ Auto-fill explanations'}
-                </button>
-                <button
-                  onClick={() => handleAutoFillJa(false)}
-                  disabled={fillingJa}
-                  className="px-3 py-1 bg-sky-600 text-white text-xs rounded-lg hover:bg-sky-700 transition-colors disabled:opacity-50 whitespace-nowrap"
-                >
-                  {fillingJa ? '日本語…' : '✦ 日本語 auto-fill'}
-                </button>
-                <button
-                  onClick={() => handleSuggestCategories(true)}
-                  disabled={suggestingCategories}
-                  className="px-3 py-1 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 whitespace-nowrap"
-                >
-                  {suggestingCategories ? 'Categorizing…' : '✦ Auto-categorize all'}
-                </button>
-              </div>
-            )}
-            <button aria-label="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600 self-start">✕</button>
-          </div>
+          <button aria-label="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600 ml-4 shrink-0">✕</button>
         </div>
+        {points.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-6 pb-3 shrink-0">
+            <button
+              onClick={() => handleEnrichPoints(true)}
+              disabled={enriching}
+              title="Re-generate explanation and examples for every question so they match the specific grammar pattern"
+              className="px-3 py-1.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              {enriching ? 'Enriching…' : '✦ Auto-fill explanations'}
+            </button>
+            <button
+              onClick={() => handleAutoFillJa(false)}
+              disabled={fillingJa}
+              className="px-3 py-1.5 bg-sky-600 text-white text-xs rounded-lg hover:bg-sky-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              {fillingJa ? '日本語…' : '✦ 日本語 auto-fill'}
+            </button>
+            <button
+              onClick={() => handleSuggestCategories(true)}
+              disabled={suggestingCategories}
+              className="px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              {suggestingCategories ? 'Categorizing…' : '✦ Auto-categorize all'}
+            </button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex border-b shrink-0">
