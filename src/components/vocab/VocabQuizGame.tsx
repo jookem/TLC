@@ -248,16 +248,19 @@ export function VocabQuizGame({ words, deckName, onClose }: Props) {
 
       {/* Question */}
       <div className="flex-1 flex flex-col justify-center px-6 gap-8">
-        <div className="bg-white/10 rounded-2xl overflow-hidden text-center">
+        <div className="bg-white/10 rounded-2xl p-6 text-center space-y-3">
           {q.image_url && selected && (
             <img
               src={q.image_url}
               alt={q.word}
-              className="w-full max-h-48 object-cover"
+              className="max-h-24 object-contain rounded-lg mx-auto"
             />
           )}
-          <p className="text-white text-xl font-medium leading-relaxed p-6">
-            <SentenceDisplay sentence={q.sentence} />
+          <p className="text-white text-xl font-medium leading-relaxed">
+            {selected
+              ? q.sentence.replace('_____', q.answer)
+              : <SentenceDisplay sentence={q.sentence} />
+            }
           </p>
         </div>
 
