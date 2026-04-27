@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Input } from '@/components/ui/input'
 import { Eye, EyeOff } from 'lucide-react'
 
 type Props = React.InputHTMLAttributes<HTMLInputElement> & {
@@ -11,10 +10,10 @@ export function PasswordInput({ id, className, ...props }: Props) {
 
   return (
     <div className="relative">
-      <Input
+      <input
         id={id}
         type={show ? 'text' : 'password'}
-        className={`pr-10 ${className ?? ''}`}
+        className={`h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 pr-10 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm ${className ?? ''}`}
         {...props}
       />
       <button
