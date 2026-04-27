@@ -59,6 +59,13 @@ export function VocabLesson({ words, sessionName, onStart, onClose }: Props) {
               {w.definition_en && (
                 <p className="text-white/50 text-xs leading-snug">{w.definition_en}</p>
               )}
+              {w.image_url && (
+                <img
+                  src={w.image_url}
+                  alt={w.word}
+                  className="w-12 h-12 object-cover rounded-md mt-1"
+                />
+              )}
             </div>
           ))}
         </div>
