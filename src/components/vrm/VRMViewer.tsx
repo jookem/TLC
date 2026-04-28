@@ -214,6 +214,7 @@ export function VRMViewer({
               return
             }
             const clip = retargetMixamoClip(srcClip, vrmRef.current)
+            console.log('[VRMViewer] retargeted tracks:', clip.tracks.length, 'first:', clip.tracks[0]?.name)
             if (clip.tracks.length === 0) return  // warning already logged in retarget
             clipCache.set(url, clip)
             playClip(clip)
@@ -312,11 +313,12 @@ export function VRMViewer({
     let nextBlink = 3 + Math.random() * 3
     let blinkProgress = -1
 
-    const clock = new THREE.Clock()
+    const clock = new THREE.Timer()
 
     // ── Animation loop ────────────────────────────────────────
-    function animate() {
+    function animate(timestamp: number) {
       rafRef.current = requestAnimationFrame(animate)
+      clock.update(timestamp)
       const delta = Math.min(clock.getDelta(), 0.1)
       controls.update()
 
@@ -361,7 +363,7 @@ export function VRMViewer({
 
         // Idle sway only when no animation is playing
         if (!currentAction) {
-          const t = clock.elapsedTime
+          const t = clock.getElapsed()
           if (vrm.humanoid) {
             const spine = vrm.humanoid.getRawBoneNode('spine')
             if (spine) {
