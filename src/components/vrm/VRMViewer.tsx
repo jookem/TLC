@@ -235,10 +235,9 @@ export function VRMViewer({
         const height = box.max.y - box.min.y
 
         if (framing === 'bust') {
-          // Compute camera Z so the 30° FOV exactly contains the bust region
-          // (waist at 55% → 5% above head top), camera looks straight ahead at center
-          const frameBottom = box.min.y + height * 0.55
-          const frameTop    = box.min.y + height * 1.05
+          // Frame from lower-chest (62%) to just above head (103%), camera looks straight ahead
+          const frameBottom = box.min.y + height * 0.62
+          const frameTop    = box.min.y + height * 1.03
           const centerY     = (frameBottom + frameTop) / 2
           const halfH       = (frameTop - frameBottom) / 2
           const camZ        = halfH / Math.tan(Math.PI / 12) // tan(15°) for 30° FOV
@@ -314,10 +313,11 @@ export function VRMViewer({
           }
         }
 
-        // Switch animation if expression changed
+        // Switch animation if expression changed (create mixer lazily if needed)
         const desired = desiredAnimUrlRef.current
-        if (desired !== currentAnimUrlRef.current && mixer) {
-          switchAnim(desired)
+        if (desired !== currentAnimUrlRef.current) {
+          if (desired && !mixer) mixer = new THREE.AnimationMixer(vrm.scene)
+          if (mixer) switchAnim(desired)
         }
 
         // Idle sway only when no animation is playing

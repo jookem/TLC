@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import {
@@ -91,9 +92,22 @@ export function SituationSimulator() {
 
   async function persistVrmUrl(url: string | null) {
     if (!user) return
-    await supabase
+    // Try UPDATE first (works even without INSERT policy)
+    const { data: updated, error: updateErr } = await supabase
       .from('student_details')
-      .upsert({ student_id: user.id, vrm_url: url }, { onConflict: 'student_id' })
+      .update({ vrm_url: url })
+      .eq('student_id', user.id)
+      .select('student_id')
+
+    if (updateErr) { toast.error('Could not save avatar: ' + updateErr.message); return }
+
+    // No row existed yet — INSERT
+    if (!updated || updated.length === 0) {
+      const { error: insertErr } = await supabase
+        .from('student_details')
+        .insert({ student_id: user.id, vrm_url: url })
+      if (insertErr) toast.error('Could not save avatar: ' + insertErr.message)
+    }
   }
 
   async function handleVrmFile(e: React.ChangeEvent<HTMLInputElement>) {

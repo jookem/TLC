@@ -24,6 +24,7 @@ interface Props {
   onComplete: () => void
 }
 
+// Full-height half-panel so head can never be clipped by the container edge
 function VRMPortrait({
   url,
   label,
@@ -31,6 +32,7 @@ function VRMPortrait({
   expression,
   facingDirection,
   animationMap,
+  side,
 }: {
   url: string
   label: string
@@ -38,10 +40,15 @@ function VRMPortrait({
   expression: VRMExpression
   facingDirection: 'left' | 'right'
   animationMap?: Record<string, string>
+  side: 'left' | 'right'
 }) {
   return (
-    <div className={`flex flex-col items-center transition-all duration-300 ${dim ? 'opacity-30 scale-95' : 'opacity-100 scale-100'}`}>
-      <span className="text-[11px] font-medium text-white/80 bg-black/60 px-2.5 py-0.5 rounded-full mb-1.5 whitespace-nowrap backdrop-blur-sm">
+    <div
+      className={`absolute inset-y-0 ${side === 'left' ? 'left-0' : 'right-0'} w-[48%] pointer-events-none transition-opacity duration-300 ${dim ? 'opacity-30' : 'opacity-100'}`}
+    >
+      <span
+        className={`absolute top-3 ${side === 'left' ? 'left-3' : 'right-3'} z-10 text-[11px] font-medium text-white/80 bg-black/60 px-2.5 py-0.5 rounded-full whitespace-nowrap backdrop-blur-sm`}
+      >
         {label}
       </span>
       <VRMViewer
@@ -54,7 +61,7 @@ function VRMPortrait({
         facingDirection={facingDirection}
         framing="bust"
         transparent
-        className="h-[52vh] sm:h-[64vh] w-[32vw] sm:w-[30vw] max-w-xs"
+        className="w-full h-full"
       />
     </div>
   )
@@ -65,15 +72,19 @@ function FallbackPortrait({
   initial,
   label,
   dim,
+  side,
 }: {
   color: string
   initial: string
   label: string
   dim: boolean
+  side: 'left' | 'right'
 }) {
   return (
-    <div className={`flex flex-col items-center transition-all duration-300 ${dim ? 'opacity-30 scale-95' : 'opacity-100 scale-100'}`}>
-      <span className="text-[11px] font-medium text-white/80 bg-black/60 px-2.5 py-0.5 rounded-full mb-1.5 whitespace-nowrap backdrop-blur-sm">
+    <div
+      className={`absolute bottom-6 ${side === 'left' ? 'left-6' : 'right-6'} flex flex-col items-center gap-1.5 transition-all duration-300 ${dim ? 'opacity-30 scale-95' : 'opacity-100 scale-100'}`}
+    >
+      <span className="text-[11px] font-medium text-white/80 bg-black/60 px-2.5 py-0.5 rounded-full whitespace-nowrap backdrop-blur-sm">
         {label}
       </span>
       <div
@@ -100,10 +111,10 @@ export function RPGDialogueBox({
   isEnd,
   onComplete,
 }: Props) {
-  const isNpcTurn = currentNode.speaker === 'npc'
+  const isNpcTurn    = currentNode.speaker === 'npc'
   const isStudentTurn = currentNode.speaker === 'student'
 
-  const npcExpression: VRMExpression = EXPR_MAP[currentNode.expression ?? 'neutral'] ?? 'neutral'
+  const npcExpression: VRMExpression     = EXPR_MAP[currentNode.expression ?? 'neutral'] ?? 'neutral'
   const studentExpression: VRMExpression = isStudentTurn ? 'surprised' : 'neutral'
 
   return (
@@ -116,7 +127,7 @@ export function RPGDialogueBox({
         ← Exit
       </button>
 
-      {/* Scene */}
+      {/* Scene — characters are full-height panels so nothing clips */}
       <div
         className="flex-1 relative overflow-hidden"
         style={{
@@ -126,53 +137,53 @@ export function RPGDialogueBox({
           backgroundPosition: 'center',
         }}
       >
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-900/60 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-900/60 to-transparent pointer-events-none z-10" />
 
-        {/* NPC — bottom left, faces right toward student */}
-        <div className="absolute bottom-0 left-2 sm:left-10 flex flex-col items-center justify-end">
-          {npc?.vrm_url ? (
-            <VRMPortrait
-              url={npc.vrm_url}
-              label={npc.name ?? 'NPC'}
-              dim={isStudentTurn}
-              expression={npcExpression}
-              facingDirection="right"
-              animationMap={npcAnimationMap}
-            />
-          ) : (
-            <FallbackPortrait
-              color={npc?.placeholder_color ?? '#6366f1'}
-              initial={npc?.name?.[0] ?? 'N'}
-              label={npc?.name ?? 'NPC'}
-              dim={isStudentTurn}
-            />
-          )}
-        </div>
+        {/* NPC — left half, faces right */}
+        {npc?.vrm_url ? (
+          <VRMPortrait
+            url={npc.vrm_url}
+            label={npc.name ?? 'NPC'}
+            dim={isStudentTurn}
+            expression={npcExpression}
+            facingDirection="right"
+            animationMap={npcAnimationMap}
+            side="left"
+          />
+        ) : (
+          <FallbackPortrait
+            color={npc?.placeholder_color ?? '#6366f1'}
+            initial={npc?.name?.[0] ?? 'N'}
+            label={npc?.name ?? 'NPC'}
+            dim={isStudentTurn}
+            side="left"
+          />
+        )}
 
-        {/* Student — bottom right, faces left toward NPC */}
-        <div className="absolute bottom-0 right-2 sm:right-10 flex flex-col items-center justify-end">
-          {studentVrmUrl ? (
-            <VRMPortrait
-              url={studentVrmUrl}
-              label={studentName}
-              dim={isNpcTurn}
-              expression={studentExpression}
-              facingDirection="left"
-              animationMap={studentAnimationMap}
-            />
-          ) : (
-            <FallbackPortrait
-              color="#f59e0b"
-              initial={studentName?.[0] ?? 'S'}
-              label={studentName}
-              dim={isNpcTurn}
-            />
-          )}
-        </div>
+        {/* Student — right half, faces left */}
+        {studentVrmUrl ? (
+          <VRMPortrait
+            url={studentVrmUrl}
+            label={studentName}
+            dim={isNpcTurn}
+            expression={studentExpression}
+            facingDirection="left"
+            animationMap={studentAnimationMap}
+            side="right"
+          />
+        ) : (
+          <FallbackPortrait
+            color="#f59e0b"
+            initial={studentName?.[0] ?? 'S'}
+            label={studentName}
+            dim={isNpcTurn}
+            side="right"
+          />
+        )}
       </div>
 
       {/* Dialogue box */}
-      <div className="bg-slate-900/95 backdrop-blur-sm border-t border-white/10 flex-shrink-0">
+      <div className="bg-slate-900/95 backdrop-blur-sm border-t border-white/10 flex-shrink-0 relative z-20">
         {isNpcTurn && (
           <div className="px-5 pt-4 pb-5 space-y-3">
             <div>
