@@ -103,6 +103,7 @@ export function VRMStage() {
             expression={expression}
             autoBlink
             orbitControls
+            showGrid
             className="w-full h-full"
             onLoad={handleLoad}
             viewerRef={viewerRef}

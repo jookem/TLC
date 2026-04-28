@@ -10,6 +10,7 @@ import {
   type AvatarPreset,
   type DialogueNode,
 } from '@/lib/api/situations'
+import { useRef } from 'react'
 import { AvatarSelector } from './AvatarSelector'
 import { SituationList } from './SituationList'
 import { RPGDialogueBox } from './RPGDialogueBox'
@@ -23,6 +24,7 @@ function deriveAgeGroup(age: number | null): 'children' | 'teens' | 'adults' | u
 }
 
 const avatarStorageKey = (uid: string) => `situation_avatar_${uid}`
+const vrmStorageKey   = (uid: string) => `situation_vrm_${uid}`
 
 export function SituationSimulator() {
   const { user, profile } = useAuth()
@@ -34,6 +36,11 @@ export function SituationSimulator() {
 
   const [selectedAvatar, setSelectedAvatar] = useState<AvatarPreset | null>(null)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [studentVrmUrl, setStudentVrmUrl] = useState<string | null>(null)
+  const [vrmInput, setVrmInput] = useState('')
+  const [showVrmInput, setShowVrmInput] = useState(false)
+  const vrmFileRef = useRef<HTMLInputElement>(null)
+  const vrmObjectUrl = useRef<string | null>(null)
 
   const [activeSituation, setActiveSituation] = useState<Situation | null>(null)
   const [scriptNodes, setScriptNodes] = useState<DialogueNode[]>([])
@@ -50,6 +57,8 @@ export function SituationSimulator() {
     if (saved) {
       try { setSelectedAvatar(JSON.parse(saved)) } catch {}
     }
+    const savedVrm = localStorage.getItem(vrmStorageKey(user.id))
+    if (savedVrm) { setStudentVrmUrl(savedVrm); setVrmInput(savedVrm) }
   }, [user])
 
   async function loadData() {
@@ -72,6 +81,33 @@ export function SituationSimulator() {
     setSituations(situationsRes.situations ?? [])
     setAvatarPresets(presetsRes.presets ?? [])
     setLoading(false)
+  }
+
+  function handleVrmUrl() {
+    const url = vrmInput.trim()
+    if (!url) return
+    setStudentVrmUrl(url)
+    if (user) localStorage.setItem(vrmStorageKey(user.id), url)
+    setShowVrmInput(false)
+  }
+
+  function handleVrmFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (vrmObjectUrl.current) URL.revokeObjectURL(vrmObjectUrl.current)
+    const url = URL.createObjectURL(file)
+    vrmObjectUrl.current = url
+    setStudentVrmUrl(url)
+    // Don't persist blob URLs — they die on reload
+    setShowVrmInput(false)
+    e.target.value = ''
+  }
+
+  function handleVrmClear() {
+    if (vrmObjectUrl.current) { URL.revokeObjectURL(vrmObjectUrl.current); vrmObjectUrl.current = null }
+    setStudentVrmUrl(null)
+    setVrmInput('')
+    if (user) localStorage.removeItem(vrmStorageKey(user.id))
   }
 
   function handleAvatarSelect(preset: AvatarPreset) {
@@ -147,6 +183,7 @@ export function SituationSimulator() {
       <RPGDialogueBox
         npc={activeSituation.npc ?? null}
         avatarPreset={selectedAvatar}
+        studentVrmUrl={studentVrmUrl}
         studentName={profile?.display_name ?? profile?.full_name ?? 'You'}
         currentNode={node}
         background={{ color: activeSituation.background_color, imageUrl: activeSituation.background_image_url }}
@@ -220,6 +257,49 @@ export function SituationSimulator() {
             />
           </div>
         )}
+
+        {/* VRM avatar */}
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500">
+              {studentVrmUrl
+                ? <span className="text-green-600 font-medium">✓ VRM avatar active</span>
+                : 'Use your own VRM avatar'}
+            </p>
+            <div className="flex gap-2">
+              {studentVrmUrl && (
+                <button onClick={handleVrmClear} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+              )}
+              <button onClick={() => setShowVrmInput(v => !v)} className="text-xs text-brand hover:underline">
+                {studentVrmUrl ? 'Change' : 'Set VRM'}
+              </button>
+            </div>
+          </div>
+
+          {showVrmInput && (
+            <div className="mt-2 space-y-2">
+              <div className="flex gap-2">
+                <input
+                  value={vrmInput}
+                  onChange={e => setVrmInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleVrmUrl()}
+                  placeholder="Paste VRM URL (e.g. VRoid Hub)…"
+                  className="flex-1 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
+                />
+                <button onClick={handleVrmUrl} disabled={!vrmInput.trim()} className="px-3 py-1.5 bg-brand text-white text-xs rounded-lg disabled:opacity-40">
+                  Use
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => vrmFileRef.current?.click()} className="text-xs text-gray-500 hover:text-brand border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
+                  📂 Upload .vrm file
+                </button>
+                <span className="text-xs text-gray-400">(session only)</span>
+              </div>
+              <input ref={vrmFileRef} type="file" accept=".vrm" className="hidden" onChange={handleVrmFile} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Situation list */}

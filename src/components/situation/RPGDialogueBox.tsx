@@ -1,8 +1,10 @@
 import type { SituationNpc, AvatarPreset, DialogueNode } from '@/lib/api/situations'
+import { VRMViewer } from '@/components/vrm/VRMViewer'
 
 interface Props {
   npc: SituationNpc | null
   avatarPreset: AvatarPreset | null
+  studentVrmUrl?: string | null
   studentName: string
   currentNode: DialogueNode
   background: { color: string; imageUrl?: string | null }
@@ -51,9 +53,38 @@ function CharacterPortrait({
   )
 }
 
+function VRMPortrait({
+  url,
+  label,
+  dim,
+  expression,
+}: {
+  url: string
+  label: string
+  dim: boolean
+  expression: 'neutral' | 'happy' | 'surprised' | 'relaxed'
+}) {
+  return (
+    <div className={`flex flex-col items-center transition-all duration-300 ${dim ? 'opacity-30 scale-95' : 'opacity-100 scale-100'}`}>
+      <span className="text-[11px] font-medium text-white/80 bg-black/60 px-2.5 py-0.5 rounded-full mb-1.5 whitespace-nowrap backdrop-blur-sm">
+        {label}
+      </span>
+      <VRMViewer
+        url={url}
+        expression={expression}
+        autoBlink
+        orbitControls={false}
+        showGrid={false}
+        className="h-[52vh] sm:h-[64vh] w-[30vw] sm:w-[28vw] max-w-xs"
+      />
+    </div>
+  )
+}
+
 export function RPGDialogueBox({
   npc,
   avatarPreset,
+  studentVrmUrl,
   studentName,
   currentNode,
   background,
@@ -69,9 +100,9 @@ export function RPGDialogueBox({
   const npcExpression = currentNode.speaker === 'npc' ? (currentNode.expression ?? 'neutral') : 'neutral'
   const npcSprite = npc?.sprites?.[npcExpression] ?? npc?.sprites?.['neutral'] ?? null
 
-  const avatarExpression = isStudentTurn ? 'thinking' : 'neutral'
+  const avatarExpression = isStudentTurn ? 'surprised' : 'neutral'
   const avatarSprite =
-    avatarPreset?.sprites?.[avatarExpression] ??
+    avatarPreset?.sprites?.[isStudentTurn ? 'thinking' : 'neutral'] ??
     avatarPreset?.sprites?.['neutral'] ??
     avatarPreset?.image_url ??
     null
@@ -86,7 +117,7 @@ export function RPGDialogueBox({
         ← Exit
       </button>
 
-      {/* Scene — full background with characters anchored to bottom */}
+      {/* Scene */}
       <div
         className="flex-1 relative overflow-hidden"
         style={{
@@ -96,7 +127,6 @@ export function RPGDialogueBox({
           backgroundPosition: 'center',
         }}
       >
-        {/* Subtle gradient at bottom to blend characters into dialogue box */}
         <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-900/60 to-transparent pointer-events-none" />
 
         {/* NPC — bottom left */}
@@ -110,16 +140,25 @@ export function RPGDialogueBox({
           />
         </div>
 
-        {/* Student — bottom right */}
+        {/* Student — bottom right: VRM if available, otherwise 2D sprite */}
         <div className="absolute bottom-0 right-2 sm:right-10 flex flex-col items-center justify-end">
-          <CharacterPortrait
-            color={avatarPreset?.placeholder_color ?? '#f59e0b'}
-            imageUrl={avatarSprite}
-            initial={studentName?.[0] ?? 'S'}
-            label={studentName}
-            dim={isNpcTurn}
-            flip={!!avatarSprite}
-          />
+          {studentVrmUrl ? (
+            <VRMPortrait
+              url={studentVrmUrl}
+              label={studentName}
+              dim={isNpcTurn}
+              expression={avatarExpression}
+            />
+          ) : (
+            <CharacterPortrait
+              color={avatarPreset?.placeholder_color ?? '#f59e0b'}
+              imageUrl={avatarSprite}
+              initial={studentName?.[0] ?? 'S'}
+              label={studentName}
+              dim={isNpcTurn}
+              flip={!!avatarSprite}
+            />
+          )}
         </div>
       </div>
 

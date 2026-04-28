@@ -19,6 +19,7 @@ interface Props {
   expression?: VRMExpression | null
   autoBlink?: boolean
   orbitControls?: boolean
+  showGrid?: boolean
   className?: string
   onLoad?: (vrm: VRM) => void
   onError?: (msg: string) => void
@@ -32,6 +33,7 @@ export function VRMViewer({
   expression = 'neutral',
   autoBlink = true,
   orbitControls = true,
+  showGrid = false,
   className,
   onLoad,
   onError,
@@ -101,11 +103,13 @@ export function VRMViewer({
     scene.add(rim)
 
     // ── Grid ─────────────────────────────────────────────────
-    const grid = new THREE.GridHelper(10, 20, 0x888888, 0xcccccc)
-    grid.position.y = -0.01
-    ;(grid.material as THREE.Material).opacity = 0.3
-    ;(grid.material as THREE.Material).transparent = true
-    scene.add(grid)
+    if (showGrid) {
+      const grid = new THREE.GridHelper(10, 20, 0x888888, 0xcccccc)
+      grid.position.y = -0.01
+      ;(grid.material as THREE.Material).opacity = 0.3
+      ;(grid.material as THREE.Material).transparent = true
+      scene.add(grid)
+    }
 
     // ── Orbit controls ───────────────────────────────────────
     const controls = new OrbitControls(camera, canvas)
@@ -131,6 +135,18 @@ export function VRMViewer({
         if ((vrm.meta as any)?.metaVersion === '0') VRMUtils.rotateVRM0(vrm)
         scene.add(vrm.scene)
         vrmRef.current = vrm
+
+        // Natural A-pose: drop arms to ~45° from T-pose default
+        if (vrm.humanoid) {
+          const leftUpperArm  = vrm.humanoid.getRawBoneNode('leftUpperArm')
+          const rightUpperArm = vrm.humanoid.getRawBoneNode('rightUpperArm')
+          const leftLowerArm  = vrm.humanoid.getRawBoneNode('leftLowerArm')
+          const rightLowerArm = vrm.humanoid.getRawBoneNode('rightLowerArm')
+          if (leftUpperArm)  leftUpperArm.rotation.z  =  Math.PI * 0.22   // ~40° down
+          if (rightUpperArm) rightUpperArm.rotation.z = -Math.PI * 0.22
+          if (leftLowerArm)  leftLowerArm.rotation.z  =  Math.PI * 0.05   // slight bend
+          if (rightLowerArm) rightLowerArm.rotation.z = -Math.PI * 0.05
+        }
 
         // Recentre camera on the model head
         const box = new THREE.Box3().setFromObject(vrm.scene)
