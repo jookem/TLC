@@ -198,11 +198,14 @@ export function VRMViewer({
       loadingAnims.add(url)
 
       const isFbx = url.split('?')[0].toLowerCase().endsWith('.fbx')
+      console.log('[VRMViewer] switchAnim', { url, isFbx })
 
       if (isFbx) {
+        console.log('[VRMViewer] starting FBX load:', url)
         fbxLoader.load(
           url,
           fbx => {
+            console.log('[VRMViewer] FBX loaded, animations:', fbx.animations.length, 'tracks[0]:', fbx.animations[0]?.tracks.slice(0,3).map(t=>t.name))
             loadingAnims.delete(url)
             if (!vrmRef.current || currentAnimUrlRef.current !== url) return
             const srcClip = fbx.animations[0]
