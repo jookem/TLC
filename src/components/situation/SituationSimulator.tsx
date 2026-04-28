@@ -5,8 +5,10 @@ import {
   listSituations,
   getSituationScript,
   saveSituationSession,
+  listVrmAnimations,
   type Situation,
   type DialogueNode,
+  type VrmGender,
 } from '@/lib/api/situations'
 import { SituationList } from './SituationList'
 import { RPGDialogueBox } from './RPGDialogueBox'
@@ -47,9 +49,13 @@ export function SituationSimulator() {
   const [loading, setLoading] = useState(true)
 
   const [studentVrmUrl, setStudentVrmUrl] = useState<string | null>(null)
+  const [studentVrmGender, setStudentVrmGender] = useState<VrmGender>('neutral')
   const [uploading, setUploading] = useState(false)
   const [previewExpr, setPreviewExpr] = useState<VRMExpression>('neutral')
   const vrmFileRef = useRef<HTMLInputElement>(null)
+
+  const [npcAnimationMap, setNpcAnimationMap] = useState<Record<string, string>>({})
+  const [studentAnimationMap, setStudentAnimationMap] = useState<Record<string, string>>({})
 
   const [activeSituation, setActiveSituation] = useState<Situation | null>(null)
   const [scriptNodes, setScriptNodes] = useState<DialogueNode[]>([])
@@ -68,12 +74,15 @@ export function SituationSimulator() {
 
     const { data: details } = await supabase
       .from('student_details')
-      .select('age, vrm_url')
+      .select('age, vrm_url, vrm_gender')
       .eq('student_id', user.id)
       .maybeSingle()
 
     const group = deriveAgeGroup(details?.age ?? null)
     if (details?.vrm_url) setStudentVrmUrl(details.vrm_url)
+    const sGender: VrmGender = (details?.vrm_gender as VrmGender) ?? 'neutral'
+    setStudentVrmGender(sGender)
+    listVrmAnimations(sGender).then(setStudentAnimationMap)
 
     const { situations: s } = await listSituations(group)
     setSituations(s ?? [])
@@ -107,9 +116,13 @@ export function SituationSimulator() {
 
   async function handleSituationSelect(situation: Situation) {
     setScriptLoading(true)
-    const { script, error } = await getSituationScript(situation.id)
+    const [{ script, error }, npcMap] = await Promise.all([
+      getSituationScript(situation.id),
+      listVrmAnimations((situation.npc?.gender as VrmGender) ?? 'neutral'),
+    ])
     if (error || !script) { setScriptLoading(false); return }
 
+    setNpcAnimationMap(npcMap)
     setActiveSituation(situation)
     setScriptNodes(script.script.nodes)
     setCurrentNodeId('start')
@@ -170,6 +183,8 @@ export function SituationSimulator() {
         studentName={profile?.display_name ?? profile?.full_name ?? 'You'}
         currentNode={node}
         background={{ color: activeSituation.background_color, imageUrl: activeSituation.background_image_url }}
+        npcAnimationMap={npcAnimationMap}
+        studentAnimationMap={studentAnimationMap}
         onExit={handleClose}
         onContinue={handleContinue}
         onSelectOption={handleSelectOption}

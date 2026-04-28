@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { VRMLoaderPlugin, VRMUtils, type VRM } from '@pixiv/three-vrm'
+import { VRMAnimationLoaderPlugin, createVRMAnimationClip } from '@pixiv/three-vrm-animation'
 
 export type VRMExpression =
   | 'neutral' | 'happy' | 'angry' | 'sad' | 'surprised' | 'relaxed'
@@ -17,6 +18,8 @@ export interface VRMViewerHandle {
 interface Props {
   url: string
   expression?: VRMExpression | null
+  /** Map of VRM expression name → .vrma animation URL. Lazy-loaded and crossfaded. */
+  animationMap?: Record<string, string>
   autoBlink?: boolean
   orbitControls?: boolean
   showGrid?: boolean
@@ -34,6 +37,7 @@ const EXPRESSIONS: VRMExpression[] = ['neutral', 'happy', 'angry', 'sad', 'surpr
 export function VRMViewer({
   url,
   expression = 'neutral',
+  animationMap,
   autoBlink = true,
   orbitControls = true,
   showGrid = false,
@@ -50,8 +54,23 @@ export function VRMViewer({
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const rafRef = useRef<number>(0)
   const expressionTargets = useRef<Record<string, number>>({})
+
+  // Animation: desired URL (set from expression effect), current URL (set when playing starts)
+  const desiredAnimUrlRef = useRef<string | null>(null)
+  const currentAnimUrlRef = useRef<string | null>(null)
+  // Map ref stays current without triggering re-renders
+  const animationMapRef = useRef<Record<string, string>>(animationMap ?? {})
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Keep animationMapRef and desiredAnimUrl in sync when props change
+  useEffect(() => {
+    animationMapRef.current = animationMap ?? {}
+    if (expression) {
+      desiredAnimUrlRef.current = animationMap?.[expression] ?? null
+    }
+  }, [animationMap, expression])
 
   // Expose handle
   useEffect(() => {
@@ -69,12 +88,13 @@ export function VRMViewer({
     }
   }, [viewerRef])
 
-  // Switch expression when prop changes
+  // Switch expression targets + desired animation when expression prop changes
   useEffect(() => {
     if (!expression) return
     const targets: Record<string, number> = {}
     EXPRESSIONS.forEach(n => { targets[n] = n === expression ? 1 : 0 })
     expressionTargets.current = targets
+    desiredAnimUrlRef.current = animationMapRef.current[expression] ?? null
   }, [expression])
 
   useEffect(() => {
@@ -128,6 +148,56 @@ export function VRMViewer({
     controls.enabled = orbitControls
     controls.update()
 
+    // ── Animation state (local to this effect) ────────────────
+    const animLoader = new GLTFLoader()
+    animLoader.register(parser => new VRMAnimationLoaderPlugin(parser))
+
+    const clipCache = new Map<string, THREE.AnimationClip>()
+    const loadingAnims = new Set<string>()
+    let mixer: THREE.AnimationMixer | null = null
+    let currentAction: THREE.AnimationAction | null = null
+
+    function playClip(clip: THREE.AnimationClip) {
+      if (!mixer) return
+      const action = mixer.clipAction(clip)
+      action.loop = THREE.LoopRepeat
+      if (currentAction && currentAction !== action) {
+        currentAction.crossFadeTo(action, 0.5, true)
+        action.play()
+      } else {
+        action.play()
+      }
+      currentAction = action
+    }
+
+    function switchAnim(url: string | null) {
+      currentAnimUrlRef.current = url
+
+      if (!url || !vrmRef.current) {
+        currentAction?.fadeOut(0.3)
+        currentAction = null
+        return
+      }
+
+      if (!mixer) {
+        mixer = new THREE.AnimationMixer(vrmRef.current.scene)
+      }
+
+      const cached = clipCache.get(url)
+      if (cached) { playClip(cached); return }
+      if (loadingAnims.has(url)) return
+
+      loadingAnims.add(url)
+      animLoader.load(url, gltf => {
+        loadingAnims.delete(url)
+        if (!gltf.userData.vrmAnimations?.length || !vrmRef.current) return
+        if (currentAnimUrlRef.current !== url) return   // stale: expression changed while loading
+        const clip = createVRMAnimationClip(gltf.userData.vrmAnimations[0], vrmRef.current)
+        clipCache.set(url, clip)
+        playClip(clip)
+      })
+    }
+
     // ── Load VRM ─────────────────────────────────────────────
     const loader = new GLTFLoader()
     loader.register(parser => new VRMLoaderPlugin(parser))
@@ -142,7 +212,7 @@ export function VRMViewer({
         scene.add(vrm.scene)
         vrmRef.current = vrm
 
-        // Natural A-pose: drop arms to ~40° from T-pose default
+        // Natural A-pose
         if (vrm.humanoid) {
           const leftUpperArm  = vrm.humanoid.getRawBoneNode('leftUpperArm')
           const rightUpperArm = vrm.humanoid.getRawBoneNode('rightUpperArm')
@@ -154,28 +224,33 @@ export function VRMViewer({
           if (rightLowerArm) rightLowerArm.rotation.z = -Math.PI * 0.05
         }
 
-        // Facing direction: positive Y rotation turns model toward +X (viewer's right)
+        // Facing direction (positive Y = turns toward viewer's right)
         if (facingDirection) {
-          const offset = Math.PI * 0.25  // ~45°
+          const offset = Math.PI * 0.25
           vrm.scene.rotation.y += facingDirection === 'right' ? offset : -offset
         }
 
-        // Recentre camera
+        // Camera framing
         const box = new THREE.Box3().setFromObject(vrm.scene)
         const height = box.max.y - box.min.y
 
         if (framing === 'bust') {
-          // Frame from chest to just above head
-          const chestY = box.min.y + height * 0.62
-          const neckY  = box.min.y + height * 0.80
-          controls.target.set(0, chestY, 0)
-          camera.position.set(0, neckY, height * 0.58)
+          const bustY = box.min.y + height * 0.72
+          const eyeY  = box.min.y + height * 0.90
+          controls.target.set(0, bustY, 0)
+          camera.position.set(0, eyeY, height * 0.70)
         } else {
           const cy = (box.min.y + box.max.y) / 2
           controls.target.set(0, cy * 0.9, 0)
           camera.position.set(0, cy * 0.95, height * 1.4)
         }
         controls.update()
+
+        // Start animation for current expression if map has one
+        if (desiredAnimUrlRef.current) {
+          mixer = new THREE.AnimationMixer(vrm.scene)
+          switchAnim(desiredAnimUrlRef.current)
+        }
 
         setLoading(false)
         onLoad?.(vrm)
@@ -206,7 +281,7 @@ export function VRMViewer({
       if (vrm) {
         const em = vrm.expressionManager
 
-        // Smooth expression transitions
+        // Smooth blend-shape transitions
         if (em) {
           for (const [name, target] of Object.entries(expressionTargets.current)) {
             const cur = em.getValue(name) ?? 0
@@ -234,21 +309,30 @@ export function VRMViewer({
           }
         }
 
-        // Subtle idle sway
-        const t = clock.elapsedTime
-        if (vrm.humanoid) {
-          const spine = vrm.humanoid.getRawBoneNode('spine')
-          if (spine) {
-            spine.rotation.z = Math.sin(t * 0.4) * 0.012
-            spine.rotation.x = Math.sin(t * 0.3) * 0.008
-          }
-          const head = vrm.humanoid.getRawBoneNode('head')
-          if (head) {
-            head.rotation.y = Math.sin(t * 0.35) * 0.04
-            head.rotation.x = Math.sin(t * 0.28) * 0.02 - 0.05
+        // Switch animation if expression changed
+        const desired = desiredAnimUrlRef.current
+        if (desired !== currentAnimUrlRef.current && mixer) {
+          switchAnim(desired)
+        }
+
+        // Idle sway only when no animation is playing
+        if (!currentAction) {
+          const t = clock.elapsedTime
+          if (vrm.humanoid) {
+            const spine = vrm.humanoid.getRawBoneNode('spine')
+            if (spine) {
+              spine.rotation.z = Math.sin(t * 0.4) * 0.012
+              spine.rotation.x = Math.sin(t * 0.3) * 0.008
+            }
+            const head = vrm.humanoid.getRawBoneNode('head')
+            if (head) {
+              head.rotation.y = Math.sin(t * 0.35) * 0.04
+              head.rotation.x = Math.sin(t * 0.28) * 0.02 - 0.05
+            }
           }
         }
 
+        mixer?.update(delta)
         vrm.update(delta)
       }
 
@@ -271,6 +355,10 @@ export function VRMViewer({
       cancelAnimationFrame(rafRef.current)
       ro.disconnect()
       controls.dispose()
+      currentAction?.stop()
+      mixer?.stopAllAction()
+      clipCache.clear()
+      currentAnimUrlRef.current = null
       if (vrmRef.current) VRMUtils.deepDispose(vrmRef.current.scene)
       renderer.dispose()
       vrmRef.current = null

@@ -15,6 +15,8 @@ interface Props {
   studentName: string
   currentNode: DialogueNode
   background: { color: string; imageUrl?: string | null }
+  npcAnimationMap?: Record<string, string>
+  studentAnimationMap?: Record<string, string>
   onExit: () => void
   onContinue: () => void
   onSelectOption: (index: number) => void
@@ -28,12 +30,14 @@ function VRMPortrait({
   dim,
   expression,
   facingDirection,
+  animationMap,
 }: {
   url: string
   label: string
   dim: boolean
   expression: VRMExpression
   facingDirection: 'left' | 'right'
+  animationMap?: Record<string, string>
 }) {
   return (
     <div className={`flex flex-col items-center transition-all duration-300 ${dim ? 'opacity-30 scale-95' : 'opacity-100 scale-100'}`}>
@@ -43,6 +47,7 @@ function VRMPortrait({
       <VRMViewer
         url={url}
         expression={expression}
+        animationMap={animationMap}
         autoBlink
         orbitControls={false}
         showGrid={false}
@@ -87,6 +92,8 @@ export function RPGDialogueBox({
   studentName,
   currentNode,
   background,
+  npcAnimationMap,
+  studentAnimationMap,
   onExit,
   onContinue,
   onSelectOption,
@@ -130,6 +137,7 @@ export function RPGDialogueBox({
               dim={isStudentTurn}
               expression={npcExpression}
               facingDirection="right"
+              animationMap={npcAnimationMap}
             />
           ) : (
             <FallbackPortrait
@@ -150,6 +158,7 @@ export function RPGDialogueBox({
               dim={isNpcTurn}
               expression={studentExpression}
               facingDirection="left"
+              animationMap={studentAnimationMap}
             />
           ) : (
             <FallbackPortrait
