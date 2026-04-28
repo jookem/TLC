@@ -319,7 +319,8 @@ function AnimationSection() {
     const key: AnimSlotKey = `${gender}:${expression}`
     setUploading(key)
 
-    const path = `animations/${gender}/${expression}.vrma`
+    const ext  = file.name.split('.').pop()?.toLowerCase() ?? 'vrma'
+    const path = `animations/${gender}/${expression}.${ext}`
     const url = await uploadToStorage(file, path)
     if (!url) { setUploading(null); return }
 
