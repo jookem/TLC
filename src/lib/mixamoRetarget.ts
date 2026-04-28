@@ -77,6 +77,11 @@ export function retargetMixamoClip(clip: THREE.AnimationClip, vrm: VRM): THREE.A
     const values     = new Float32Array(track.values)
 
     if (prop === 'quaternion') {
+      // Mixamo (+Z forward) → VRM normalized (-Z forward): forward/back pitch is opposite,
+      // so negate only X. Z rotations (arm raise/lower) are the same in both spaces.
+      for (let i = 0; i < values.length; i += 4) {
+        values[i] *= -1  // negate x
+      }
       tracks.push(new THREE.QuaternionKeyframeTrack(targetName, track.times, values))
     }
     // position tracks dropped — Mixamo world-space hip positions teleport the character off-screen
