@@ -25,6 +25,12 @@ interface Props {
 }
 
 // Full-height half-panel so head can never be clipped by the container edge
+// Each portrait is a full-scene overlay (inset-0) so no limb can ever be
+// clipped. cameraOffsetX pushes the camera sideways so the character renders
+// on the correct half of the shared canvas.
+const NPC_OFFSET     =  0.28   // camera right → character appears left
+const STUDENT_OFFSET = -0.28   // camera left  → character appears right
+
 function VRMPortrait({
   url,
   label,
@@ -42,9 +48,10 @@ function VRMPortrait({
   animationMap?: Record<string, string>
   side: 'left' | 'right'
 }) {
+  const offset = side === 'left' ? NPC_OFFSET : STUDENT_OFFSET
   return (
     <div
-      className={`absolute inset-y-0 ${side === 'left' ? 'left-0' : 'right-0'} w-[48%] pointer-events-none transition-opacity duration-300 ${dim ? 'opacity-30' : 'opacity-100'}`}
+      className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${dim ? 'opacity-30' : 'opacity-100'}`}
     >
       <span
         className={`absolute top-3 ${side === 'left' ? 'left-3' : 'right-3'} z-10 text-[11px] font-medium text-white/80 bg-black/60 px-2.5 py-0.5 rounded-full whitespace-nowrap backdrop-blur-sm`}
@@ -60,6 +67,7 @@ function VRMPortrait({
         showGrid={false}
         facingDirection={facingDirection}
         framing="bust"
+        cameraOffsetX={offset}
         transparent
         className="w-full h-full"
       />

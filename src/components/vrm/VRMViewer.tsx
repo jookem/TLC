@@ -25,6 +25,8 @@ interface Props {
   showGrid?: boolean
   facingDirection?: 'left' | 'right'
   framing?: 'full' | 'bust'
+  /** Shift camera & target horizontally in world units. Positive = character appears left of centre. */
+  cameraOffsetX?: number
   transparent?: boolean
   className?: string
   onLoad?: (vrm: VRM) => void
@@ -43,6 +45,7 @@ export function VRMViewer({
   showGrid = false,
   facingDirection,
   framing = 'full',
+  cameraOffsetX = 0,
   transparent = false,
   className,
   onLoad,
@@ -241,8 +244,9 @@ export function VRMViewer({
           const centerY     = (frameBottom + frameTop) / 2
           const halfH       = (frameTop - frameBottom) / 2
           const camZ        = halfH / Math.tan(Math.PI / 12) // tan(15°) for 30° FOV
-          controls.target.set(0, centerY, 0)
-          camera.position.set(0, centerY, camZ)
+          // cameraOffsetX shifts camera & target together so character appears off-centre
+          controls.target.set(cameraOffsetX, centerY, 0)
+          camera.position.set(cameraOffsetX, centerY, camZ)
         } else {
           const cy = (box.min.y + box.max.y) / 2
           controls.target.set(0, cy * 0.9, 0)
