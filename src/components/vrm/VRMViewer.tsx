@@ -235,10 +235,15 @@ export function VRMViewer({
         const height = box.max.y - box.min.y
 
         if (framing === 'bust') {
-          const bustY = box.min.y + height * 0.72
-          const eyeY  = box.min.y + height * 0.90
-          controls.target.set(0, bustY, 0)
-          camera.position.set(0, eyeY, height * 0.70)
+          // Compute camera Z so the 30° FOV exactly contains the bust region
+          // (waist at 55% → 5% above head top), camera looks straight ahead at center
+          const frameBottom = box.min.y + height * 0.55
+          const frameTop    = box.min.y + height * 1.05
+          const centerY     = (frameBottom + frameTop) / 2
+          const halfH       = (frameTop - frameBottom) / 2
+          const camZ        = halfH / Math.tan(Math.PI / 12) // tan(15°) for 30° FOV
+          controls.target.set(0, centerY, 0)
+          camera.position.set(0, centerY, camZ)
         } else {
           const cy = (box.min.y + box.max.y) / 2
           controls.target.set(0, cy * 0.9, 0)
