@@ -313,13 +313,15 @@ export function VRMViewer({
     let nextBlink = 3 + Math.random() * 3
     let blinkProgress = -1
 
-    const clock = new THREE.Timer()
+    let prevTime = performance.now()
+    let elapsed = 0
 
     // ── Animation loop ────────────────────────────────────────
     function animate(timestamp: number) {
       rafRef.current = requestAnimationFrame(animate)
-      clock.update(timestamp)
-      const delta = Math.min(clock.getDelta(), 0.1)
+      const delta = Math.min((timestamp - prevTime) / 1000, 0.1)
+      prevTime = timestamp
+      elapsed += delta
       controls.update()
 
       const vrm = vrmRef.current
@@ -363,7 +365,7 @@ export function VRMViewer({
 
         // Idle sway only when no animation is playing
         if (!currentAction) {
-          const t = clock.getElapsed()
+          const t = elapsed
           if (vrm.humanoid) {
             const spine = vrm.humanoid.getRawBoneNode('spine')
             if (spine) {
@@ -384,7 +386,7 @@ export function VRMViewer({
 
       renderer.render(scene, camera)
     }
-    animate(performance.now())
+    animate(prevTime)
 
     // ── Resize observer ───────────────────────────────────────
     const ro = new ResizeObserver(() => {
