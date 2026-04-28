@@ -47,7 +47,9 @@ function VRMPortrait({
         orbitControls={false}
         showGrid={false}
         facingDirection={facingDirection}
-        className="h-[52vh] sm:h-[64vh] w-[30vw] sm:w-[28vw] max-w-xs"
+        framing="bust"
+        transparent
+        className="h-[52vh] sm:h-[64vh] w-[32vw] sm:w-[30vw] max-w-xs"
       />
     </div>
   )

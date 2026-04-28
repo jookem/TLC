@@ -21,6 +21,8 @@ interface Props {
   orbitControls?: boolean
   showGrid?: boolean
   facingDirection?: 'left' | 'right'
+  framing?: 'full' | 'bust'
+  transparent?: boolean
   className?: string
   onLoad?: (vrm: VRM) => void
   onError?: (msg: string) => void
@@ -36,6 +38,8 @@ export function VRMViewer({
   orbitControls = true,
   showGrid = false,
   facingDirection,
+  framing = 'full',
+  transparent = false,
   className,
   onLoad,
   onError,
@@ -150,18 +154,27 @@ export function VRMViewer({
           if (rightLowerArm) rightLowerArm.rotation.z = -Math.PI * 0.05
         }
 
-        // Facing direction: additive offset on whatever rotateVRM0 set
+        // Facing direction: positive Y rotation turns model toward +X (viewer's right)
         if (facingDirection) {
-          const offset = Math.PI * 0.15
-          vrm.scene.rotation.y += facingDirection === 'right' ? -offset : offset
+          const offset = Math.PI * 0.25  // ~45°
+          vrm.scene.rotation.y += facingDirection === 'right' ? offset : -offset
         }
 
-        // Recentre camera on the model
+        // Recentre camera
         const box = new THREE.Box3().setFromObject(vrm.scene)
-        const cy = (box.min.y + box.max.y) / 2
         const height = box.max.y - box.min.y
-        controls.target.set(0, cy * 0.9, 0)
-        camera.position.set(0, cy * 0.95, height * 1.4)
+
+        if (framing === 'bust') {
+          // Frame from chest to just above head
+          const chestY = box.min.y + height * 0.62
+          const neckY  = box.min.y + height * 0.80
+          controls.target.set(0, chestY, 0)
+          camera.position.set(0, neckY, height * 0.58)
+        } else {
+          const cy = (box.min.y + box.max.y) / 2
+          controls.target.set(0, cy * 0.9, 0)
+          camera.position.set(0, cy * 0.95, height * 1.4)
+        }
         controls.update()
 
         setLoading(false)
@@ -266,7 +279,7 @@ export function VRMViewer({
   }, [url])
 
   return (
-    <div className={`relative bg-gradient-to-b from-slate-800 to-slate-900 ${className ?? ''}`}>
+    <div className={`relative ${transparent ? '' : 'bg-gradient-to-b from-slate-800 to-slate-900'} ${className ?? ''}`}>
       <canvas ref={canvasRef} className="w-full h-full block" />
       {loading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
