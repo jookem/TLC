@@ -75,6 +75,7 @@ export function VRMViewer({
     const map = animationMap ?? {}
     const desired = expression ? (map[expression] ?? map['neutral'] ?? null) : null
     desiredAnimUrlRef.current = desired
+    console.log('[VRMViewer] mapSync', { expression, keys: Object.keys(map), desired: desired?.split('/').pop() })
   }, [animationMap, expression])
 
   // Expose handle
@@ -172,7 +173,8 @@ export function VRMViewer({
         currentAction.crossFadeTo(action, 0.5, true)
         action.play()
       } else {
-        action.play()
+        // reset() clears any lingering weight=0 from a previous fadeOut/stop
+        action.reset().play()
       }
       currentAction = action
     }
@@ -181,7 +183,8 @@ export function VRMViewer({
       currentAnimUrlRef.current = url
 
       if (!url || !vrmRef.current) {
-        currentAction?.fadeOut(0.3)
+        console.warn('[VRMViewer] switchAnim(null) — animation stopped', { expression: desiredAnimUrlRef.current })
+        currentAction?.stop()  // stop() fully resets the action so weight is restored on next play()
         currentAction = null
         return
       }
