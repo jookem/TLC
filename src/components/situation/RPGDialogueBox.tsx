@@ -1,9 +1,16 @@
-import type { SituationNpc, AvatarPreset, DialogueNode } from '@/lib/api/situations'
-import { VRMViewer } from '@/components/vrm/VRMViewer'
+import type { SituationNpc, DialogueNode } from '@/lib/api/situations'
+import { VRMViewer, type VRMExpression } from '@/components/vrm/VRMViewer'
+
+const EXPR_MAP: Record<string, VRMExpression> = {
+  neutral:  'neutral',
+  speaking: 'neutral',
+  positive: 'happy',
+  confused: 'surprised',
+  thinking: 'relaxed',
+}
 
 interface Props {
   npc: SituationNpc | null
-  avatarPreset: AvatarPreset | null
   studentVrmUrl?: string | null
   studentName: string
   currentNode: DialogueNode
@@ -15,54 +22,20 @@ interface Props {
   onComplete: () => void
 }
 
-function CharacterPortrait({
-  color,
-  imageUrl,
-  initial,
-  label,
-  dim,
-  flip = false,
-}: {
-  color: string
-  imageUrl?: string | null
-  initial: string
-  label: string
-  dim: boolean
-  flip?: boolean
-}) {
-  return (
-    <div className={`flex flex-col items-center transition-all duration-300 ${dim ? 'opacity-30 scale-95' : 'opacity-100 scale-100'}`}>
-      <span className="text-[11px] font-medium text-white/80 bg-black/60 px-2.5 py-0.5 rounded-full mb-1.5 whitespace-nowrap backdrop-blur-sm">
-        {label}
-      </span>
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt={label}
-          className={`h-[52vh] sm:h-[64vh] w-auto object-contain drop-shadow-2xl ${flip ? '-scale-x-100' : ''}`}
-        />
-      ) : (
-        <div
-          className="w-24 h-24 sm:w-36 sm:h-36 rounded-full border-4 border-white/20 shadow-2xl flex items-center justify-center text-white text-4xl sm:text-5xl font-bold"
-          style={{ backgroundColor: color }}
-        >
-          {initial}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function VRMPortrait({
   url,
   label,
   dim,
   expression,
+  facingDirection,
+  animationUrl,
 }: {
   url: string
   label: string
   dim: boolean
-  expression: 'neutral' | 'happy' | 'surprised' | 'relaxed'
+  expression: VRMExpression
+  facingDirection: 'left' | 'right'
+  animationUrl?: string | null
 }) {
   return (
     <div className={`flex flex-col items-center transition-all duration-300 ${dim ? 'opacity-30 scale-95' : 'opacity-100 scale-100'}`}>
@@ -75,15 +48,42 @@ function VRMPortrait({
         autoBlink
         orbitControls={false}
         showGrid={false}
+        facingDirection={facingDirection}
+        animationUrl={animationUrl}
         className="h-[52vh] sm:h-[64vh] w-[30vw] sm:w-[28vw] max-w-xs"
       />
     </div>
   )
 }
 
+function FallbackPortrait({
+  color,
+  initial,
+  label,
+  dim,
+}: {
+  color: string
+  initial: string
+  label: string
+  dim: boolean
+}) {
+  return (
+    <div className={`flex flex-col items-center transition-all duration-300 ${dim ? 'opacity-30 scale-95' : 'opacity-100 scale-100'}`}>
+      <span className="text-[11px] font-medium text-white/80 bg-black/60 px-2.5 py-0.5 rounded-full mb-1.5 whitespace-nowrap backdrop-blur-sm">
+        {label}
+      </span>
+      <div
+        className="w-24 h-24 sm:w-36 sm:h-36 rounded-full border-4 border-white/20 shadow-2xl flex items-center justify-center text-white text-4xl sm:text-5xl font-bold"
+        style={{ backgroundColor: color }}
+      >
+        {initial}
+      </div>
+    </div>
+  )
+}
+
 export function RPGDialogueBox({
   npc,
-  avatarPreset,
   studentVrmUrl,
   studentName,
   currentNode,
@@ -97,15 +97,8 @@ export function RPGDialogueBox({
   const isNpcTurn = currentNode.speaker === 'npc'
   const isStudentTurn = currentNode.speaker === 'student'
 
-  const npcExpression = currentNode.speaker === 'npc' ? (currentNode.expression ?? 'neutral') : 'neutral'
-  const npcSprite = npc?.sprites?.[npcExpression] ?? npc?.sprites?.['neutral'] ?? null
-
-  const avatarExpression = isStudentTurn ? 'surprised' : 'neutral'
-  const avatarSprite =
-    avatarPreset?.sprites?.[isStudentTurn ? 'thinking' : 'neutral'] ??
-    avatarPreset?.sprites?.['neutral'] ??
-    avatarPreset?.image_url ??
-    null
+  const npcExpression: VRMExpression = EXPR_MAP[currentNode.expression ?? 'neutral'] ?? 'neutral'
+  const studentExpression: VRMExpression = isStudentTurn ? 'surprised' : 'neutral'
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
@@ -129,34 +122,43 @@ export function RPGDialogueBox({
       >
         <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-900/60 to-transparent pointer-events-none" />
 
-        {/* NPC — bottom left */}
+        {/* NPC — bottom left, faces right toward student */}
         <div className="absolute bottom-0 left-2 sm:left-10 flex flex-col items-center justify-end">
-          <CharacterPortrait
-            color={npc?.placeholder_color ?? '#6366f1'}
-            imageUrl={npcSprite}
-            initial={npc?.name?.[0] ?? 'N'}
-            label={npc?.name ?? 'NPC'}
-            dim={isStudentTurn}
-          />
+          {npc?.vrm_url ? (
+            <VRMPortrait
+              url={npc.vrm_url}
+              label={npc.name ?? 'NPC'}
+              dim={isStudentTurn}
+              expression={npcExpression}
+              facingDirection="right"
+              animationUrl={npc.animation_url}
+            />
+          ) : (
+            <FallbackPortrait
+              color={npc?.placeholder_color ?? '#6366f1'}
+              initial={npc?.name?.[0] ?? 'N'}
+              label={npc?.name ?? 'NPC'}
+              dim={isStudentTurn}
+            />
+          )}
         </div>
 
-        {/* Student — bottom right: VRM if available, otherwise 2D sprite */}
+        {/* Student — bottom right, faces left toward NPC */}
         <div className="absolute bottom-0 right-2 sm:right-10 flex flex-col items-center justify-end">
           {studentVrmUrl ? (
             <VRMPortrait
               url={studentVrmUrl}
               label={studentName}
               dim={isNpcTurn}
-              expression={avatarExpression}
+              expression={studentExpression}
+              facingDirection="left"
             />
           ) : (
-            <CharacterPortrait
-              color={avatarPreset?.placeholder_color ?? '#f59e0b'}
-              imageUrl={avatarSprite}
+            <FallbackPortrait
+              color="#f59e0b"
               initial={studentName?.[0] ?? 'S'}
               label={studentName}
               dim={isNpcTurn}
-              flip={!!avatarSprite}
             />
           )}
         </div>

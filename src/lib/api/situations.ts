@@ -6,6 +6,8 @@ export interface SituationNpc {
   role: string
   placeholder_color: string
   sprites: Record<string, string>
+  vrm_url?: string | null
+  animation_url?: string | null
   created_at: string
 }
 

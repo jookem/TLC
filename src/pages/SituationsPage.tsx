@@ -1,22 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import type { SituationNpc, AvatarPreset, Situation } from '@/lib/api/situations'
-import { listSituations, listAvatarPresets } from '@/lib/api/situations'
+import type { SituationNpc, Situation } from '@/lib/api/situations'
+import { listSituations } from '@/lib/api/situations'
 import { Upload, ImageIcon } from 'lucide-react'
-
-// ── Types ─────────────────────────────────────────────────────────
-
-const EXPRESSIONS = ['neutral', 'speaking', 'positive', 'confused', 'thinking'] as const
-type Expression = typeof EXPRESSIONS[number]
-
-const EXPRESSION_LABELS: Record<Expression, string> = {
-  neutral:  'Neutral',
-  speaking: 'Speaking',
-  positive: 'Positive',
-  confused: 'Confused',
-  thinking: 'Thinking',
-}
 
 // ── Storage helpers ────────────────────────────────────────────────
 
@@ -56,7 +43,6 @@ function ImageSlot({
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
-    // Optimistic local preview
     const local = URL.createObjectURL(file)
     setPreviewUrl(local)
     await onUpload(file)
@@ -124,29 +110,64 @@ function Tab({ label, active, onClick }: { label: string; active: boolean; onCli
 function NpcSection() {
   const [npcs, setNpcs] = useState<SituationNpc[]>([])
   const [loading, setLoading] = useState(true)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [vrmInputs, setVrmInputs] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState<string | null>(null)
+  const animFileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   useEffect(() => {
     supabase.from('situation_npcs').select('*').order('name').then(({ data }) => {
-      setNpcs((data ?? []) as SituationNpc[])
+      const loaded = (data ?? []) as SituationNpc[]
+      setNpcs(loaded)
+      const inputs: Record<string, string> = {}
+      loaded.forEach(n => { inputs[n.id] = n.vrm_url ?? '' })
+      setVrmInputs(inputs)
       setLoading(false)
     })
   }, [])
 
-  async function handleExpressionUpload(npc: SituationNpc, expression: Expression, file: File) {
-    const path = `npcs/${npc.id}/${expression}.png`
+  async function handleSaveVrm(npc: SituationNpc) {
+    const url = vrmInputs[npc.id]?.trim() ?? ''
+    setSaving(npc.id)
+    const { error } = await supabase
+      .from('situation_npcs')
+      .update({ vrm_url: url || null })
+      .eq('id', npc.id)
+
+    if (error) { toast.error(error.message); setSaving(null); return }
+
+    setNpcs(prev => prev.map(n => n.id === npc.id ? { ...n, vrm_url: url || null } : n))
+    setEditingId(null)
+    setSaving(null)
+    toast.success(`${npc.name} VRM updated`)
+  }
+
+  async function handleAnimationUpload(npc: SituationNpc, file: File) {
+    const path = `npcs/${npc.id}/animation.vrma`
     const url = await uploadToStorage(file, path)
     if (!url) return
 
-    const newSprites = { ...npc.sprites, [expression]: url }
     const { error } = await supabase
       .from('situation_npcs')
-      .update({ sprites: newSprites })
+      .update({ animation_url: url })
       .eq('id', npc.id)
 
     if (error) { toast.error(error.message); return }
 
-    setNpcs(prev => prev.map(n => n.id === npc.id ? { ...n, sprites: newSprites } : n))
-    toast.success(`${npc.name} · ${EXPRESSION_LABELS[expression]} uploaded`)
+    setNpcs(prev => prev.map(n => n.id === npc.id ? { ...n, animation_url: url } : n))
+    toast.success(`${npc.name} animation uploaded`)
+  }
+
+  async function handleAnimationClear(npc: SituationNpc) {
+    const { error } = await supabase
+      .from('situation_npcs')
+      .update({ animation_url: null })
+      .eq('id', npc.id)
+
+    if (error) { toast.error(error.message); return }
+
+    setNpcs(prev => prev.map(n => n.id === npc.id ? { ...n, animation_url: null } : n))
+    toast.success(`${npc.name} animation removed`)
   }
 
   if (loading) return <div className="h-48 bg-gray-200 rounded-xl animate-pulse" />
@@ -154,112 +175,88 @@ function NpcSection() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500">
-        Upload a transparent PNG for each expression. 512×512px recommended.
+        Assign a VRM model and optional idle animation to each NPC. Models render live in the situation game.
       </p>
       {npcs.map(npc => (
-        <div key={npc.id} className="bg-white border border-gray-200 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-4">
+        <div key={npc.id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+          {/* Header row */}
+          <div className="flex items-center gap-3">
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
               style={{ backgroundColor: npc.placeholder_color }}
             >
               {npc.name[0]}
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm text-gray-900">{npc.name}</p>
               <p className="text-xs text-gray-400">{npc.role}</p>
             </div>
+            {npc.vrm_url
+              ? <span className="text-xs text-green-600 font-medium shrink-0">✓ VRM set</span>
+              : <span className="text-xs text-amber-500 shrink-0">No VRM</span>}
+            <button
+              onClick={() => setEditingId(editingId === npc.id ? null : npc.id)}
+              className="text-xs text-brand hover:underline shrink-0"
+            >
+              {editingId === npc.id ? 'Cancel' : (npc.vrm_url ? 'Change VRM' : 'Set VRM')}
+            </button>
           </div>
-          <div className="flex gap-3 flex-wrap">
-            {EXPRESSIONS.map(expr => (
-              <ImageSlot
-                key={expr}
-                label={EXPRESSION_LABELS[expr]}
-                currentUrl={npc.sprites?.[expr] ?? null}
-                placeholderColor={npc.placeholder_color}
-                onUpload={file => handleExpressionUpload(npc, expr, file)}
+
+          {/* VRM URL editor */}
+          {editingId === npc.id && (
+            <div className="flex gap-2">
+              <input
+                value={vrmInputs[npc.id] ?? ''}
+                onChange={e => setVrmInputs(prev => ({ ...prev, [npc.id]: e.target.value }))}
+                onKeyDown={e => e.key === 'Enter' && handleSaveVrm(npc)}
+                placeholder="Paste VRM URL…"
+                className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
               />
-            ))}
+              <button
+                onClick={() => handleSaveVrm(npc)}
+                disabled={saving === npc.id}
+                className="px-3 py-1.5 bg-brand text-white text-xs rounded-lg disabled:opacity-40 shrink-0"
+              >
+                {saving === npc.id ? '…' : 'Save'}
+              </button>
+            </div>
+          )}
+
+          {/* Animation row */}
+          <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+            <span className="text-xs text-gray-500 flex-1">
+              {npc.animation_url
+                ? <span className="text-green-600 font-medium">✓ Animation set</span>
+                : 'Idle animation (.vrma)'}
+            </span>
+            {npc.animation_url && (
+              <button
+                onClick={() => handleAnimationClear(npc)}
+                className="text-xs text-red-400 hover:text-red-600"
+              >
+                Remove
+              </button>
+            )}
+            <button
+              onClick={() => animFileRefs.current[npc.id]?.click()}
+              className="text-xs text-brand hover:underline shrink-0"
+            >
+              {npc.animation_url ? 'Replace' : 'Upload .vrma'}
+            </button>
+            <input
+              ref={el => { animFileRefs.current[npc.id] = el }}
+              type="file"
+              accept=".vrma"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0]
+                if (file) handleAnimationUpload(npc, file)
+                e.target.value = ''
+              }}
+            />
           </div>
         </div>
       ))}
-    </div>
-  )
-}
-
-// ── Avatar section ─────────────────────────────────────────────────
-
-function AvatarSection() {
-  const [presets, setPresets] = useState<AvatarPreset[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    listAvatarPresets().then(({ presets: p }) => {
-      setPresets(p ?? [])
-      setLoading(false)
-    })
-  }, [])
-
-  async function handleExpressionUpload(preset: AvatarPreset, expression: Expression, file: File) {
-    const path = `avatars/${preset.id}/${expression}.png`
-    const url = await uploadToStorage(file, path)
-    if (!url) return
-
-    const newSprites = { ...preset.sprites, [expression]: url }
-    const { error } = await supabase
-      .from('avatar_presets')
-      .update({ sprites: newSprites })
-      .eq('id', preset.id)
-
-    if (error) { toast.error(error.message); return }
-
-    setPresets(prev => prev.map(p => p.id === preset.id ? { ...p, sprites: newSprites } : p))
-    toast.success(`${preset.name} · ${EXPRESSION_LABELS[expression]} uploaded`)
-  }
-
-  if (loading) return <div className="h-48 bg-gray-200 rounded-xl animate-pulse" />
-
-  const groups = ['children', 'teens', 'adults'] as const
-
-  return (
-    <div className="space-y-5">
-      <p className="text-sm text-gray-500">
-        Upload a transparent PNG for each expression. 512×512px, waist-up framing. Avatars are mirrored automatically to face the NPC.
-      </p>
-      {groups.map(group => {
-        const groupPresets = presets.filter(p => p.age_group === group)
-        return (
-          <div key={group}>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 capitalize">{group}</p>
-            <div className="space-y-4">
-              {groupPresets.map(preset => (
-                <div key={preset.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                      style={{ backgroundColor: preset.placeholder_color }}
-                    >
-                      {preset.name[0]}
-                    </div>
-                    <p className="font-semibold text-sm text-gray-900">{preset.name}</p>
-                  </div>
-                  <div className="flex gap-3 flex-wrap">
-                    {EXPRESSIONS.map(expr => (
-                      <ImageSlot
-                        key={expr}
-                        label={EXPRESSION_LABELS[expr]}
-                        currentUrl={preset.sprites?.[expr] ?? null}
-                        placeholderColor={preset.placeholder_color}
-                        onUpload={file => handleExpressionUpload(preset, expr, file)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })}
     </div>
   )
 }
@@ -326,18 +323,16 @@ function BackgroundSection() {
 // ── Shared manager (used by MaterialsPage) ────────────────────────
 
 export function SituationsManager() {
-  const [tab, setTab] = useState<'npcs' | 'avatars' | 'backgrounds'>('npcs')
+  const [tab, setTab] = useState<'npcs' | 'backgrounds'>('npcs')
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-1 bg-gray-100 rounded-xl p-1">
-        <Tab label="🎭 Characters" active={tab === 'npcs'}        onClick={() => setTab('npcs')} />
-        <Tab label="👤 Avatars"    active={tab === 'avatars'}     onClick={() => setTab('avatars')} />
-        <Tab label="🖼️ Backgrounds" active={tab === 'backgrounds'} onClick={() => setTab('backgrounds')} />
+      <div className="grid grid-cols-2 gap-1 bg-gray-100 rounded-xl p-1">
+        <Tab label="🎭 Characters"   active={tab === 'npcs'}        onClick={() => setTab('npcs')} />
+        <Tab label="🖼️ Backgrounds"  active={tab === 'backgrounds'} onClick={() => setTab('backgrounds')} />
       </div>
 
       {tab === 'npcs'        && <NpcSection />}
-      {tab === 'avatars'     && <AvatarSection />}
       {tab === 'backgrounds' && <BackgroundSection />}
     </div>
   )
@@ -350,7 +345,7 @@ export function SituationsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Situation Assets</h1>
-        <p className="text-gray-500 text-sm mt-1">Upload character sprites and scene backgrounds for the Situation Simulator</p>
+        <p className="text-gray-500 text-sm mt-1">Assign VRM models and backgrounds for the Situation Simulator</p>
       </div>
       <SituationsManager />
     </div>
