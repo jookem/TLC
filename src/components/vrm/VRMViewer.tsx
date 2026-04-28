@@ -384,7 +384,7 @@ export function VRMViewer({
 
       renderer.render(scene, camera)
     }
-    animate()
+    animate(performance.now())
 
     // ── Resize observer ───────────────────────────────────────
     const ro = new ResizeObserver(() => {
