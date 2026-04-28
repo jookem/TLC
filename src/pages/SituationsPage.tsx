@@ -408,7 +408,7 @@ function AnimationSection() {
                   <input
                     ref={el => { fileRefs.current[key] = el }}
                     type="file"
-                    accept=".vrma"
+                    accept=".vrma,.fbx"
                     className="hidden"
                     onChange={e => {
                       const file = e.target.files?.[0]

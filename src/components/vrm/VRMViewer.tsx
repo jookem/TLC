@@ -4,6 +4,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { VRMLoaderPlugin, VRMUtils, type VRM } from '@pixiv/three-vrm'
 import { VRMAnimationLoaderPlugin, createVRMAnimationClip } from '@pixiv/three-vrm-animation'
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
+import { retargetMixamoClip } from '@/lib/mixamoRetarget'
 
 export type VRMExpression =
   | 'neutral' | 'happy' | 'angry' | 'sad' | 'surprised' | 'relaxed'
@@ -152,10 +154,11 @@ export function VRMViewer({
     controls.update()
 
     // ── Animation state (local to this effect) ────────────────
-    const animLoader = new GLTFLoader()
-    animLoader.register(parser => new VRMAnimationLoaderPlugin(parser))
+    const vrmaLoader = new GLTFLoader()
+    vrmaLoader.register(parser => new VRMAnimationLoaderPlugin(parser))
+    const fbxLoader  = new FBXLoader()
 
-    const clipCache = new Map<string, THREE.AnimationClip>()
+    const clipCache    = new Map<string, THREE.AnimationClip>()
     const loadingAnims = new Set<string>()
     let mixer: THREE.AnimationMixer | null = null
     let currentAction: THREE.AnimationAction | null = null
@@ -182,23 +185,36 @@ export function VRMViewer({
         return
       }
 
-      if (!mixer) {
-        mixer = new THREE.AnimationMixer(vrmRef.current.scene)
-      }
+      if (!mixer) mixer = new THREE.AnimationMixer(vrmRef.current.scene)
 
       const cached = clipCache.get(url)
       if (cached) { playClip(cached); return }
       if (loadingAnims.has(url)) return
 
       loadingAnims.add(url)
-      animLoader.load(url, gltf => {
-        loadingAnims.delete(url)
-        if (!gltf.userData.vrmAnimations?.length || !vrmRef.current) return
-        if (currentAnimUrlRef.current !== url) return   // stale: expression changed while loading
-        const clip = createVRMAnimationClip(gltf.userData.vrmAnimations[0], vrmRef.current)
-        clipCache.set(url, clip)
-        playClip(clip)
-      })
+
+      const isFbx = url.split('?')[0].toLowerCase().endsWith('.fbx')
+
+      if (isFbx) {
+        fbxLoader.load(url, fbx => {
+          loadingAnims.delete(url)
+          if (!vrmRef.current || currentAnimUrlRef.current !== url) return
+          const srcClip = fbx.animations[0]
+          if (!srcClip) return
+          const clip = retargetMixamoClip(srcClip, vrmRef.current)
+          clipCache.set(url, clip)
+          playClip(clip)
+        })
+      } else {
+        vrmaLoader.load(url, gltf => {
+          loadingAnims.delete(url)
+          if (!gltf.userData.vrmAnimations?.length || !vrmRef.current) return
+          if (currentAnimUrlRef.current !== url) return
+          const clip = createVRMAnimationClip(gltf.userData.vrmAnimations[0], vrmRef.current)
+          clipCache.set(url, clip)
+          playClip(clip)
+        })
+      }
     }
 
     // ── Load VRM ─────────────────────────────────────────────
