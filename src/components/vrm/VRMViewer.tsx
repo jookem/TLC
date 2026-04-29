@@ -239,11 +239,15 @@ export function VRMViewer({
     const loader = new GLTFLoader()
     loader.register(parser => new VRMLoaderPlugin(parser))
 
+    // Cache raw binary so the same URL isn't re-fetched when two viewers share it
+    THREE.Cache.enabled = true
+
     loader.load(
       url,
       gltf => {
         const vrm = gltf.userData.vrm as VRM
-        VRMUtils.removeUnnecessaryVertices(gltf.scene)
+        // removeUnnecessaryVertices is an optional optimisation pass that can
+        // freeze the main thread for 500ms–2s on detailed models — skip it.
         VRMUtils.combineSkeletons(gltf.scene)
         if ((vrm.meta as any)?.metaVersion === '0') VRMUtils.rotateVRM0(vrm)
         scene.add(vrm.scene)
