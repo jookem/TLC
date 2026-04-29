@@ -455,6 +455,65 @@ function AnimationSection() {
   )
 }
 
+// ── Situations section ────────────────────────────────────────────
+
+type SituationMode = 'scripted' | 'hybrid' | 'llm'
+
+function SituationsSection() {
+  const [situations, setSituations] = useState<Situation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState<string | null>(null)
+
+  useEffect(() => {
+    listSituations().then(({ situations: s }) => {
+      setSituations(s ?? [])
+      setLoading(false)
+    })
+  }, [])
+
+  async function handleModeChange(situation: Situation, mode: SituationMode) {
+    setSaving(situation.id)
+    const { error } = await supabase.from('situations').update({ mode }).eq('id', situation.id)
+    if (error) { toast.error(error.message); setSaving(null); return }
+    setSituations(prev => prev.map(s => s.id === situation.id ? { ...s, mode } : s))
+    setSaving(null)
+  }
+
+  if (loading) return <div className="h-48 bg-gray-200 rounded-xl animate-pulse" />
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500">
+        Set the conversation mode for each situation. <strong>LLM</strong> uses Claude AI to generate responses in real time — no script needed.
+      </p>
+      {situations.map(situation => (
+        <div key={situation.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm text-gray-900">{situation.title}</p>
+            <p className="text-xs text-gray-400 mt-0.5 truncate">{situation.description}</p>
+          </div>
+          <div className="flex gap-1 shrink-0">
+            {(['scripted', 'llm'] as SituationMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => handleModeChange(situation, mode)}
+                disabled={saving === situation.id}
+                className={`px-3 py-1.5 text-xs rounded-lg capitalize font-medium transition-colors ${
+                  situation.mode === mode
+                    ? mode === 'llm' ? 'bg-violet-600 text-white' : 'bg-brand text-white'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                {mode === 'llm' ? '✨ LLM' : 'Scripted'}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Background section ─────────────────────────────────────────────
 
 function BackgroundSection() {
@@ -517,19 +576,21 @@ function BackgroundSection() {
 // ── Shared manager (used by MaterialsPage) ────────────────────────
 
 export function SituationsManager() {
-  const [tab, setTab] = useState<'npcs' | 'animations' | 'backgrounds'>('npcs')
+  const [tab, setTab] = useState<'npcs' | 'animations' | 'backgrounds' | 'situations'>('npcs')
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-1 bg-gray-100 rounded-xl p-1">
+      <div className="grid grid-cols-4 gap-1 bg-gray-100 rounded-xl p-1">
         <Tab label="🎭 Characters"   active={tab === 'npcs'}        onClick={() => setTab('npcs')} />
         <Tab label="🎬 Animations"   active={tab === 'animations'}  onClick={() => setTab('animations')} />
         <Tab label="🖼️ Backgrounds"  active={tab === 'backgrounds'} onClick={() => setTab('backgrounds')} />
+        <Tab label="⚙️ Situations"   active={tab === 'situations'}  onClick={() => setTab('situations')} />
       </div>
 
       {tab === 'npcs'        && <NpcSection />}
       {tab === 'animations'  && <AnimationSection />}
       {tab === 'backgrounds' && <BackgroundSection />}
+      {tab === 'situations'  && <SituationsSection />}
     </div>
   )
 }
