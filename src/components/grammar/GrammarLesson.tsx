@@ -35,29 +35,24 @@ export function GrammarLesson({ slides, deckName, initialIndex = 0, onComplete, 
   return (
     <div role="dialog" aria-modal="true" aria-label="Grammar lesson" className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0">
         <button onClick={onClose} className="text-white/50 hover:text-white text-sm transition-colors">✕</button>
-        <span className="text-white/50 text-xs font-medium tracking-wide uppercase">Lesson · {deckName}</span>
-        <button
-          onClick={onComplete}
-          className="text-white/50 hover:text-white text-xs transition-colors"
-        >
-          Skip →
-        </button>
+        <span className="text-white/50 text-xs font-medium tracking-wide uppercase">{deckName}</span>
+        <div className="w-6" />
       </div>
 
-      {/* Progress bar */}
-      <div className="h-1 bg-white/10 mx-4 rounded-full overflow-hidden shrink-0">
-        <div
-          className="h-full bg-brand rounded-full transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
+      {/* Progress bar + counter */}
+      <div className="px-4 shrink-0 space-y-1.5">
+        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-brand rounded-full transition-all duration-500"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <p className="text-center text-white/60 text-sm font-medium">
+          Slide {index + 1} of {slides.length}
+        </p>
       </div>
-
-      {/* Slide counter */}
-      <p className="text-center text-white/30 text-xs mt-2 shrink-0">
-        {index + 1} / {slides.length}
-      </p>
 
       {/* Slide content */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
@@ -105,29 +100,39 @@ export function GrammarLesson({ slides, deckName, initialIndex = 0, onComplete, 
       </div>
 
       {/* Navigation */}
-      <div className="px-6 pb-8 pt-4 shrink-0">
-        <div className="max-w-lg mx-auto flex gap-3">
-          {index > 0 && (
-            <button
-              onClick={() => setIndex(i => i - 1)}
-              className="flex-1 py-3 rounded-xl bg-white/10 text-white/70 text-sm font-medium hover:bg-white/15 transition-colors"
-            >
-              ← Back
-            </button>
-          )}
-          {isLast ? (
+      <div className="px-6 pb-6 pt-4 shrink-0">
+        <div className="max-w-lg mx-auto space-y-2">
+          <div className="flex gap-3">
+            {index > 0 && (
+              <button
+                onClick={() => setIndex(i => i - 1)}
+                className="flex-1 py-3 rounded-xl bg-white/10 text-white/70 text-sm font-medium hover:bg-white/15 transition-colors"
+              >
+                ← Back
+              </button>
+            )}
+            {isLast ? (
+              <button
+                onClick={onComplete}
+                className="flex-1 py-3 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors"
+              >
+                Start Practice →
+              </button>
+            ) : (
+              <button
+                onClick={() => setIndex(i => i + 1)}
+                className="flex-1 py-3 rounded-xl bg-white text-slate-900 text-sm font-semibold hover:bg-white/90 transition-colors"
+              >
+                Next →
+              </button>
+            )}
+          </div>
+          {!isLast && (
             <button
               onClick={onComplete}
-              className="flex-1 py-3 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors"
+              className="w-full py-2 text-white/40 hover:text-white/70 text-xs transition-colors"
             >
-              Start Practice →
-            </button>
-          ) : (
-            <button
-              onClick={() => setIndex(i => i + 1)}
-              className="flex-1 py-3 rounded-xl bg-white text-slate-900 text-sm font-semibold hover:bg-white/90 transition-colors"
-            >
-              Next →
+              Skip to Practice →
             </button>
           )}
         </div>
