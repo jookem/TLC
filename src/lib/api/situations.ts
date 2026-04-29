@@ -117,16 +117,21 @@ export async function listVrmAnimations(
   const gendersToFetch = gender === 'neutral' ? ['neutral'] : [gender, 'neutral']
   const { data } = await supabase
     .from('vrm_animations')
-    .select('gender, expression, animation_url')
+    .select('gender, expression, animation_url, updated_at')
     .in('gender', gendersToFetch)
 
   if (!data) return {}
 
+  function bustUrl(r: { animation_url: string; updated_at?: string | null }) {
+    if (!r.updated_at) return r.animation_url
+    return `${r.animation_url}?t=${new Date(r.updated_at).getTime()}`
+  }
+
   const map: Record<string, string> = {}
   // neutral first, gender-specific overrides
-  data.filter(r => r.gender === 'neutral').forEach(r => { map[r.expression] = r.animation_url })
+  data.filter(r => r.gender === 'neutral').forEach(r => { map[r.expression] = bustUrl(r) })
   if (gender !== 'neutral') {
-    data.filter(r => r.gender === gender).forEach(r => { map[r.expression] = r.animation_url })
+    data.filter(r => r.gender === gender).forEach(r => { map[r.expression] = bustUrl(r) })
   }
   return map
 }
