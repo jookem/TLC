@@ -222,14 +222,13 @@ export function VRMViewer({
           if (!gltf.userData.vrmAnimations?.length || !vrmRef.current) return
           if (currentAnimUrlRef.current !== url) return
           const clip = createVRMAnimationClip(gltf.userData.vrmAnimations[0], vrmRef.current)
-          // Drop position tracks whose values are clearly un-normalised (>2 m absolute).
-          // Small offsets (intentional poses like a sad slump) are kept; only raw
-          // Mixamo centimetre-scale absolute values are stripped.
-          clip.tracks = clip.tracks.filter(t => {
-            if (!t.name.endsWith('.position')) return true
-            const absMax = (t.values as Float32Array).reduce((m, v) => Math.max(m, Math.abs(v)), 0)
-            return absMax <= 2
-          })
+          // Strip all position tracks so every emotion plays at the character's
+          // rest position — any offset shifts the character relative to animations
+          // that have no position tracks.
+          clip.tracks = clip.tracks.filter(t => !t.name.endsWith('.position'))
+          // If only position tracks existed, don't play an empty clip (T-pose);
+          // let idle sway continue instead.
+          if (clip.tracks.length === 0) return
           clipCache.set(url, clip)
           playClip(clip)
         })
