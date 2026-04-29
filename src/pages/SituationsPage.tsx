@@ -245,6 +245,7 @@ function NpcCard({ npc, onUpdate }: { npc: SituationNpc; onUpdate: (updated: Sit
             autoBlink
             orbitControls
             showGrid={false}
+            framing="bust"
             className="w-full h-72"
           />
           <div className="flex justify-center gap-2 p-2 bg-slate-50 border-t border-gray-100">
