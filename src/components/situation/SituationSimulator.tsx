@@ -24,7 +24,7 @@ function deriveAgeGroup(age: number | null): 'children' | 'teens' | 'adults' | u
 }
 
 async function uploadVrm(file: File, userId: string): Promise<string | null> {
-  const path = `students/${userId}/avatar.vrm`
+  const path = `students/${userId}/avatar_${Date.now()}.vrm`
   const { error } = await supabase.storage
     .from('situation-assets')
     .upload(path, file, { upsert: true, contentType: 'model/gltf-binary' })
@@ -32,6 +32,15 @@ async function uploadVrm(file: File, userId: string): Promise<string | null> {
   if (error) return null
   const { data } = supabase.storage.from('situation-assets').getPublicUrl(path)
   return data.publicUrl
+}
+
+async function deleteVrmFromStorage(url: string | null) {
+  if (!url) return
+  const marker = '/object/public/situation-assets/'
+  const idx = url.indexOf(marker)
+  if (idx === -1) return
+  const path = decodeURIComponent(url.slice(idx + marker.length).split('?')[0])
+  await supabase.storage.from('situation-assets').remove([path])
 }
 
 const PREVIEW_EXPRESSIONS: { id: VRMExpression; emoji: string; label: string }[] = [
@@ -132,8 +141,10 @@ export function SituationSimulator() {
     const file = e.target.files?.[0]
     if (!file || !user) return
     setUploading(true)
+    const oldUrl = studentVrmUrl
     const url = await uploadVrm(file, user.id)
     if (url) {
+      await deleteVrmFromStorage(oldUrl)
       setStudentVrmUrl(url)
       persistVrmUrl(url)
     }
@@ -141,7 +152,8 @@ export function SituationSimulator() {
     e.target.value = ''
   }
 
-  function handleVrmClear() {
+  async function handleVrmClear() {
+    await deleteVrmFromStorage(studentVrmUrl)
     setStudentVrmUrl(null)
     persistVrmUrl(null)
   }

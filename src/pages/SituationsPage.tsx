@@ -20,6 +20,19 @@ async function uploadToStorage(file: File, path: string): Promise<string | null>
   return data.publicUrl
 }
 
+function storagePathFromUrl(url: string): string | null {
+  const marker = '/object/public/situation-assets/'
+  const idx = url.indexOf(marker)
+  if (idx === -1) return null
+  return decodeURIComponent(url.slice(idx + marker.length).split('?')[0])
+}
+
+async function deleteFromStorage(url: string | null | undefined) {
+  if (!url) return
+  const path = storagePathFromUrl(url)
+  if (path) await supabase.storage.from('situation-assets').remove([path])
+}
+
 // ── Image slot ─────────────────────────────────────────────────────
 
 function ImageSlot({
@@ -144,7 +157,8 @@ function NpcCard({ npc, onUpdate }: { npc: SituationNpc; onUpdate: (updated: Sit
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
-    const path = `npcs/${npc.id}/model.vrm`
+    const oldUrl = npc.vrm_url
+    const path = `npcs/${npc.id}/model_${Date.now()}.vrm`
     const url = await uploadToStorage(file, path)
     if (!url) { setUploading(false); return }
 
@@ -155,6 +169,7 @@ function NpcCard({ npc, onUpdate }: { npc: SituationNpc; onUpdate: (updated: Sit
 
     if (error) { toast.error(error.message); setUploading(false); return }
 
+    await deleteFromStorage(oldUrl)
     onUpdate({ ...npc, vrm_url: url })
     setShowPreview(true)
     setUploading(false)
@@ -168,6 +183,7 @@ function NpcCard({ npc, onUpdate }: { npc: SituationNpc; onUpdate: (updated: Sit
       .update({ vrm_url: null })
       .eq('id', npc.id)
     if (error) { toast.error(error.message); return }
+    await deleteFromStorage(npc.vrm_url)
     onUpdate({ ...npc, vrm_url: null })
     setShowPreview(false)
   }
