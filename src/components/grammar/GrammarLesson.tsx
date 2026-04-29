@@ -9,7 +9,7 @@ function renderHighlighted(text: string): React.ReactNode {
   return parts.map((part, i) => {
     if (part.startsWith('[') && part.endsWith(']')) {
       return (
-        <mark key={i} className="bg-brand/20 text-brand font-bold px-0.5 rounded not-italic">
+        <mark key={i} className="bg-yellow-300 text-slate-900 font-bold px-0.5 rounded not-italic">
           {part.slice(1, -1)}
         </mark>
       )

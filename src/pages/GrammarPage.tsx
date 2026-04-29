@@ -116,8 +116,10 @@ export function GrammarPage() {
       if (result.slides && result.slides.length > 0) {
         const cardCategories = [...new Set(cards.map(c => c.category).filter(Boolean))]
         if (cardCategories.length === 1) {
-          const match = result.slides.find(s => s.title.toLowerCase() === cardCategories[0]!.toLowerCase())
-          slides = match ? [match] : result.slides
+          const cat = cardCategories[0]!.toLowerCase()
+          // Match slides whose title starts with the category name (handles "Category — Japanese subtitle")
+          const matched = result.slides.filter(s => s.title.toLowerCase().startsWith(cat))
+          slides = matched.length > 0 ? matched : result.slides
           deckName = cardCategories[0] ?? deckName
         } else {
           slides = result.slides
