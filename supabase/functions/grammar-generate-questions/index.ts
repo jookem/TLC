@@ -39,47 +39,62 @@ Grammar topic: "${topic}"
 ${exampleBlock}
 Generate exactly ${targetCount} questions. Follow ALL rules below precisely.
 
-━━━ RULE 1 — THE BLANK TESTS THE GRAMMAR POINT ━━━
-The blank _____ must always replace the target grammar structure for "${topic}".
+━━━ RULE 1 — MULTI-WORD ANSWERS USE " / " SEPARATOR ━━━
+When the grammar point requires more than one word (e.g. "has lived", "was written", "will go"),
+use ONE _____ blank per word in the sentence, and separate the answer words with " / " (space-slash-space).
+
+Examples:
+- answer "has / lived" → sentence: "She _____ _____ in Tokyo for five years."
+- answer "was / written" → sentence: "The letter _____ _____ by Tom."
+- answer "will / go" → sentence: "They _____ _____ to the park tomorrow."
+- answer "is / running" → sentence: "He _____ _____ in the park."
+- answer "heavier" (one word) → sentence: "This bag is _____ than mine."
+
+Distractors for multi-word answers must also use " / " format and have the same number of words:
+- correct: "has / lived" → distractors: ["have / lived", "is / living", "was / living"]
+- correct: "was / written" → distractors: ["is / written", "were / write", "has / written"]
+
+━━━ RULE 2 — THE BLANK TESTS THE GRAMMAR POINT ━━━
+The blank(s) must always replace the target grammar structure for "${topic}".
 NEVER blank out a random noun, adjective, or preposition that has nothing to do with the grammar point.
 
-Examples of CORRECT blank placement:
-- Topic "Present Perfect" → "She _____ in Tokyo for five years." (answer: has lived)
+CORRECT:
+- Topic "Present Perfect" → "She _____ _____ in Tokyo for five years." (answer: has / lived)
 - Topic "Past Simple" → "He _____ the door and walked in." (answer: opened)
-- Topic "Passive Voice" → "The letter _____ by Tom." (answer: was written)
+- Topic "Passive Voice" → "The letter _____ _____ by Tom." (answer: was / written)
 - Topic "Comparatives" → "This bag is _____ than mine." (answer: heavier)
 - Topic "Modal Verbs" → "You _____ wear a seatbelt." (answer: must)
 
-Examples of WRONG blank placement (do NOT do this):
-- Topic "Present Perfect" → "She has lived in _____ for five years." (blanking a noun = wrong)
-- Topic "Modal Verbs" → "You must wear a _____." (blanking a noun = wrong)
+WRONG (do NOT do this):
+- Topic "Present Perfect" → "She has lived in _____ for five years." (blanking a noun)
+- Topic "Modal Verbs" → "You must wear a _____." (blanking a noun)
 
-━━━ RULE 2 — hint_ja IS A CONJUGATED TRANSLATION ━━━
-hint_ja must be the Japanese translation of the ANSWER, conjugated into the SAME grammatical form as the answer.
-The Japanese form must match the English tense/aspect/mood exactly.
+━━━ RULE 3 — hint_ja IS A CONJUGATED TRANSLATION ━━━
+hint_ja must be the Japanese translation of the ANSWER, conjugated into the SAME grammatical form.
+For multi-word answers, translate the whole phrase as one unit.
 
 Examples:
-- answer: "has eaten" → hint_ja: "食べました" (NOT 食べる)
-- answer: "was written" → hint_ja: "書かれました" (passive, NOT 書く)
-- answer: "will go" → hint_ja: "行くでしょう" (future, NOT 行く)
-- answer: "is running" → hint_ja: "走っています" (continuous, NOT 走る)
-- answer: "had finished" → hint_ja: "終わっていた" (past perfect, NOT 終わる)
-- answer: "must study" → hint_ja: "勉強しなければなりません"
+- answer: "has / eaten" → hint_ja: "食べました"
+- answer: "was / written" → hint_ja: "書かれました"
+- answer: "will / go" → hint_ja: "行くでしょう"
+- answer: "is / running" → hint_ja: "走っています"
+- answer: "had / finished" → hint_ja: "終わっていた"
+- answer: "must" → hint_ja: "〜しなければならない"
 - answer: "heavier" → hint_ja: "より重い"
 
-━━━ RULE 3 — OTHER REQUIREMENTS ━━━
-- 3 distractors: same part of speech, grammatically plausible but wrong (wrong tense, wrong form, etc.)
-- category: broad consistent name for the grammar sub-type, no parenthetical sub-types
-- Vary subjects and contexts across questions (affirmative, negative, questions)
+━━━ RULE 4 — OTHER REQUIREMENTS ━━━
+- 3 distractors, same structure (same number of words, same " / " format if multi-word)
+- category: broad consistent name, no parenthetical sub-types
+- Vary subjects and contexts across questions (affirmative, negative, question forms)
 
 Return ONLY a valid JSON object, no text before or after:
 {
   "questions": [
     {
-      "sentence_with_blank": "She _____ in Tokyo for five years.",
-      "answer": "has lived",
+      "sentence_with_blank": "She _____ _____ in Tokyo for five years.",
+      "answer": "has / lived",
       "hint_ja": "住んでいます",
-      "distractors": ["lived", "is living", "lives"],
+      "distractors": ["have / lived", "is / living", "was / living"],
       "category": "Present Perfect"
     }
   ]
