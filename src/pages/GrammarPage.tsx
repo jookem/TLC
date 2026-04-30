@@ -165,10 +165,11 @@ export function GrammarPage() {
     return sessionLimit === 0 ? shuffled : shuffled.slice(0, sessionLimit)
   }
 
-  // All entries sharing the same category as a given card (for lesson → quiz flow)
+  // All entries sharing the same category (or deck when uncategorised) as a given card
   function categoryCards(e: GrammarBankEntry): GrammarBankEntry[] {
-    if (!e.category) return [e]
-    return entries.filter(c => c.category === e.category)
+    if (e.category) return entries.filter(c => c.category === e.category)
+    if (e.deck_id) return entries.filter(c => c.deck_id === e.deck_id)
+    return [e]
   }
 
   // ── By Category grouping ───────────────────────────────────────
@@ -413,7 +414,7 @@ export function GrammarPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {uncategorized.map(e => (
-                      <GrammarCard key={e.id} entry={e} onStudy={() => startStudy([e], true)} onLesson={() => startStudy(uncategorized)} />
+                      <GrammarCard key={e.id} entry={e} onStudy={() => startStudy([e], true)} onLesson={() => startStudy(categoryCards(e))} />
                     ))}
                   </div>
                 </section>
@@ -423,7 +424,7 @@ export function GrammarPage() {
               {categories.length === 0 && uncategorized.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {uncategorized.map(e => (
-                    <GrammarCard key={e.id} entry={e} onStudy={() => startStudy([e], true)} onLesson={() => startStudy(uncategorized)} />
+                    <GrammarCard key={e.id} entry={e} onStudy={() => startStudy([e], true)} onLesson={() => startStudy(categoryCards(e))} />
                   ))}
                 </div>
               )}
