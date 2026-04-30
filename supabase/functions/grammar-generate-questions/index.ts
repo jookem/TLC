@@ -106,24 +106,41 @@ The goal: a student who doesn't know the rule might pick one, but a student who 
 Same number of words and " / " format as the answer.
 
 ━━━ RULE 5 — CONTEXT CLUES FOR OPEN-ENDED ANSWERS ━━━
-For grammar points where many words could fit the blank (adjectives, adverbs, nouns, vocabulary),
-the sentence MUST include enough context to make exactly ONE answer correct.
-If a single sentence is not enough, write TWO sentences — a context sentence followed by the blank sentence.
+The following topic types are OPEN-ENDED — multiple words could legitimately fill the blank.
+For ALL of these, the sentence MUST contain enough context to make exactly ONE answer correct.
+Use TWO sentences (a context sentence + the blank sentence) whenever one sentence is not enough.
+
+OPEN-ENDED TOPIC TYPES (always require context clues):
+• Adjectives — temperature, size, emotion, colour, condition (hot/cold/warm, big/small, happy/sad…)
+• Adverbs — manner, frequency, degree (quickly/slowly, always/never, very/quite…)
+• Nouns — any noun blank is ambiguous without context
+• Pronouns — he/she/it/they/him/her require context establishing who is being referred to
+• Prepositions — in/on/at/to/for/with can all be ambiguous; context must make only one correct
+• Conjunctions — and/but/because/so/although; the logical relationship between clauses must be clear
+• Articles — a/an/the; context must make clear whether definite or indefinite
+• Vocabulary (any topic testing word choice rather than grammatical form)
 
 BAD (no context — student cannot determine the correct answer):
-- "The weather is _____."  (hot? cold? warm? sunny? — impossible to know)
-- "She felt _____."        (happy? tired? sick? cold? — impossible to know)
-- "He ran _____."          (fast? slowly? away? — impossible to know)
+- "The weather is _____."       (hot? cold? warm? fine? — impossible to know)
+- "She felt _____."             (happy? tired? sick? cold? — impossible to know)
+- "He ran _____ the street."    (across? down? along? — impossible to know)
+- "She is _____ friend."        (a? my? his? her? — impossible to know)
+- "I went _____ school."        (to? from? — ambiguous without context)
 
 GOOD (context makes exactly one answer correct):
-- "Everyone was sweating in the sun. It was a _____ day." (answer: hot — cold/warm are wrong)
+- "Everyone was sweating in the sun. It was a _____ day." (answer: hot)
 - "She had not slept in two days. She felt very _____." (answer: tired)
 - "The soup just came off the stove. Be careful, it is _____." (answer: hot)
-- "It started snowing and the children put on their coats. They felt _____." (answer: cold)
+- "It was raining and she forgot her umbrella. She arrived _____." (answer: wet)
+- "He was rude to everyone. Nobody liked _____." (answer: him — establishes gender + object)
+- "I study English every day _____ I want to pass the exam." (answer: because — logical cause)
+- "The book on the table is mine. Please pass me _____." (answer: the — specific known object)
 
-For tense/structure topics (Present Perfect, Passive Voice, Modal Verbs etc.) this rule is less critical
-since the grammar structure itself determines the answer — but still add time/context markers when helpful
-(e.g. "since 2020", "by the police", "yesterday") to reinforce the correct form.
+STRUCTURAL TOPICS (grammar form determines the answer — context clues are still helpful but optional):
+Present Perfect, Past Simple, Future Forms, Passive Voice, Modal Verbs, Comparatives,
+Conditionals, Relative Clauses, Reported Speech, Gerunds and Infinitives, Question Tags.
+For these, add time markers (yesterday, since 2020, tomorrow) or agent phrases (by the police)
+to reinforce the correct form when natural.
 
 ━━━ RULE 6 — OTHER REQUIREMENTS ━━━
 - category: broad consistent name, no parenthetical sub-types
