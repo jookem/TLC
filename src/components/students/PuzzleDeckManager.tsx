@@ -191,16 +191,21 @@ function PuzzleEditor({
     }
     setGenerating(true)
 
-    const sentences: { sentence: string; hint: string }[] = []
+    const sentences: { sentence: string; hint: string; japanese?: string }[] = []
 
     // Collect from grammar deck
     if (selectedGrammar) {
       const { deck: gd } = await getGrammarDeckWithPoints(selectedGrammar)
       for (const pt of gd?.points ?? []) {
         if (pt.sentence_with_blank && pt.answer) {
-          // Fill-in-the-blank format: fill the blank to get a complete sentence
-          const s = pt.sentence_with_blank.replace('_____', pt.answer).trim()
-          if (s) sentences.push({ sentence: s, hint: pt.hint_ja ?? pt.point })
+          // Fill all blanks — answer may use ' / ' separator for multi-word answers
+          const answerWords = pt.answer.split(' / ')
+          let s = pt.sentence_with_blank
+          for (const word of answerWords) {
+            s = s.replace('_____', word)
+          }
+          s = s.trim()
+          if (s) sentences.push({ sentence: s, hint: s, japanese: pt.hint_ja ?? undefined })
         } else {
           // Legacy format: no sentence_with_blank — use examples array instead
           for (const ex of (pt.examples ?? [])) {
@@ -228,9 +233,9 @@ function PuzzleEditor({
       return
     }
 
-    // Deduplicate against existing puzzles
-    const existingSentences = new Set(puzzles.map(p => p.japanese_sentence.toLowerCase()))
-    const toCreate = sentences.filter(s => !existingSentences.has(s.sentence.toLowerCase()))
+    // Deduplicate against existing puzzles (compare English hint)
+    const existingHints = new Set(puzzles.map(p => (p.hint ?? p.japanese_sentence).toLowerCase()))
+    const toCreate = sentences.filter(s => !existingHints.has(s.sentence.toLowerCase()))
 
     if (toCreate.length === 0) {
       toast.info('All sentences from those decks are already in this puzzle deck.')
@@ -238,14 +243,20 @@ function PuzzleEditor({
       return
     }
 
-    // Translate + parse each sentence — same flow as manual input
+    // Parse + optionally translate each sentence
     let created = 0
-    for (const { sentence, hint } of toCreate) {
+    for (const { sentence, hint, japanese: precomputedJa } of toCreate) {
       try {
-        const { english, japanese, parts } = await translateAndParse(sentence)
+        const { english, japanese: translatedJa, parts } = await translateAndParse(
+          precomputedJa ? sentence : sentence, // always parse the English for NLP labels
+        )
         if (parts.length < 2) continue
+        // Use pre-computed Japanese (from hint_ja) when available; fall back to MyMemory translation
+        const japaneseSentence = isJapanese(sentence)
+          ? sentence
+          : (precomputedJa ?? translatedJa ?? sentence)
         const { puzzle, error } = await createPuzzle(deck.id, {
-          japanese_sentence: isJapanese(sentence) ? sentence : (japanese ?? sentence),
+          japanese_sentence: japaneseSentence,
           hint: english,
           parts,
         })
@@ -253,7 +264,7 @@ function PuzzleEditor({
           setPuzzles(prev => [...prev, puzzle])
           created++
         }
-      } catch { /* skip sentences that fail translation */ }
+      } catch { /* skip sentences that fail */ }
     }
 
     setGenerating(false)
