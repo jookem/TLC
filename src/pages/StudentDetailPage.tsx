@@ -37,6 +37,7 @@ export function StudentDetailPage() {
   const [snapshots, setSnapshots] = useState<any[]>([])
   const [details, setDetails] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [materialTab, setMaterialTab] = useState<'vocab' | 'grammar' | 'puzzles' | 'eiken'>('vocab')
   const [deletingSnapshot, setDeletingSnapshot] = useState<string | null>(null)
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState('')
@@ -421,10 +422,29 @@ export function StudentDetailPage() {
         </div>
       </div>
 
-      <StudentVocabManager studentId={studentId!} />
-      <GrammarBankManager studentId={studentId!} />
-      <PuzzleDeckManager studentId={studentId!} />
-      <EikenPictureManager />
+      {/* Materials section */}
+      <div className="space-y-0">
+        <div className="flex gap-1 border-b border-gray-200">
+          {(['vocab', 'grammar', 'puzzles', 'eiken'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setMaterialTab(t)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                materialTab === t ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {t === 'vocab' ? 'Vocabulary Decks' : t === 'grammar' ? 'Grammar Decks' : t === 'puzzles' ? 'Train Puzzles' : 'Eiken Picture Bank'}
+            </button>
+          ))}
+        </div>
+        <div className="pt-4">
+          {materialTab === 'vocab'   && <StudentVocabManager studentId={studentId!} />}
+          {materialTab === 'grammar' && <GrammarBankManager studentId={studentId!} />}
+          {materialTab === 'puzzles' && <PuzzleDeckManager studentId={studentId!} />}
+          {materialTab === 'eiken'   && <EikenPictureManager />}
+        </div>
+      </div>
+
 
       <Card>
         <CardHeader className="pb-3">
