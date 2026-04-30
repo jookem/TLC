@@ -89,17 +89,26 @@ Examples:
 
 ━━━ RULE 3b — answer_ja IS THE JAPANESE EQUIVALENT OF THE ANSWER WORDS ONLY ━━━
 answer_ja must be the Japanese equivalent of just the answer word(s), using the same grammatical form.
-For multi-word answers, separate with " / " matching the same number of parts as the answer.
-This appears as a hint inside the blank on flashcard study screens.
+CRITICAL REQUIREMENTS:
+1. answer_ja MUST be written in Japanese script (hiragana/katakana/kanji). NEVER use English words or romaji.
+2. For multi-word answers, answer_ja MUST have EXACTLY the same number of parts as the answer, separated by " / ".
+   Each part corresponds to the blank in the same position.
+3. When the Japanese equivalent is a compound or has reversed word order, split it logically so each part fills its blank.
 
-Examples:
-- answer: "has / lived"   → answer_ja: "住んで / います"
-- answer: "was / written" → answer_ja: "書かれ / ました"
-- answer: "let / go"      → answer_ja: "行かせて / くれます"
-- answer: "heavier"       → answer_ja: "重い"
-- answer: "must"          → answer_ja: "しなければなりません"
-- answer: "opened"        → answer_ja: "開けました"
-- answer: "will / go"     → answer_ja: "行き / ます"
+Examples (one part per blank, mapped to each blank's position):
+- answer: "has / lived"       → answer_ja: "住んで / います"
+- answer: "was / written"     → answer_ja: "書かれ / ました"
+- answer: "let / go"          → answer_ja: "行かせて / くれます"
+- answer: "will / go"         → answer_ja: "行き / ます"
+- answer: "had / rehearse"    → answer_ja: "させました / リハーサル"  (Japanese order differs; split to match blank positions)
+- answer: "made / write"      → answer_ja: "書かせ / ました"
+- answer: "heavier"           → answer_ja: "重い"
+- answer: "must"              → answer_ja: "しなければなりません"
+- answer: "opened"            → answer_ja: "開けました"
+
+WRONG (do NOT do this):
+- answer: "had / rehearse"  → answer_ja: "リハーサルさせました"  (not split, not mapped to blanks)
+- answer: "has / lived"     → answer_ja: "has lived"            (English — forbidden)
 
 ━━━ RULE 4 — DISTRACTORS MUST BE CLEARLY WRONG ━━━
 Distractors must be GRAMMATICALLY INCORRECT — broken forms that no teacher could ever mark as correct.
