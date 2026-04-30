@@ -25,7 +25,7 @@ If a student's birthday is today, a celebration banner will appear here too.`,
   {
     title: 'Adding & Managing Students',
     icon: '👥',
-    body: `The Students page lists all your students, grouped by teacher.
+    body: `The Students page lists all your students.
 
 To add a student you have two options:
 
@@ -33,7 +33,7 @@ To add a student you have two options:
 
 2. Placeholder Student — Create a profile yourself for students who won't use the app (e.g. young children). Go to Students → click "Add Student."
 
-Students are organized in collapsible sections per teacher, so you can see at a glance which teacher owns each student.`,
+New accounts require approval before they can log in. If you don't receive the approval email, go to your Supabase dashboard and set the user's approval_status to "approved" in the profiles table.`,
     link: '/students',
     linkLabel: 'Go to Students',
   },
@@ -54,44 +54,94 @@ Students can also view their own profile information from their side of the app.
     linkLabel: 'Go to Students',
   },
   {
-    title: 'Grammar Bank',
-    icon: '📝',
-    body: `Inside a student's profile, open the Grammar tab to manage their grammar cards.
+    title: 'Lesson Materials — Tabs',
+    icon: '🗂️',
+    body: `On a student's profile page, all teaching materials are organised into four tabs:
 
-• Add individual grammar points with example sentences, notes, and a Japanese translation.
-• Assign cards to Grammar Decks to group related points (e.g. "Present Perfect," "Modal Verbs").
-• Each card has a Mastery Level (New → Seen → Familiar → Mastered) tracked by spaced-repetition review.
-• You can also add fill-in-the-blank versions of sentences that the student practices in review mode.
+• Vocabulary Decks — word lists for that student
+• Grammar Decks — grammar lesson slides and quiz questions
+• Train Puzzles — sentence word-order puzzle decks
+• Eiken Picture Bank — picture description cards
 
-The student sees their due grammar cards on their dashboard with a "Review now" prompt.`,
-    link: '/students',
-    linkLabel: 'Go to Students',
+The same four managers are also available globally (without a student context) under the Lesson Materials page in the main navigation — useful for managing deck content before assigning it to students.
+
+Decks in all four tabs can be organised into collapsible folders using the folder icon.`,
+    link: '/materials',
+    linkLabel: 'Go to Lesson Materials',
   },
   {
-    title: 'Vocabulary Bank',
-    icon: '📚',
-    body: `The Vocab tab in a student's profile lets you build their personal word list.
+    title: 'Grammar Decks — Lesson Slides',
+    icon: '📝',
+    body: `Grammar decks now have two tabs: Lesson Slides and Quiz Questions.
 
-• Add words with a definition, example sentence, and an optional image.
-• Organize words into Vocab Decks (e.g. "EIKEN 3級," "Food & Drink").
-• Mastery levels work the same as grammar — spaced repetition drives review timing.
+Start with Lesson Slides:
+1. Type a grammar point (e.g. "Causative Verbs," "Present Perfect") into the input and click ✦ Generate slides.
+2. The AI creates a set of lesson slides — title, explanation, example sentences with grammar highlighted in [brackets], and a Japanese note.
+3. You can edit, reorder (▲▼), or delete slides. Add more grammar points to the same deck the same way.
+
+Lesson slides are shown to the student as a step-by-step lesson before quiz practice begins.`,
+    link: '/materials',
+    linkLabel: 'Go to Lesson Materials',
+  },
+  {
+    title: 'Grammar Decks — Quiz Questions',
+    icon: '🧠',
+    body: `Once you have lesson slides, switch to the Quiz Questions tab.
+
+Click ✦ Generate questions — the AI reads your slides and creates fill-in-the-blank questions automatically:
+• The blank always targets the grammar point (never a random noun or preposition).
+• Multi-word answers use one blank per word (e.g. "has / lived" → two blanks).
+• Each question includes three grammatically broken distractors for multiple-choice practice.
+• Questions are grouped by grammar category.
+
+The flashcard Pattern screen shows the Japanese equivalent inside each blank as a hint, so students can see the grammatical form they're learning.
+
+Use the checkboxes to bulk-select and delete questions if you want to regenerate them.`,
+    link: '/materials',
+    linkLabel: 'Go to Lesson Materials',
+  },
+  {
+    title: 'Vocabulary Decks',
+    icon: '📚',
+    body: `The Vocabulary tab lets you build word lists for a student.
+
+• Add words with a Japanese definition, English definition, example sentence, reading, and an optional image.
+• Organise words into Vocab Decks and group decks into folders.
+• Import from Anki (.apkg files) to bulk-add words from an existing deck.
+• Mastery levels (New → Seen → Familiar → Mastered) drive spaced-repetition review timing.
 • Multiple quiz modes: flashcard flip, multiple choice, and typing the answer.
 
-Students see overdue vocab cards highlighted on their home dashboard.`,
-    link: '/students',
-    linkLabel: 'Go to Students',
+Use the checkboxes to bulk-select and delete words from any deck.`,
+    link: '/materials',
+    linkLabel: 'Go to Lesson Materials',
   },
   {
-    title: 'Sentence Puzzles',
+    title: 'Train Puzzle Decks',
     icon: '🧩',
-    body: `The Puzzles tab lets you build Japanese word-order puzzle decks for a student.
+    body: `Puzzle decks let students practice Japanese word order in the Train Game.
 
-• Create a Puzzle Deck, then add sentences (English hints with a Japanese translation to unscramble).
-• Use "🌐 Translate missing" to auto-translate all English hints into Japanese via the free MyMemory API.
-• In the editor you can manually fix the Japanese translation and reorder the puzzle word pieces using ▲▼ buttons.
-• Students play these in the Games section (Train Game) — dragging word tiles into the correct order.`,
-    link: '/students',
-    linkLabel: 'Go to Students',
+Generate puzzles automatically from existing decks:
+• From a Grammar Deck — sentences are built from the quiz questions (blanks filled in), using the stored Japanese translation.
+• From a Vocabulary Deck — sentences come from word example sentences, auto-translated if needed.
+
+Or add sentences manually and edit the Japanese translation and word-piece order directly in the editor.
+
+Students play the Train Game by tapping scrambled word tiles into the correct order. Use the checkboxes to bulk-delete puzzles when regenerating.`,
+    link: '/materials',
+    linkLabel: 'Go to Lesson Materials',
+  },
+  {
+    title: 'Eiken Picture Bank',
+    icon: '🖼️',
+    body: `The Eiken Picture Bank stores images used for EIKEN picture description practice.
+
+• Upload images and tag them with a level (3級, 準2級, 2級…) and category.
+• Students can practice describing each image out loud — the image is shown full-screen in the Games section.
+• Add a model answer to each image so students can compare their description.
+
+This is especially useful for EIKEN students preparing for the secondary interview.`,
+    link: '/materials',
+    linkLabel: 'Go to Lesson Materials',
   },
   {
     title: 'Setting Your Availability',
@@ -101,7 +151,7 @@ Students see overdue vocab cards highlighted on their home dashboard.`,
 • Recurring slots repeat every week on the same day and time (e.g. every Tuesday 15:00–19:00).
 • One-off slots are available on a specific date only.
 
-Students see your available slots when they go to Book a lesson. Slots that are already filled by an approved lesson are automatically hidden.
+Students see your available slots when they go to Book a lesson. Slots already filled by an approved lesson are automatically hidden.
 
 All times are displayed in each user's own timezone, so there's no confusion for international students.`,
     link: '/availability',
@@ -112,8 +162,9 @@ All times are displayed in each user's own timezone, so there's no confusion for
     icon: '📅',
     body: `The Calendar shows all scheduled lessons across all teachers in the school.
 
-• Use the teacher toggle buttons at the top to show or hide each teacher's schedule. Each teacher gets a distinct color.
+• Use the teacher toggle buttons at the top to show or hide each teacher's schedule. Each teacher gets a distinct colour.
 • Click any day to see the lessons in a detail panel.
+• Click any lesson to view its notes inline — no need to navigate away.
 • Pending booking requests from students appear in the right-hand panel — click "Review" to approve or decline.
 • Approved bookings automatically create a lesson and send the student a notification.`,
     link: '/calendar',
@@ -147,35 +198,18 @@ Lesson notes include:
 
 Toggle "Visible to student" to share the notes with the student. They'll see them on their Lessons page and their dashboard.
 
-Notes also link to a student's lesson history so you can review progress over time.`,
+You can also view lesson notes directly from the Calendar by clicking on a lesson day — no need to navigate to the Lessons page.`,
     link: '/lessons',
     linkLabel: 'Go to Lessons',
   },
   {
-    title: 'Student Goals',
+    title: 'Student Goals & Progress',
     icon: '🎯',
-    body: `In a student's profile, the Goals tab lets you set learning objectives.
+    body: `On a student's profile you'll find two useful sections:
 
-• Create a goal with a title, description, and an optional target date.
-• Add milestones (sub-tasks) and check them off as the student completes them.
-• Goals with a target date show a countdown on the student's dashboard.
-• The student sees a progress bar based on completed milestones.
+Goals — set learning objectives with a title, description, and optional target date. Goals with a target date show a countdown on the student's dashboard. The student sees a progress bar based on completed milestones.
 
-Use goals to keep students motivated — e.g. "Pass EIKEN Grade 3 by July."`,
-    link: '/students',
-    linkLabel: 'Go to Students',
-  },
-  {
-    title: 'Progress Snapshots',
-    icon: '📊',
-    body: `In a student's profile, the Progress tab lets you log periodic skill assessments.
-
-Record scores (1–10) for:
-• Speaking, Listening, Reading, Writing
-
-Plus an overall CEFR level (A1 → C2) and free-form notes.
-
-Snapshots are timestamped so you can track improvement over time. The student sees their latest snapshot as a skill bar chart on their home dashboard.
+Progress Snapshots — log periodic skill assessments with scores (1–10) for Speaking, Listening, Reading, and Writing, plus an overall CEFR level. Snapshots are plotted on a line chart so you can track improvement over time.
 
 That covers everything on the teacher side! You're ready to get started. 🎉`,
     link: '/students',
@@ -249,7 +283,7 @@ Goals are set by your teacher, so talk to them if you'd like to add or adjust a 
     icon: '📚',
     body: `The 単語 (Vocab) page contains all the words your teacher has added for you.
 
-• Words are organized into decks (e.g. "EIKEN 5級," "Food vocabulary").
+• Words are organised into decks (e.g. "EIKEN 5級," "Food vocabulary").
 • Each word has a mastery level: New → Seen → Familiar → Mastered.
 • When cards are due for review, you'll see a badge number on the nav and a prompt on your dashboard.
 
@@ -263,15 +297,17 @@ The app uses spaced repetition — words you struggle with come back sooner.`,
     linkLabel: 'Go to Vocabulary',
   },
   {
-    title: 'Grammar Study',
+    title: 'Grammar Study — Lesson & Pattern',
     icon: '✏️',
-    body: `The 文法 (Grammar) page contains grammar points your teacher has assigned.
+    body: `The 文法 (Grammar) page contains grammar decks your teacher has assigned.
 
-• Cards show a grammar rule with an example sentence and Japanese translation.
-• Mastery works the same as vocabulary — spaced repetition keeps due cards coming back.
-• Some cards have a fill-in-the-blank mode where you type the missing word.
+Each deck has two study modes:
 
-When grammar cards are due, a badge appears on the nav icon and a "Review now" button appears on your dashboard. Try to clear your due cards every day to build a strong streak 🔥`,
+Lesson — step-by-step slides explaining the grammar rule with highlighted examples and a Japanese note. Read through these first to understand the pattern.
+
+Pattern — flashcard practice using fill-in-the-blank sentences. The Japanese equivalent of the missing word(s) is shown inside the blank as a hint. Tap "Show Explanation" to reveal the answer and choose how well you knew it.
+
+Mastery levels (New → Seen → Familiar → Mastered) drive spaced repetition — cards you struggle with come back sooner. Clear your due cards every day to build a study streak 🔥`,
     link: '/grammar',
     linkLabel: 'Go to Grammar',
   },
@@ -280,13 +316,13 @@ When grammar cards are due, a badge appears on the nav icon and a "Review now" b
     icon: '🧩',
     body: `The ゲーム (Games) page has fun ways to practice English.
 
-The Train Game (word puzzle) shows you an English sentence as a hint, and scrambled Japanese word tiles below. Tap the tiles in the correct order to build the sentence.
+The Train Game (word puzzle) shows you a Japanese sentence as a prompt, and scrambled English word tiles below. Tap the tiles in the correct order to build the sentence.
 
-• Your teacher creates puzzle decks for you (e.g. "EIKEN 5 Sentences").
+• Your teacher creates puzzle decks for you (e.g. "Causative Verbs," "EIKEN 5 Sentences").
 • Choose a deck and tap "Start" to begin.
 • You can see your score for each sentence after completing the deck.
 
-This is great practice for understanding Japanese sentence structure!`,
+Puzzles are often generated directly from your grammar lessons, so you'll recognise the sentences!`,
     link: '/games',
     linkLabel: 'Go to Games',
   },
@@ -321,7 +357,7 @@ Sentences come from the grammar example sentences your teacher has added.`,
   {
     title: 'Settings',
     icon: '⚙️',
-    body: `Go to Settings (via your avatar menu at the top right) to customize your experience.
+    body: `Go to Settings (via your avatar menu at the top right) to customise your experience.
 
 • Timezone — make sure this is set correctly so lesson times display accurately.
 • Language — switch the app interface between Japanese and English.
