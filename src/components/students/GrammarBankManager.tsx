@@ -540,7 +540,19 @@ function DeckEditor({
       await Promise.all(categories.map(({ id, category }) =>
         supabase.from('grammar_deck_points').update({ category }).eq('id', id)
       ))
-      // Propagate to student grammar_bank entries from this deck
+      // Propagate directly to grammar_bank rows so student views update without merge
+      await Promise.all(
+        categories.map(({ id, category }) => {
+          const p = points.find(pt => pt.id === id)
+          if (!p) return Promise.resolve()
+          return supabase
+            .from('grammar_bank')
+            .update({ category })
+            .eq('deck_id', deck.id)
+            .eq('point', p.point)
+        })
+      )
+      // Update local state
       setPoints(prev => prev.map(p => {
         const match = categories.find(c => c.id === p.id)
         return match ? { ...p, category: match.category } : p

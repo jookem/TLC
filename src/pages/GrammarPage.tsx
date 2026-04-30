@@ -104,23 +104,19 @@ export function GrammarPage() {
 
   // Start a full study session: lesson → flashcards → quiz
   async function startStudy(cards: GrammarBankEntry[], skipLesson = false) {
+    const cardCategories = [...new Set(cards.map(c => c.category).filter(Boolean))]
     const deckIds = [...new Set(cards.map(c => c.deck_id).filter(Boolean))]
     let slides: GrammarLessonSlide[] = []
-    let deckName = 'Grammar'
+    // Always derive session name from category so localStorage keys are category-specific
+    let deckName = cardCategories.length === 1 ? cardCategories[0]! : 'Grammar'
 
     if (!skipLesson && deckIds.length === 1) {
-      const deckId = deckIds[0]!
-      const result = await listLessonSlides(deckId)
-      deckName = entries.find(e => e.deck_id === deckId)?.category ?? 'Grammar'
-
+      const result = await listLessonSlides(deckIds[0]!)
       if (result.slides && result.slides.length > 0) {
-        const cardCategories = [...new Set(cards.map(c => c.category).filter(Boolean))]
         if (cardCategories.length === 1) {
           const cat = cardCategories[0]!.toLowerCase()
-          // Match slides whose title starts with the category name (handles "Category — Japanese subtitle")
           const matched = result.slides.filter(s => s.title.toLowerCase().startsWith(cat))
           slides = matched.length > 0 ? matched : result.slides
-          deckName = cardCategories[0] ?? deckName
         } else {
           slides = result.slides
         }
