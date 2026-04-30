@@ -118,6 +118,7 @@ OPEN-ENDED TOPIC TYPES (always require context clues):
 • Prepositions — in/on/at/to/for/with can all be ambiguous; context must make only one correct
 • Conjunctions — and/but/because/so/although; the logical relationship between clauses must be clear
 • Articles — a/an/the; context must make clear whether definite or indefinite
+• Possessive Adjectives/Nouns — my/your/his/her/its/our/their; context must establish who the owner is
 • Vocabulary (any topic testing word choice rather than grammatical form)
 
 BAD (no context — student cannot determine the correct answer):
