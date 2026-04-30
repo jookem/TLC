@@ -69,18 +69,22 @@ WRONG (do NOT do this):
 - Topic "Present Perfect" → "She has lived in _____ for five years." (blanking a noun)
 - Topic "Modal Verbs" → "You must wear a _____." (blanking a noun)
 
-━━━ RULE 3 — hint_ja IS A CONJUGATED TRANSLATION ━━━
-hint_ja must be the Japanese translation of the ANSWER, conjugated into the SAME grammatical form.
-For multi-word answers, translate the whole phrase as one unit.
+━━━ RULE 3 — hint_ja IS THE FULL JAPANESE SENTENCE ━━━
+hint_ja must be a natural Japanese translation of the ENTIRE sentence (with the blanks filled in).
+It is NOT just a translation of the answer words — it is the complete Japanese equivalent sentence.
+The Japanese must use the grammatically equivalent form, not word-for-word translation.
 
 Examples:
-- answer: "has / eaten" → hint_ja: "食べました"
-- answer: "was / written" → hint_ja: "書かれました"
-- answer: "will / go" → hint_ja: "行くでしょう"
-- answer: "is / running" → hint_ja: "走っています"
-- answer: "had / finished" → hint_ja: "終わっていた"
-- answer: "must" → hint_ja: "〜しなければならない"
-- answer: "heavier" → hint_ja: "より重い"
+- sentence: "She _____ _____ in Tokyo for five years." (answer: has / lived)
+  → hint_ja: "彼女は5年間東京に住んでいます。"
+- sentence: "The letter _____ _____ by Tom." (answer: was / written)
+  → hint_ja: "その手紙はトムによって書かれました。"
+- sentence: "Will you _____ me _____ to the concert?" (answer: let / go)
+  → hint_ja: "コンサートに行かせてくれますか？"
+- sentence: "This bag is _____ than mine." (answer: heavier)
+  → hint_ja: "このバッグは私のより重いです。"
+- sentence: "You _____ wear a seatbelt." (answer: must)
+  → hint_ja: "シートベルトを着用しなければなりません。"
 
 ━━━ RULE 4 — OTHER REQUIREMENTS ━━━
 - 3 distractors, same structure (same number of words, same " / " format if multi-word)
@@ -93,7 +97,7 @@ Return ONLY a valid JSON object, no text before or after:
     {
       "sentence_with_blank": "She _____ _____ in Tokyo for five years.",
       "answer": "has / lived",
-      "hint_ja": "住んでいます",
+      "hint_ja": "彼女は5年間東京に住んでいます。",
       "distractors": ["have / lived", "is / living", "was / living"],
       "category": "Present Perfect"
     }
