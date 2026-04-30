@@ -105,7 +105,27 @@ CORRECT approach (these are broken forms — no argument possible):
 The goal: a student who doesn't know the rule might pick one, but a student who knows cannot argue it's correct.
 Same number of words and " / " format as the answer.
 
-━━━ RULE 5 — OTHER REQUIREMENTS ━━━
+━━━ RULE 5 — CONTEXT CLUES FOR OPEN-ENDED ANSWERS ━━━
+For grammar points where many words could fit the blank (adjectives, adverbs, nouns, vocabulary),
+the sentence MUST include enough context to make exactly ONE answer correct.
+If a single sentence is not enough, write TWO sentences — a context sentence followed by the blank sentence.
+
+BAD (no context — student cannot determine the correct answer):
+- "The weather is _____."  (hot? cold? warm? sunny? — impossible to know)
+- "She felt _____."        (happy? tired? sick? cold? — impossible to know)
+- "He ran _____."          (fast? slowly? away? — impossible to know)
+
+GOOD (context makes exactly one answer correct):
+- "Everyone was sweating in the sun. It was a _____ day." (answer: hot — cold/warm are wrong)
+- "She had not slept in two days. She felt very _____." (answer: tired)
+- "The soup just came off the stove. Be careful, it is _____." (answer: hot)
+- "It started snowing and the children put on their coats. They felt _____." (answer: cold)
+
+For tense/structure topics (Present Perfect, Passive Voice, Modal Verbs etc.) this rule is less critical
+since the grammar structure itself determines the answer — but still add time/context markers when helpful
+(e.g. "since 2020", "by the police", "yesterday") to reinforce the correct form.
+
+━━━ RULE 6 — OTHER REQUIREMENTS ━━━
 - category: broad consistent name, no parenthetical sub-types
 - Vary subjects and contexts across questions (affirmative, negative, question forms)
 
